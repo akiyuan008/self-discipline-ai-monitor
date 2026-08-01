@@ -127,7 +127,9 @@ function executeTool(name: string, args: any): string {
       }
       case 'add_points': {
         const before = s.points
-        s.addPoints(Number(args.amount || 0))
+        const amt = Number(args.amount || 0)
+        s.addPoints(amt)
+        s.addPointRecord(amt >= 0 ? 'earn' : 'spend', amt, String(args.reason || (amt >= 0 ? 'AI 奖励' : 'AI 惩罚')))
         return JSON.stringify({ ok: true, before, after: useStore.getState().points })
       }
       case 'set_hp': {

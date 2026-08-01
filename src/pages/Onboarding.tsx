@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
-import ModelPicker from '@/components/ModelPicker'
-import { MODEL_PRESETS } from '@/data/modelPresets'
 import type { AIConfig } from '@/stores/useStore'
 
 export default function Onboarding() {
@@ -10,8 +8,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0)
   const [tag, setTag] = useState('PLAYER_01')
   const [goal, setGoal] = useState(120)
-  const [ai, setAI] = useState<AIConfig>({ apiKey: '', endpoint: '', model: 'glm-4-plus' })
-  const [showPicker, setShowPicker] = useState(false)
+  const [ai, setAI] = useState<AIConfig>({ apiKey: '', endpoint: '', model: '' })
 
   function finish() {
     init(tag.trim() || 'PLAYER_01', goal, ai)
@@ -141,67 +138,11 @@ export default function Onboarding() {
           <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: -0.5, marginBottom: 12 }}>
             接入 AI 监管者
           </h1>
-          <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 32 }}>
-            选择国内主流大模型供应商，填入 API Key。监管者会在你低谷时主动开口、能调任务/积分/成就。
+          <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 24 }}>
+            填入兼容 OpenAI 协议的大模型 API。监管者会在你低谷时主动开口、能调任务/积分/成就。
           </p>
 
-          {/* 模型选择按钮 */}
-          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>选择供应商和模型</label>
-          <button
-            onClick={() => setShowPicker(true)}
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              borderRadius: 12,
-              background: 'var(--card-bg)',
-              border: '1px solid var(--border)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 16
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-              {(() => {
-                const p = MODEL_PRESETS.find(x => x.endpoint === ai.endpoint)
-                if (!p) return (
-                  <span style={{ fontSize: 14, color: 'var(--muted)' }}>
-                    点击选择 →
-                  </span>
-                )
-                return (
-                  <>
-                    <div style={{
-                      width: 28, height: 28, borderRadius: 6,
-                      background: p.accent,
-                      color: '#fff',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontWeight: 700, fontSize: 11, flexShrink: 0
-                    }}>
-                      {p.logoText}
-                    </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 14, fontWeight: 600,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                      }}>
-                        {p.vendor} · {ai.model || '未选模型'}
-                      </div>
-                      <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-                        {p.endpoint}
-                      </div>
-                    </div>
-                  </>
-                )
-              })()}
-            </div>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2">
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          </button>
-
-          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>API Key</label>
+          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>API Key</label>
           <input
             value={ai.apiKey}
             onChange={(e) => setAI({ ...ai, apiKey: e.target.value })}
@@ -217,9 +158,62 @@ export default function Onboarding() {
               fontSize: 14,
               fontFamily: 'DM Mono, monospace',
               outline: 'none',
-              marginBottom: 24
+              marginBottom: 16
             }}
           />
+
+          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Endpoint</label>
+          <input
+            value={ai.endpoint}
+            onChange={(e) => setAI({ ...ai, endpoint: e.target.value })}
+            placeholder="https://open.bigmodel.cn/api/paas/v4"
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              borderRadius: 12,
+              background: 'var(--card-bg)',
+              border: '1px solid var(--border)',
+              color: 'var(--fg)',
+              fontSize: 13,
+              fontFamily: 'DM Mono, monospace',
+              outline: 'none',
+              marginBottom: 16
+            }}
+          />
+
+          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Model</label>
+          <input
+            value={ai.model}
+            onChange={(e) => setAI({ ...ai, model: e.target.value })}
+            placeholder="glm-4-plus"
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              borderRadius: 12,
+              background: 'var(--card-bg)',
+              border: '1px solid var(--border)',
+              color: 'var(--fg)',
+              fontSize: 13,
+              fontFamily: 'DM Mono, monospace',
+              outline: 'none',
+              marginBottom: 16
+            }}
+          />
+
+          {/* 常见 endpoint 参考 */}
+          <div style={{
+            padding: '10px 12px',
+            background: 'var(--bg-alt)',
+            borderRadius: 8,
+            fontSize: 11, color: 'var(--muted)',
+            lineHeight: 1.8,
+            marginBottom: 16
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>常见参考：</div>
+            <div>智谱：open.bigmodel.cn/api/paas/v4 / glm-4-plus</div>
+            <div>千问：dashscope.aliyuncs.com/compatible-mode/v1 / qwen-plus</div>
+            <div>DeepSeek：api.deepseek.com/v1 / deepseek-chat</div>
+          </div>
 
           <div style={{ flex: 1 }} />
 
@@ -254,15 +248,6 @@ export default function Onboarding() {
             </button>
           </div>
         </div>
-      )}
-
-      {showPicker && (
-        <ModelPicker
-          currentEndpoint={ai.endpoint}
-          currentModel={ai.model}
-          onSelect={(ep, m) => setAI({ ...ai, endpoint: ep, model: m })}
-          onClose={() => setShowPicker(false)}
-        />
       )}
     </div>
   )

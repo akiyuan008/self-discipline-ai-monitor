@@ -263,16 +263,24 @@ export default function Home({ onNavigate }: Props) {
       {/* 状态摘要 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 16 }}>
         <Stat label="连胜" value={`${streak}`} suffix="DAYS" />
-        <Stat label="积分" value={points.toString()} />
+        <Stat label="积分" value={points.toString()} onClick={() => onNavigate?.('pointsDetail')} />
         <Stat label="总专注" value={`${focusHours}`} suffix="HOURS" />
       </div>
     </div>
   )
 }
 
-function Stat({ label, value, suffix }: { label: string; value: string; suffix?: string }) {
+function Stat({ label, value, suffix, onClick }: { label: string; value: string; suffix?: string; onClick?: () => void }) {
   return (
-    <div className="card" style={{ padding: 14, borderRadius: 12, textAlign: 'center' }}>
+    <div
+      className="card"
+      onClick={onClick}
+      style={{
+        padding: 14, borderRadius: 12, textAlign: 'center',
+        cursor: onClick ? 'pointer' : 'default',
+        position: 'relative'
+      }}
+    >
       <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
         {label.toUpperCase()}
       </div>
@@ -284,6 +292,12 @@ function Stat({ label, value, suffix }: { label: string; value: string; suffix?:
           </span>
         )}
       </div>
+      {onClick && (
+        <div style={{
+          position: 'absolute', top: 6, right: 8,
+          fontSize: 10, color: 'var(--muted)', opacity: 0.5
+        }}>›</div>
+      )}
     </div>
   )
 }

@@ -13,7 +13,16 @@ export type PageId =
   | 'chat'
   | 'achievements'
   | 'settings'
+  | 'pointsDetail'
   | 'onboarding'
+
+export interface PointRecord {
+  id: string
+  type: 'earn' | 'spend'
+  amount: number
+  reason: string
+  ts: number
+}
 
 export interface AIConfig {
   apiKey: string
@@ -55,6 +64,9 @@ interface StoreState {
   achievements: Achievement[]
   ownedItems: Record<string, number>
 
+  // 积分记录
+  pointHistory: PointRecord[]
+
   // 深色模式
   isDark: boolean
 
@@ -93,6 +105,7 @@ interface StoreState {
   clearChat: () => void
   syncUsage: (study: UsageStat[], ent: UsageStat[]) => void
   dailySettle: () => void
+  addPointRecord: (type: 'earn' | 'spend', amount: number, reason: string) => void
 }
 
 function todayStr(): string {
@@ -116,6 +129,7 @@ export const useStore = create<StoreState>()(
       quests: QUESTS,
       achievements: ACHIEVEMENTS,
       ownedItems: {},
+      pointHistory: [],
       isDark: false,
       ai: { apiKey: '', endpoint: '', model: 'glm-4-plus' },
       chat: [],
@@ -132,6 +146,13 @@ export const useStore = create<StoreState>()(
         set(s => ({ points: s.points - cost }))
         return true
       },
+      addPointRecord: (type, amount, reason) =>
+        set(s => ({
+          pointHistory: [
+            { id: crypto.randomUUID(), type, amount: Math.abs(amount), reason, ts: Date.now() },
+            ...s.pointHistory
+          ].slice(0, 200) // 保留最近 200 条
+        })),
       addStreak: (n) => set(s => ({ streak: Math.max(0, s.streak + n) })),
       addFocusMs: (n) => set(s => ({ totalFocusMs: s.totalFocusMs + n, todayStudyMs: s.todayStudyMs + n })),
       toggleDark: () => set(s => ({ isDark: !s.isDark })),
@@ -139,10 +160,12 @@ export const useStore = create<StoreState>()(
       completeQuest: (id) => {
         const q = get().quests.find(x => x.id === id)
         if (!q || q.completed) return
+        const reward = q.reward || 0
         set(s => ({
           quests: s.quests.map(qx => qx.id === id ? { ...qx, progress: qx.total, completed: true } : qx),
-          points: s.points + (q.reward || 0)
+          points: s.points + reward
         }))
+        if (reward > 0) get().addPointRecord('earn', reward, `完成任务：${q.title}`)
         // 自动尝试解锁"完美主义者"成就：一周内完成所有日常任务
         if (q?.category === 'daily') {
           const all = get().quests.filter(x => x.category === 'daily')
@@ -156,6 +179,7 @@ export const useStore = create<StoreState>()(
         if (!item) return false
         if (item.lockLevel && get().streak < item.lockLevel) return false
         if (!get().spendPoints(item.cost)) return false
+        get().addPointRecord('spend', item.cost, `购买：${item.name}`)
         set(s => ({ ownedItems: { ...s.ownedItems, [id]: (s.ownedItems[id] || 0) + 1 } }))
         // 体力药水立即回血
         if (item.effect === 'potion') get().setHp(get().hp + 30)
@@ -171,6 +195,7 @@ export const useStore = create<StoreState>()(
         }))
         // 解锁成就奖励积分
         set(s => ({ points: s.points + 200 }))
+        get().addPointRecord('earn', 200, `解锁成就：${a.name}`)
       },
       addCustomQuest: ({ title, desc, reward, category }) => {
         const id = `q-ai-${Date.now().toString(36)}`

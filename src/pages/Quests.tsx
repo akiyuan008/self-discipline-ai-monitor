@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useStore } from '@/stores/useStore'
+import { useStore, type PageId } from '@/stores/useStore'
 import { CATEGORY_TABS } from '@/data/quests'
 import { showToast } from '@/components/Toast'
 
@@ -9,21 +9,42 @@ const ACCENT_COLOR: Record<string, string> = {
   info: 'var(--info)'
 }
 
-export default function Quests() {
+interface Props {
+  onNavigate?: (p: PageId) => void
+}
+
+export default function Quests({ onNavigate }: Props) {
   const [tab, setTab] = useState<'daily' | 'weekly' | 'main'>('daily')
   const quests = useStore(s => s.quests)
   const completeQuest = useStore(s => s.completeQuest)
+  const points = useStore(s => s.points)
 
   const list = quests.filter(q => q.category === tab)
 
   return (
     <div className="safe-top" style={{ padding: '24px 20px 140px' }}>
-      <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-        QUEST_CENTER
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+            QUEST_CENTER
+          </div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 0 }}>
+            任务中心
+          </h1>
+        </div>
+        <button
+          onClick={() => onNavigate?.('pointsDetail')}
+          style={{
+            background: 'var(--card-bg)', border: '1px solid var(--border)',
+            borderRadius: 100, padding: '6px 14px',
+            display: 'flex', alignItems: 'center', gap: 4,
+            cursor: 'pointer', color: 'var(--fg)'
+          }}
+        >
+          <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'DM Mono, monospace' }}>{points}</span>
+          <span style={{ fontSize: 10, color: 'var(--muted)' }}>PTS ›</span>
+        </button>
       </div>
-      <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 16 }}>
-        任务中心
-      </h1>
 
       {/* tabs */}
       <div style={{

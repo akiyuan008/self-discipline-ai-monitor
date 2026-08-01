@@ -1,8 +1,12 @@
-import { useStore } from '@/stores/useStore'
+import { useStore, type PageId } from '@/stores/useStore'
 import { SHOP_ITEMS } from '@/data/shop'
 import { showToast } from '@/components/Toast'
 
-export default function Shop() {
+interface Props {
+  onNavigate?: (p: PageId) => void
+}
+
+export default function Shop({ onNavigate }: Props) {
   const points = useStore(s => s.points)
   const owned = useStore(s => s.ownedItems)
   const buy = useStore(s => s.buyItem)
@@ -19,10 +23,18 @@ export default function Shop() {
             补给站
           </h1>
         </div>
-        <div style={{ fontSize: 18, fontWeight: 600, fontFamily: 'DM Mono, monospace' }}>
+        <button
+          onClick={() => onNavigate?.('pointsDetail')}
+          style={{
+            background: 'none', border: 'none',
+            fontSize: 18, fontWeight: 600, fontFamily: 'DM Mono, monospace',
+            color: 'var(--fg)', cursor: 'pointer',
+            display: 'flex', alignItems: 'baseline', gap: 4
+          }}
+        >
           {points}
-          <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 4 }}>PTS</span>
-        </div>
+          <span style={{ fontSize: 11, color: 'var(--muted)' }}>PTS ›</span>
+        </button>
       </div>
 
       <div style={{

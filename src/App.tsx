@@ -9,6 +9,7 @@ import Profile from '@/pages/Profile'
 import Chat from '@/pages/Chat'
 import Achievements from '@/pages/Achievements'
 import Settings from '@/pages/Settings'
+import PointsDetail from '@/pages/PointsDetail'
 import Dock from '@/components/Dock'
 import Toast from '@/components/Toast'
 import { fetchUsageStats } from '@/lib/usageStats'
@@ -96,6 +97,14 @@ export default function App() {
       </>
     )
   }
+  if (current === 'pointsDetail') {
+    return (
+      <>
+        <PointsDetail onBack={() => setCurrent('home')} />
+        <Toast />
+      </>
+    )
+  }
 
   // 主页面
   const M = current === 'home'
@@ -103,9 +112,9 @@ export default function App() {
     : current === 'profile'
       ? (props: any) => <Profile {...props} onNavigate={(p: 'achievements' | 'settings') => setCurrent(p)} />
       : current === 'quests'
-        ? Quests
+        ? (props: any) => <Quests {...props} onNavigate={(p: PageId) => setCurrent(p)} />
         : current === 'shop'
-          ? Shop
+          ? (props: any) => <Shop {...props} onNavigate={(p: PageId) => setCurrent(p)} />
           : Home
 
   return (

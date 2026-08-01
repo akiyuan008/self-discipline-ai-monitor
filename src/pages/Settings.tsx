@@ -1,8 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
-import ModelPicker from '@/components/ModelPicker'
-import { MODEL_PRESETS } from '@/data/modelPresets'
 import { testConnection } from '@/lib/ai'
 
 interface Props {
@@ -21,13 +19,19 @@ export default function Settings({ onBack }: Props) {
   const setDungeonDuration = useStore(s => s.setDungeonDuration)
   const reset = useStore(s => s.reset)
 
-  // 用 local state 缓存输入，避免每次 onChange 触发整个 store 重渲染（修闪退）
+  // 用 local state 缓存输入，避免每次 onChange 触发整个 store 重渲染
   const [apiKey, setApiKey] = useState(ai.apiKey)
   const [endpoint, setEndpoint] = useState(ai.endpoint)
   const [model, setModel] = useState(ai.model)
-  const [showPicker, setShowPicker] = useState(false)
   const [testing, setTesting] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle')
   const [testMsg, setTestMsg] = useState('')
+
+  // 如果 store 中的 ai 配置变化了（比如从其他页面回来），同步到 local state
+  useEffect(() => {
+    setApiKey(ai.apiKey)
+    setEndpoint(ai.endpoint)
+    setModel(ai.model)
+  }, [ai.apiKey, ai.endpoint, ai.model])
 
   function save() {
     setAI({ apiKey: apiKey.trim(), endpoint: endpoint.trim(), model: model.trim() })
@@ -35,30 +39,14 @@ export default function Settings({ onBack }: Props) {
   }
 
   async function test() {
+    // 先保存再测试
+    setAI({ apiKey: apiKey.trim(), endpoint: endpoint.trim(), model: model.trim() })
     setTesting('testing')
     setTestMsg('')
-    const r = await testConnection({ apiKey, endpoint, model })
+    const r = await testConnection({ apiKey: apiKey.trim(), endpoint: endpoint.trim(), model: model.trim() })
     setTesting(r.ok ? 'ok' : 'fail')
     setTestMsg(r.msg)
     if (r.ok) showToast('连接成功')
-  }
-
-  // 找当前选中的供应商
-  const activePreset = MODEL_PRESETS.find(p => p.endpoint === endpoint)
-
-  if (showPicker) {
-    return (
-      <ModelPicker
-        currentEndpoint={endpoint}
-        currentModel={model}
-        onSelect={(ep, m) => {
-          setEndpoint(ep)
-          setModel(m)
-          showToast('已切换模型')
-        }}
-        onClose={() => setShowPicker(false)}
-      />
-    )
   }
 
   return (
@@ -135,52 +123,11 @@ export default function Settings({ onBack }: Props) {
         {/* AI 监管者配置 */}
         <Section title="AI 监管者">
           <div className="card" style={{ padding: 16, borderRadius: 12 }}>
-            {/* 模型选择按钮 */}
-            <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginBottom: 6 }}>
-              MODEL_PROVIDER
+            <div style={{
+              fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6
+            }}>
+              填入你的 API 信息（兼容 OpenAI 协议的任意大模型均可）。三项缺一不可。
             </div>
-            <button
-              onClick={() => setShowPicker(true)}
-              style={{
-                width: '100%', padding: '12px 14px',
-                background: 'var(--bg)', border: '1px solid var(--border)',
-                borderRadius: 8, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                marginBottom: 12
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                {activePreset && (
-                  <div style={{
-                    width: 24, height: 24, borderRadius: 6,
-                    background: activePreset.accent,
-                    color: '#fff',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 700, fontSize: 10, flexShrink: 0
-                  }}>
-                    {activePreset.logoText}
-                  </div>
-                )}
-                <div style={{ minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 13, fontWeight: 600,
-                    color: 'var(--fg)',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
-                  }}>
-                    {activePreset ? `${activePreset.vendor} · ${model || '未选模型'}` : '选择供应商和模型'}
-                  </div>
-                  <div style={{
-                    fontSize: 10, color: 'var(--muted)',
-                    fontFamily: 'DM Mono, monospace'
-                  }}>
-                    {endpoint || '点击右侧选择'}
-                  </div>
-                </div>
-              </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </button>
 
             <Field
               label="API Key"
@@ -205,6 +152,22 @@ export default function Settings({ onBack }: Props) {
               onChange={setModel}
               mono
             />
+
+            {/* 常见 endpoint 参考 */}
+            <div style={{
+              padding: '10px 12px',
+              background: 'var(--bg-alt)',
+              borderRadius: 8,
+              marginBottom: 12,
+              fontSize: 11, color: 'var(--muted)',
+              lineHeight: 1.8
+            }}>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>常见 Endpoint 参考：</div>
+              <div>智谱：https://open.bigmodel.cn/api/paas/v4</div>
+              <div>千问：https://dashscope.aliyuncs.com/compatible-mode/v1</div>
+              <div>DeepSeek：https://api.deepseek.com/v1</div>
+              <div>Kimi：https://api.moonshot.cn/v1</div>
+            </div>
 
             {/* 状态提示 */}
             {(!apiKey.trim() || !endpoint.trim() || !model.trim()) && (
@@ -310,8 +273,8 @@ export default function Settings({ onBack }: Props) {
           textAlign: 'center', padding: '24px 0',
           fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace'
         }}>
-          CYBER SURVIVAL · v2.3.0<br />
-          React + Capacitor + z-ai-web-dev-sdk
+          CYBER SURVIVAL · v2.4.0<br />
+          React + Capacitor
         </div>
       </div>
     </div>
