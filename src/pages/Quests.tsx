@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useStore, type PageId } from '@/stores/useStore'
 import { CATEGORY_TABS } from '@/data/quests'
 import { showToast } from '@/components/Toast'
-import GaokaoProgress from '@/components/GaokaoProgress'
 
 const ACCENT_COLOR: Record<string, string> = {
   success: 'var(--success)',
@@ -46,9 +45,6 @@ export default function Quests({ onNavigate }: Props) {
           <span style={{ fontSize: 10, color: 'var(--muted)' }}>PTS ›</span>
         </button>
       </div>
-
-      {/* 高考进度精简版 */}
-      <GaokaoProgress variant="compact" />
 
       {/* tabs */}
       <div style={{

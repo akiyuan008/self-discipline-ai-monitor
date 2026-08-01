@@ -43,8 +43,9 @@ export default function App() {
   // ═══ Android 返回键 / 全面屏手势返回 ═══
   useEffect(() => {
     let listenerHandle: any
+    let mounted = true
 
-    CapacitorApp.addListener('backButton', () => {
+    CapacitorApp.addListener('backButton', ({ canGoBack }) => {
       const page = currentRef.current
       // 在全屏子页面 → 返回上级
       if (BACK_MAP[page]) {
@@ -59,10 +60,18 @@ export default function App() {
       // 在首页 → 退出 App
       CapacitorApp.exitApp()
     }).then((h: any) => {
-      listenerHandle = h
+      if (mounted) {
+        listenerHandle = h
+      } else {
+        // 组件已卸载，立即清理监听器
+        h?.remove?.()
+      }
+    }).catch(() => {
+      // Web 环境下没有 backButton 事件，忽略错误
     })
 
     return () => {
+      mounted = false
       listenerHandle?.remove?.()
     }
   }, [])

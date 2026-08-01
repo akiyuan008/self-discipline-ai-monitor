@@ -23,12 +23,6 @@ export default function Settings({ onBack }: Props) {
   const modelList = useStore(s => s.modelList)
   const setSystemPrompt = useStore(s => s.setSystemPrompt)
   const setModelList = useStore(s => s.setModelList)
-  const gaokaoDate = useStore(s => s.gaokaoDate)
-  const gaokaoTargetScore = useStore(s => s.gaokaoTargetScore)
-  const gaokaoBaseScore = useStore(s => s.gaokaoBaseScore)
-  const setGaokaoDate = useStore(s => s.setGaokaoDate)
-  const setGaokaoTargetScore = useStore(s => s.setGaokaoTargetScore)
-
   // local state — 仅挂载时从 store 读取，不使用 useEffect 反向同步
   const [apiKey, setApiKey] = useState(ai.apiKey || PRESET_AI_CONFIG.apiKey)
   const [endpoint, setEndpoint] = useState(ai.endpoint || PRESET_AI_CONFIG.endpoint)
@@ -37,7 +31,6 @@ export default function Settings({ onBack }: Props) {
   const [testing, setTesting] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle')
   const [testMsg, setTestMsg] = useState('')
   const [fetchingModels, setFetchingModels] = useState(false)
-  const [gaokaoDateInput, setGaokaoDateInput] = useState(gaokaoDate)
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
   const [modelSearch, setModelSearch] = useState('')
   const [importing, setImporting] = useState(false)
@@ -199,95 +192,6 @@ export default function Settings({ onBack }: Props) {
                   {m}m
                 </button>
               ))}
-            </div>
-          </div>
-        </Section>
-
-        {/* 高考目标配置 */}
-        <Section title="高考目标">
-          <div className="card" style={{ padding: 16, borderRadius: 12 }}>
-            <div style={{
-              fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6
-            }}>
-              设定高考日期和目标分数。学习、完成任务会让估分上升，娱乐会让估分下降。
-            </div>
-
-            {/* 高考日期 */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{
-                fontSize: 11, color: 'var(--muted)',
-                fontFamily: 'DM Mono, monospace',
-                marginBottom: 6
-              }}>
-                GAOKAO_DATE
-              </div>
-              <input
-                type="date"
-                value={gaokaoDateInput}
-                onChange={(e) => setGaokaoDateInput(e.target.value)}
-                onBlur={() => {
-                  if (gaokaoDateInput && gaokaoDateInput !== gaokaoDate) {
-                    setGaokaoDate(gaokaoDateInput)
-                    showToast('高考日期已更新')
-                  }
-                }}
-                style={{
-                  width: '100%', padding: '10px 12px',
-                  background: 'var(--bg)', color: 'var(--fg)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 8, fontSize: 13,
-                  fontFamily: 'DM Mono, monospace',
-                  outline: 'none'
-                }}
-              />
-            </div>
-
-            {/* 目标分数 */}
-            <div style={{ marginBottom: 16 }}>
-              <div style={{
-                fontSize: 11, color: 'var(--muted)',
-                fontFamily: 'DM Mono, monospace',
-                marginBottom: 6
-              }}>
-                TARGET_SCORE
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {[600, 650, 680, 700, 750].map(s => (
-                  <button
-                    key={s}
-                    onClick={() => {
-                      setGaokaoTargetScore(s)
-                      showToast(`目标分数设为 ${s}`)
-                    }}
-                    style={{
-                      flex: 1, padding: '8px',
-                      background: gaokaoTargetScore === s ? 'var(--fg)' : 'var(--bg-alt)',
-                      color: gaokaoTargetScore === s ? 'var(--bg)' : 'var(--muted)',
-                      border: 'none', borderRadius: 8,
-                      fontSize: 12, fontWeight: 600, cursor: 'pointer'
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 基础估分（只读展示） */}
-            <div style={{
-              padding: '10px 12px',
-              background: 'var(--bg-alt)',
-              borderRadius: 8,
-              fontSize: 11, color: 'var(--muted)',
-              lineHeight: 1.8
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>基础估分</span>
-                <span style={{ color: 'var(--fg)', fontFamily: 'DM Mono, monospace' }}>{gaokaoBaseScore}</span>
-              </div>
-              <div style={{ fontSize: 10, marginTop: 4 }}>
-                基础估分为起步分数，学习每小时 +5，娱乐每小时 -3，完成任务 +3。
-              </div>
             </div>
           </div>
         </Section>
@@ -582,7 +486,7 @@ export default function Settings({ onBack }: Props) {
             <div style={{
               fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6
             }}>
-              导出全部数据（HP、积分、任务、成就、AI 配置、高考档案等）到文件，或从备份文件恢复。
+              导出全部数据（HP、积分、任务、成就、AI 配置等）到文件，或从备份文件恢复。
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button

@@ -1,13 +1,12 @@
-import { useStore, type AIConfig, type ChatMessage, calcGaokaoScore, daysUntilGaokao } from '@/stores/useStore'
+import { useStore, type AIConfig, type ChatMessage } from '@/stores/useStore'
 import { fetchUsageStats, hasUsageAccess, openUsageAccessSettings, fmtMs } from '@/lib/usageStats'
 
 /**
  * 前端直连用户配置的 OpenAI 兼容 API
  * - 硬编码「监督智能体」System Prompt
  * - 滑动窗口：System Prompt + 最近 20 条历史对话（10 轮）
- * - 流式输出（stream: true）+ 打字机效果
- * - 工具调用：AI 可加任务/加成就/调积分/设HP/完成任务/查阅手机使用
- * API Key 仅存本地 localStorage
+ * - 工具调用：第一轮非流式（可靠检测 tool_calls），第二轮流式输出最终回复
+ * - API Key 仅存本地 localStorage
  */
 
 // ═══════════════════════════════════════════════════════════
@@ -275,17 +274,19 @@ async function executeTool(name: string, args: any): Promise<string> {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 主入口：流式聊天 + 工具调用
+// 主入口：工具调用（非流式第一轮）+ 流式第二轮
 // ═══════════════════════════════════════════════════════════
 
 /**
  * @param userMessage 用户输入
  * @param onChunk 流式回调，每收到一段文字就调用
+ * @param onStreamReset 当检测到工具调用、需要清空之前流式输出的内容时调用
  * @returns 最终完整回复文本
  */
 export async function chatWithAI(
   userMessage: string,
-  onChunk?: (text: string) => void
+  onChunk?: (text: string) => void,
+  onStreamReset?: () => void
 ): Promise<string> {
   const state = useStore.getState()
   const ai = state.ai
@@ -313,53 +314,74 @@ export async function chatWithAI(
   }
 
   try {
-    // 第一轮：流式请求，可能返回 tool_calls
-    const r1 = await callAPIStream(ai, messages, true, onChunk)
+    // ── 第一轮：非流式请求（可靠检测 tool_calls）──
+    const r1 = await callAPI(ai, messages, true)
 
-    if (r1.tool_calls && r1.tool_calls.length > 0) {
-      // 把 assistant 的 tool_calls 加入 messages
-      messages.push({
-        role: 'assistant',
-        content: r1.content || '',
-        tool_calls: r1.tool_calls
-      })
-      // 执行每个工具
-      for (const call of r1.tool_calls) {
-        const fnName = call.function?.name
-        let args: any = {}
-        try {
-          args = JSON.parse(call.function?.arguments || '{}')
-        } catch {
-          args = {}
+    // 没有工具调用 → 直接返回内容（模拟流式输出效果）
+    if (!r1.tool_calls || r1.tool_calls.length === 0) {
+      const content = r1.content || '（空回复）'
+      if (onChunk && content) {
+        // 逐字输出模拟流式效果
+        const chars = Array.from(content)
+        for (let i = 0; i < chars.length; i++) {
+          onChunk(chars[i])
+          if (i % 3 === 0) await new Promise(r => setTimeout(r, 10))
         }
-        const result = await executeTool(fnName, args)
-        messages.push({
-          role: 'tool',
-          tool_call_id: call.id,
-          name: fnName,
-          content: result
-        })
       }
-      // 第二轮：流式生成最终文字回复（不带 tools，避免再次触发）
-      // 注意：第二轮重新开始流式，清空之前的流式内容
-      const r2 = await callAPIStream(ai, messages, false, onChunk)
-      if (r2.content) return r2.content
-      return '已执行操作。'
+      return content
     }
 
-    return r1.content || '（空回复）'
-  } catch (e: any) {
-    // 如果带工具的请求失败，尝试不带工具重试
-    if (e.message && (e.message.includes('tool') || e.message.includes('function') || e.message.includes('400'))) {
+    // ── 有工具调用 → 执行工具，然后流式生成最终回复 ──
+    // 清空之前可能的流式内容
+    onStreamReset?.()
+
+    // 把 assistant 的 tool_calls 加入 messages
+    messages.push({
+      role: 'assistant',
+      content: r1.content || '',
+      tool_calls: r1.tool_calls
+    })
+
+    // 执行每个工具
+    for (const call of r1.tool_calls) {
+      const fnName = call.function?.name
+      let args: any = {}
       try {
-        const r = await callAPIStream(ai, messages, false, onChunk)
-        if (r.content) return r.content
-        return '（空回复）'
-      } catch (e2: any) {
-        return `网络错误：${e2.message}`
+        args = JSON.parse(call.function?.arguments || '{}')
+      } catch {
+        args = {}
       }
+      const result = await executeTool(fnName, args)
+      messages.push({
+        role: 'tool',
+        tool_call_id: call.id,
+        name: fnName,
+        content: result
+      })
     }
-    return `网络错误：${e.message}`
+
+    // ── 第二轮：流式生成最终文字回复（不带 tools，避免再次触发）──
+    const r2 = await callAPIStream(ai, messages, false, onChunk)
+    if (r2.content) return r2.content
+
+    // 如果第二轮没有内容，尝试从最后一个工具结果中提取消息
+    const lastToolMsg = messages.filter(m => m.role === 'tool').pop()
+    if (lastToolMsg?.content) {
+      try {
+        const parsed = JSON.parse(lastToolMsg.content)
+        if (parsed.msg) return parsed.msg
+      } catch { /* ignore */ }
+    }
+    return '已执行操作。'
+  } catch (e: any) {
+    // 如果带工具的请求失败，尝试不带工具重试（流式）
+    try {
+      const r = await callAPIStream(ai, messages, false, onChunk)
+      if (r.content) return r.content
+      return '（空回复）'
+    } catch (e2: any) {
+      return `网络错误：${e2.message || e.message}`
+    }
   }
 }
 
@@ -373,7 +395,67 @@ function buildChatUrl(endpoint: string): string {
 }
 
 // ═══════════════════════════════════════════════════════════
-// 流式 API 调用（SSE 解析）
+// 非流式 API 调用（用于可靠检测 tool_calls）
+// ═══════════════════════════════════════════════════════════
+
+interface APIResult {
+  content: string
+  tool_calls?: any[]
+}
+
+async function callAPI(
+  ai: AIConfig,
+  messages: any[],
+  withTools: boolean
+): Promise<APIResult> {
+  const url = buildChatUrl(ai.endpoint)
+  const body: any = {
+    model: ai.model || 'qwen-plus',
+    messages,
+    temperature: 0.7,
+    max_tokens: 1024,
+    stream: false
+  }
+  if (withTools) {
+    body.tools = TOOLS
+    body.tool_choice = 'auto'
+  }
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 60_000)
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${ai.apiKey}`
+    },
+    body: JSON.stringify(body),
+    signal: controller.signal
+  })
+
+  clearTimeout(timer)
+
+  if (!res.ok) {
+    const errText = await res.text()
+    let detail = ''
+    try { detail = JSON.parse(errText)?.error?.message || '' } catch { /* ignore */ }
+    throw new Error(`请求失败 (${res.status})：${detail || errText.slice(0, 200)}`)
+  }
+
+  const data = await res.json()
+  const choice = data.choices?.[0]
+  const content = choice?.message?.content?.trim() || ''
+  const tool_calls = choice?.message?.tool_calls
+
+  return {
+    content,
+    tool_calls: tool_calls && tool_calls.length > 0 ? tool_calls : undefined
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// 流式 API 调用（SSE 解析）— 用于第二轮最终回复
 // ═══════════════════════════════════════════════════════════
 
 interface StreamResult {
@@ -520,26 +602,12 @@ function buildContext(state: any): string {
 
   const sysPrompt = state.systemPrompt || SYSTEM_PROMPT
 
-  // 高考进度
-  const gaokaoDays = daysUntilGaokao(state.gaokaoDate)
-  const gaokaoScore = calcGaokaoScore({
-    gaokaoBaseScore: state.gaokaoBaseScore,
-    totalFocusMs: state.totalFocusMs,
-    totalEntMs: state.totalEntMs,
-    quests: state.quests
-  })
-  const gaokaoGap = state.gaokaoTargetScore - gaokaoScore
-
   return `${sysPrompt}
 
 【当前状态】
 代号:${state.playerTag} HP:${state.hp}/100 积分:${state.points} 连胜:${state.streak}天
 学习:${studyMin}min/${dailyGoalMin}min(${ratio}%) 娱乐:${entMin}min 总专注:${Math.floor(state.totalFocusMs / 3600_000)}h
 时间:${new Date().toLocaleString('zh-CN', { hour12: false })} ${isLate ? '[深夜]' : ''}
-
-【高考进度】
-距高考:${gaokaoDays}天 日期:${state.gaokaoDate}
-估分:${gaokaoScore} 目标:${state.gaokaoTargetScore} ${gaokaoGap > 0 ? `还差${gaokaoGap}分` : '已达标'}
 
 【手机使用监测】
 你可以随时调用 check_phone_usage 工具查阅用户今天的手机使用详情。

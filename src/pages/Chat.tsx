@@ -3,18 +3,16 @@ import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { chatWithAI } from '@/lib/ai'
 import { hasUsageAccess, openUsageAccessSettings } from '@/lib/usageStats'
-import GaokaoProgress from '@/components/GaokaoProgress'
 
 interface Props {
-  onBack?: () => void
   onNavigateSettings?: () => void
 }
 
 const QUICK_PROMPTS = [
   '帮我加个25分钟背单词的日常任务',
-  '我刚偷偷刷了30分钟抖音，扣我50积分',
-  '看看我离高考目标还差多少',
-  '今天完成了数学卷子，奖励我'
+  '我刚偷偷刷了30分钟短视频，扣我50积分',
+  '奖励我100积分，今天表现不错',
+  '帮我加个成就：连续早起7天'
 ]
 
 // ═══ 状态栏（独立组件，hp/points变化只重渲染这里）═══
@@ -273,10 +271,18 @@ export default function Chat({ onNavigateSettings }: Props) {
     setStreamingText('')
 
     try {
-      const reply = await chatWithAI(text, (chunk) => {
-        streamingRef.current += chunk
-        setStreamingText(streamingRef.current)
-      })
+      const reply = await chatWithAI(
+        text,
+        (chunk) => {
+          streamingRef.current += chunk
+          setStreamingText(streamingRef.current)
+        },
+        () => {
+          // onStreamReset: 工具调用检测到时清空之前的流式内容
+          streamingRef.current = ''
+          setStreamingText('')
+        }
+      )
 
       const finalText = streamingRef.current || reply
       pushChat({ role: 'assistant', text: finalText })
@@ -346,9 +352,6 @@ export default function Chat({ onNavigateSettings }: Props) {
             </button>
           </div>
         )}
-
-        {/* 高考进度精简版 */}
-        {configured && <GaokaoProgress variant="compact" />}
 
         {/* 使用情况权限引导 */}
         {configured && !usageAccess && (

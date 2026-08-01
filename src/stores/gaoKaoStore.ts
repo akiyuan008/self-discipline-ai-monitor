@@ -63,28 +63,17 @@ export interface GaoKaoProfile {
 // 默认数据
 // ═══════════════════════════════════════════════════════════
 
-const DEFAULT_SUBJECTS: SubjectScore[] = [
-  { name: '语文', currentScore: 95, targetScore: 120, fullScore: 150 },
-  { name: '数学', currentScore: 80, targetScore: 130, fullScore: 150 },
-  { name: '英语', currentScore: 90, targetScore: 125, fullScore: 150 },
-  { name: '物理', currentScore: 60, targetScore: 85, fullScore: 100 },
-  { name: '化学', currentScore: 65, targetScore: 85, fullScore: 100 },
-  { name: '生物', currentScore: 70, targetScore: 85, fullScore: 100 },
-]
+const DEFAULT_SUBJECTS: SubjectScore[] = []
 
 const DEFAULT_PROFILE: GaoKaoProfile = {
-  nickname: '考生',
-  targetUniversity: '目标大学',
-  targetTotalScore: 680,
-  currentTotalScore: 460,
-  subjects: DEFAULT_SUBJECTS,
-  weakSubjects: ['数学-函数', '物理-力学'],
+  nickname: '',
+  targetUniversity: '',
+  targetTotalScore: 0,
+  currentTotalScore: 0,
+  subjects: [],
+  weakSubjects: [],
   errorQuestions: [],
-  weeklyGoals: [
-    { subject: '数学', targetHours: 10, completedHours: 0 },
-    { subject: '物理', targetHours: 8, completedHours: 0 },
-    { subject: '英语', targetHours: 6, completedHours: 0 },
-  ],
+  weeklyGoals: [],
   studyStreak: 0,
   lastStudyDate: '',
   generatedPlan: [],
