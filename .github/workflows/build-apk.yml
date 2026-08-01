@@ -20,8 +20,7 @@ jobs:
           cache: 'npm'
 
       - name: 📦 Install dependencies
-        run: |
-          npm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: 🔨 Build web assets
         run: npm run build
@@ -49,48 +48,10 @@ jobs:
           mkdir -p "$BASE/plugin"
           cp android_plugin/java/cn/selfdiscipline/app/MainActivity.kt "$BASE/"
           cp android_plugin/java/cn/selfdiscipline/app/plugin/*.kt "$BASE/plugin/"
-          # 注入权限、Service、Receiver、Activity 声明到 AndroidManifest
-          python3 - << 'PYEOF'
-          import re
-          p = 'android/app/src/main/AndroidManifest.xml'
-          with open(p) as f: s = f.read()
-          inject = '''  <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-  <uses-permission android:name="android.permission.WAKE_LOCK" />
-  <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
-  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-
-  <activity android:name="cn.selfdiscipline.app.plugin.LockScreenActivity"
-      android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen"
-      android:excludeFromRecents="true"
-      android:taskAffinity=""
-      android:exported="false" />
-
-  <service android:name="cn.selfdiscipline.app.plugin.MonitorService"
-      android:foregroundServiceType="specialUse"
-      android:exported="false">
-    <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-        android:value="usage monitoring for self-discipline app" />
-  </service>
-
-  <receiver android:name="cn.selfdiscipline.app.plugin.BootReceiver"
-      android:exported="true">
-    <intent-filter>
-      <action android:name="android.intent.action.BOOT_COMPLETED" />
-    </intent-filter>
-  </receiver>
-'''
-          s = s.replace('<application', inject + '\n  <application', 1)
-          # 加 tools namespace
-          if 'xmlns:tools' not in s:
-            s = s.replace('<manifest', '<manifest xmlns:tools="http://schemas.android.com/tools"', 1)
-          with open(p,'w') as f: f.write(s)
-          print('manifest injected')
-          PYEOF
-          # 验证文件存在
           ls -la "$BASE" "$BASE/plugin"
+
+      - name: 📝 Overwrite AndroidManifest with full declarations
+        run: cp android_plugin/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
 
       - name: 🔨 Build Debug APK
         working-directory: android
@@ -109,5 +70,3 @@ jobs:
         run: |
           echo "=== APK output dir ==="
           ls -la android/app/build/outputs/apk/debug/ 2>/dev/null || echo "(none)"
-          echo "=== build.gradle deps ==="
-          grep -A 30 'dependencies' android/app/build.gradle | head -40
