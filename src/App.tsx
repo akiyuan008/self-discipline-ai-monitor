@@ -10,10 +10,14 @@ import Chat from '@/pages/Chat'
 import Achievements from '@/pages/Achievements'
 import Settings from '@/pages/Settings'
 import PointsDetail from '@/pages/PointsDetail'
+import Archive from '@/pages/Archive'
 import Dock from '@/components/Dock'
 import Toast from '@/components/Toast'
 import { fetchUsageStats } from '@/lib/usageStats'
 import type { PageId } from '@/stores/useStore'
+
+// Dock 栏可见的主页面
+const DOCK_PAGES: PageId[] = ['home', 'quests', 'chat', 'shop', 'profile']
 
 export default function App() {
   const onboarded = useStore(s => s.onboarded)
@@ -29,23 +33,18 @@ export default function App() {
     if (!onboarded) return
     const s = useStore.getState()
     s.dailySettle()
-    // 启动时同步使用情况（初始同步可以覆盖 HP）
     fetchUsageStats(Date.now() - 24 * 3600_000, Date.now()).then(({ study, ent }) => {
       s.syncUsage(study, ent)
-      // 仅在 HP 未被 AI 锁定时才根据学习时长自动设置
       if (!useStore.getState().hpLocked) {
         s.setHp(hpFromStudy(s.todayStudyMs, s.dailyGoalMin * 60_000))
-        useStore.setState({ hpLocked: false }) // 初始同步后解除锁定
+        useStore.setState({ hpLocked: false })
       }
     })
-    // 每 5 分钟同步一次
     const id = window.setInterval(() => {
       const st = useStore.getState()
-      // 每次定时同步都检查跨日结算
       st.dailySettle()
       fetchUsageStats(Date.now() - 24 * 3600_000, Date.now()).then(({ study, ent }) => {
         st.syncUsage(study, ent)
-        // 仅在 HP 未被 AI 锁定时才根据学习时长自动设置
         if (!useStore.getState().hpLocked) {
           st.setHp(hpFromStudy(st.todayStudyMs, st.dailyGoalMin * 60_000))
           useStore.setState({ hpLocked: false })
@@ -64,7 +63,7 @@ export default function App() {
     )
   }
 
-  // 全屏页：深渊/设置/成就/聊天
+  // 全屏页（无 Dock）：深渊/设置/成就/积分详情/档案馆
   if (current === 'dungeon') {
     return (
       <>
@@ -89,17 +88,6 @@ export default function App() {
       </>
     )
   }
-  if (current === 'chat') {
-    return (
-      <>
-        <Chat
-          onBack={() => setCurrent('home')}
-          onNavigateSettings={() => setCurrent('settings')}
-        />
-        <Toast />
-      </>
-    )
-  }
   if (current === 'pointsDetail') {
     return (
       <>
@@ -108,25 +96,45 @@ export default function App() {
       </>
     )
   }
+  if (current === 'archive') {
+    return (
+      <>
+        <Archive onBack={() => setCurrent('profile')} />
+        <Toast />
+      </>
+    )
+  }
 
-  // 主页面
-  const M = current === 'home'
-    ? (props: any) => <Home {...props} onNavigate={(p: PageId) => setCurrent(p)} />
-    : current === 'profile'
-      ? (props: any) => <Profile {...props} onNavigate={(p: 'achievements' | 'settings') => setCurrent(p)} />
-      : current === 'quests'
-        ? (props: any) => <Quests {...props} onNavigate={(p: PageId) => setCurrent(p)} />
-        : current === 'shop'
-          ? (props: any) => <Shop {...props} onNavigate={(p: PageId) => setCurrent(p)} />
-          : Home
+  // 带 Dock 的主页面（包括 Chat）
+  const showDock = DOCK_PAGES.includes(current)
+
+  const renderPage = () => {
+    switch (current) {
+      case 'home':
+        return <Home onNavigate={(p: PageId) => setCurrent(p)} />
+      case 'quests':
+        return <Quests onNavigate={(p: PageId) => setCurrent(p)} />
+      case 'chat':
+        return <Chat onNavigateSettings={() => setCurrent('settings')} />
+      case 'shop':
+        return <Shop onNavigate={(p: PageId) => setCurrent(p)} />
+      case 'profile':
+        return <Profile onNavigate={(p: 'achievements' | 'settings' | 'archive' | 'chat') => setCurrent(p)} />
+      default:
+        return <Home onNavigate={(p: PageId) => setCurrent(p)} />
+    }
+  }
+
+  // Chat 页面需要全高布局，Dock 浮在上层
+  const isChat = current === 'chat'
 
   return (
-    <div className="min-h-full relative">
-      <div className="animate-in" key={current}>
-        <M />
+    <div className="min-h-full relative" style={{ height: isChat ? '100vh' : undefined }}>
+      <div className={isChat ? '' : 'animate-in'} key={current} style={isChat ? { height: '100%' } : undefined}>
+        {renderPage()}
       </div>
       <Toast />
-      <Dock current={current} onChange={setCurrent} />
+      {showDock && <Dock current={current} onChange={setCurrent} />}
     </div>
   )
 }

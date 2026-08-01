@@ -15,6 +15,7 @@ export type PageId =
   | 'settings'
   | 'pointsDetail'
   | 'onboarding'
+  | 'archive'
 
 export interface PointRecord {
   id: string

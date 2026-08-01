@@ -5,7 +5,7 @@ import { chatWithAI } from '@/lib/ai'
 import GaokaoProgress from '@/components/GaokaoProgress'
 
 interface Props {
-  onBack: () => void
+  onBack?: () => void
   onNavigateSettings?: () => void
 }
 
@@ -45,11 +45,11 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
       const last = messages[0]
       if (last.role === 'assistant' && last.text.includes('还差一步')) {
         clearChat()
-        return // 等 clearChat 后 messages.length 变 0，useEffect 会重新触发
+        return
       }
     }
 
-    // 只有已配置且无消息时才 push 开场白（未配置时由配置卡片引导）
+    // 只有已配置且无消息时才 push 开场白
     if (messages.length === 0 && configured) {
       let greeting: string
       if (hp < 30) {
@@ -68,7 +68,6 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
 
   async function send(text: string) {
     if (!text.trim() || sending) return
-    // 未配置时拦截，引导去设置
     if (!configured) {
       showToast('请先完成 API 配置')
       onNavigateSettings?.()
@@ -77,27 +76,22 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
     setSending(true)
     pushChat({ role: 'user', text: text.trim() })
     setInput('')
-    // 重置流式状态
     streamingRef.current = ''
     setStreamingText('')
 
     try {
-      // 流式回调：每收到一段文字就更新 UI（打字机效果）
       const reply = await chatWithAI(text.trim(), (chunk) => {
         streamingRef.current += chunk
         setStreamingText(streamingRef.current)
-        // 滚动到底部
         setTimeout(() => scrollRef.current?.scrollTo({ top: 99999, behavior: 'smooth' }), 30)
       })
 
-      // 如果流式过程中有内容，优先使用流式内容；否则用返回的字符串（可能是错误信息）
       const finalText = streamingRef.current || reply
       pushChat({ role: 'assistant', text: finalText })
     } catch (e: any) {
       pushChat({ role: 'assistant', text: `发送失败：${e?.message || '网络错误，请检查 API 配置'}` })
       showToast('发送失败，请重试')
     } finally {
-      // 无论成功失败，都重置发送状态，防止按钮永久禁用
       streamingRef.current = ''
       setStreamingText('')
       setSending(false)
@@ -106,36 +100,23 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
 
   return (
     <div
+      className="safe-top"
       style={{
-        position: 'fixed', inset: 0,
-        background: 'var(--bg)',
-        zIndex: 500,
-        display: 'flex', flexDirection: 'column'
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        minHeight: '100%',
+        background: 'var(--bg)'
       }}
-      className="safe-top safe-bottom slide-in-right"
     >
       {/* 顶部 — 带状态指示 */}
       <div style={{
-        padding: '12px 16px',
+        padding: '10px 16px',
         borderBottom: '1px solid var(--border)',
-        display: 'flex', alignItems: 'center', gap: 12,
-        background: 'var(--card-bg)'
+        display: 'flex', alignItems: 'center', gap: 10,
+        background: 'var(--card-bg)',
+        flexShrink: 0
       }}>
-        <button
-          onClick={onBack}
-          style={{
-            width: 32, height: 32, borderRadius: '50%',
-            background: 'var(--bg-alt)', border: 'none',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: 'var(--fg)',
-            transition: 'transform 0.15s'
-          }}
-          className="dock-btn"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </button>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* 在线状态指示灯 */}
           <div style={{
@@ -178,9 +159,9 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
         )}
       </div>
 
-      {/* 消息列表 */}
+      {/* 消息列表 — 可滚动区域 */}
       <div ref={scrollRef} className="scrollbar-hide" style={{
-        flex: 1, overflowY: 'auto', padding: '16px 16px 8px'
+        flex: 1, overflowY: 'auto', padding: '12px 16px 8px'
       }}>
         {/* 未配置时显示醒目配置卡片 */}
         {!configured && (
@@ -212,9 +193,7 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
                 borderRadius: 100,
                 background: 'var(--fg)',
                 color: 'var(--bg)',
-                border: 'none',
-                fontSize: 14,
-                fontWeight: 600,
+                border: 'none', fontSize: 14, fontWeight: 600,
                 cursor: 'pointer',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
               }}
@@ -226,15 +205,12 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
         {/* 高考进度精简版 — 仅在已配置时显示 */}
         {configured && <GaokaoProgress variant="compact" />}
         {messages.map(m => <Bubble key={m.id} role={m.role} text={m.text} />)}
-        {/* 流式输出中：已有文字 → 显示打字机气泡；无文字 → 显示三点等待动画 */}
+        {/* 流式输出中 */}
         {sending && streamingText && (
           <Bubble role="assistant" text={streamingText} />
         )}
         {sending && !streamingText && (
-          <div style={{
-            display: 'flex', gap: 6, alignItems: 'center',
-            marginBottom: 12
-          }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 12 }}>
             <div style={{
               padding: '12px 16px', borderRadius: 16,
               borderBottomLeftRadius: 4,
@@ -255,7 +231,8 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
 
       {/* 快捷指令 */}
       <div className="scrollbar-hide" style={{
-        padding: '6px 16px', display: 'flex', gap: 6, overflowX: 'auto'
+        padding: '6px 16px', display: 'flex', gap: 6, overflowX: 'auto',
+        flexShrink: 0
       }}>
         {QUICK_PROMPTS.map(q => (
           <button
@@ -274,11 +251,12 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
         ))}
       </div>
 
-      {/* 输入框 */}
+      {/* 输入框 — 固定在 Dock 上方 */}
       <div style={{
-        padding: '10px 16px',
+        padding: '8px 16px max(8px, env(safe-area-inset-bottom))',
         borderTop: '1px solid var(--border)',
-        background: 'var(--card-bg)', display: 'flex', gap: 8
+        background: 'var(--card-bg)', display: 'flex', gap: 8,
+        flexShrink: 0
       }}>
         <input
           value={input}

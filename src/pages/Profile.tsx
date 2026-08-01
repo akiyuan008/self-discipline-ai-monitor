@@ -2,7 +2,7 @@ import { useStore } from '@/stores/useStore'
 import GaokaoProgress from '@/components/GaokaoProgress'
 
 interface ProfileProps {
-  onNavigate?: (page: 'achievements' | 'settings' | 'chat') => void
+  onNavigate?: (page: 'achievements' | 'settings' | 'chat' | 'archive') => void
 }
 
 export default function Profile({ onNavigate }: ProfileProps) {
@@ -78,6 +78,11 @@ export default function Profile({ onNavigate }: ProfileProps) {
       </div>
 
       {/* 列表 */}
+      <ListRow
+        title="高考档案馆"
+        desc="科目分析、错题追踪、复习计划"
+        onClick={() => onNavigate?.('archive')}
+      />
       <ListRow
         title="监管者"
         desc="对话式督促"

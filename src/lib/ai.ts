@@ -1,4 +1,5 @@
 import { useStore, type AIConfig, type ChatMessage, calcGaokaoScore, daysUntilGaokao } from '@/stores/useStore'
+import { useGaoKaoStore } from '@/stores/gaoKaoStore'
 
 /**
  * 前端直连用户配置的 OpenAI 兼容 API
@@ -131,6 +132,49 @@ const TOOLS = [
         required: ['quest_id']
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_error_question',
+      description: '记录错题到高考档案馆。用户说"这道题错了"或"又做错了一道XXX题"时调用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          subject: { type: 'string', description: '科目，如 数学/物理/英语' },
+          tag: { type: 'string', description: '知识点标签，如 函数图像/力学' },
+          desc: { type: 'string', description: '错题描述，10-30字' }
+        },
+        required: ['subject', 'tag', 'desc']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'generate_plan',
+      description: '基于薄弱科目和错题标签自动生成本周复习计划。用户说"帮我制定复习计划"或"这周怎么安排"时调用。',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_subject_score',
+      description: '更新某科目当前分数。用户说"我数学考了XX分"或"模考成绩出来了"时调用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          subject: { type: 'string', description: '科目名称' },
+          score: { type: 'number', description: '新的分数' }
+        },
+        required: ['subject', 'score']
+      }
+    }
   }
 ]
 
@@ -192,6 +236,35 @@ function executeTool(name: string, args: any): string {
         }
         s.completeQuest(String(args.quest_id))
         return JSON.stringify({ ok: true, msg: '任务标记完成', reward: q.reward })
+      }
+      case 'add_error_question': {
+        const gkStore = useGaoKaoStore.getState()
+        gkStore.addErrorQuestion({
+          subject: String(args.subject || '未知'),
+          tag: String(args.tag || '未分类'),
+          desc: String(args.desc || '')
+        })
+        return JSON.stringify({ ok: true, msg: '错题已记录到档案馆' })
+      }
+      case 'generate_plan': {
+        const gkStore = useGaoKaoStore.getState()
+        gkStore.generateWeeklyPlan()
+        const plan = useGaoKaoStore.getState().profile.generatedPlan
+        return JSON.stringify({ ok: true, msg: `已生成${plan.length}项复习计划`, planCount: plan.length })
+      }
+      case 'update_subject_score': {
+        const gkStore = useGaoKaoStore.getState()
+        const profile = gkStore.profile
+        const sub = profile.subjects.find(s => s.name === args.subject)
+        if (!sub) return JSON.stringify({ ok: false, error: `科目 ${args.subject} 不存在` })
+        const score = Math.max(0, Math.min(sub.fullScore, Number(args.score)))
+        gkStore.updateSubject(String(args.subject), { currentScore: score })
+        // 重算总分
+        const newSubjects = profile.subjects.map(s =>
+          s.name === args.subject ? { ...s, currentScore: score } : s
+        )
+        gkStore.updateProfile({ currentTotalScore: newSubjects.reduce((sum, s) => sum + s.currentScore, 0) })
+        return JSON.stringify({ ok: true, subject: args.subject, newScore: score })
       }
       default:
         return JSON.stringify({ ok: false, error: `unknown tool: ${name}` })
@@ -474,6 +547,21 @@ function buildContext(state: any): string {
   })
   const gaokaoGap = state.gaokaoTargetScore - gaokaoScore
 
+  // 高考档案数据（来自 gaoKaoStore）
+  const gkProfile = useGaoKaoStore.getState().profile
+  const subjectList = gkProfile.subjects
+    .map(s => `${s.name}:${s.currentScore}/${s.targetScore}(满分${s.fullScore})`)
+    .join(' ')
+  const unresolvedErrors = gkProfile.errorQuestions.filter(q => !q.resolved)
+  const tagSummary = unresolvedErrors
+    .slice(0, 10)
+    .map(q => `${q.subject}-${q.tag}`)
+    .join(', ')
+  const planSummary = gkProfile.generatedPlan
+    .slice(0, 5)
+    .map(t => `${t.completed ? '✓' : '○'} ${t.subject}:${t.content}(${t.estimatedMinutes}min)`)
+    .join('\n  ')
+
   return `${sysPrompt}
 
 【当前状态】
@@ -481,11 +569,23 @@ function buildContext(state: any): string {
 学习:${studyMin}min/${dailyGoalMin}min(${ratio}%) 娱乐:${entMin}min 总专注:${Math.floor(state.totalFocusMs / 3600_000)}h
 时间:${new Date().toLocaleString('zh-CN', { hour12: false })} ${isLate ? '[深夜]' : ''}
 
-【高考目标】
+【高考档案】
 距高考:${gaokaoDays}天 日期:${state.gaokaoDate}
-目标分:${state.gaokaoTargetScore} 当前估分:${gaokaoScore} ${gaokaoGap > 0 ? `还差${gaokaoGap}分` : '已达标'}
-累计学习:${Math.floor(state.totalFocusMs / 3600_000)}h 累计娱乐:${Math.floor(state.totalEntMs / 3600_000)}h
-提示:用户学习/完成任务→估分上升，娱乐→估分下降。据此督促用户。
+估分:${gaokaoScore} 目标:${state.gaokaoTargetScore} ${gaokaoGap > 0 ? `还差${gaokaoGap}分` : '已达标'}
+考生:${gkProfile.nickname} 目标院校:${gkProfile.targetUniversity}
+当前总分:${gkProfile.currentTotalScore} 目标总分:${gkProfile.targetTotalScore}
+各科分数: ${subjectList}
+薄弱科目: ${gkProfile.weakSubjects.join(', ') || '无'}
+未解决错题: ${unresolvedErrors.length}条 ${tagSummary ? '标签:' + tagSummary : ''}
+本周计划完成: ${gkProfile.generatedPlan.filter(t => t.completed).length}/${gkProfile.generatedPlan.length}
+${planSummary ? '计划明细:\n  ' + planSummary : ''}
+
+【提分建议规则】
+- 优先针对薄弱科目和错题标签给出提分性价比最高的建议
+- 用户汇报模考成绩时，调update_subject_score更新科目分数
+- 用户说做错题时，调add_error_question记录
+- 用户要复习计划时，调generate_plan自动生成
+- 据此督促用户，语气严厉但鼓励
 
 【未完成任务】(complete_quest用ID)
 ${questList}
