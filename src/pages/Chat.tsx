@@ -81,20 +81,27 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
     streamingRef.current = ''
     setStreamingText('')
 
-    // 流式回调：每收到一段文字就更新 UI（打字机效果）
-    const reply = await chatWithAI(text.trim(), (chunk) => {
-      streamingRef.current += chunk
-      setStreamingText(streamingRef.current)
-      // 滚动到底部
-      setTimeout(() => scrollRef.current?.scrollTo({ top: 99999, behavior: 'smooth' }), 30)
-    })
+    try {
+      // 流式回调：每收到一段文字就更新 UI（打字机效果）
+      const reply = await chatWithAI(text.trim(), (chunk) => {
+        streamingRef.current += chunk
+        setStreamingText(streamingRef.current)
+        // 滚动到底部
+        setTimeout(() => scrollRef.current?.scrollTo({ top: 99999, behavior: 'smooth' }), 30)
+      })
 
-    // 如果流式过程中有内容，优先使用流式内容；否则用返回的字符串（可能是错误信息）
-    const finalText = streamingRef.current || reply
-    pushChat({ role: 'assistant', text: finalText })
-    streamingRef.current = ''
-    setStreamingText('')
-    setSending(false)
+      // 如果流式过程中有内容，优先使用流式内容；否则用返回的字符串（可能是错误信息）
+      const finalText = streamingRef.current || reply
+      pushChat({ role: 'assistant', text: finalText })
+    } catch (e: any) {
+      pushChat({ role: 'assistant', text: `发送失败：${e?.message || '网络错误，请检查 API 配置'}` })
+      showToast('发送失败，请重试')
+    } finally {
+      // 无论成功失败，都重置发送状态，防止按钮永久禁用
+      streamingRef.current = ''
+      setStreamingText('')
+      setSending(false)
+    }
   }
 
   return (

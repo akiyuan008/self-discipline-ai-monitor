@@ -37,6 +37,8 @@ export default function Settings({ onBack }: Props) {
   const [testMsg, setTestMsg] = useState('')
   const [fetchingModels, setFetchingModels] = useState(false)
   const [gaokaoDateInput, setGaokaoDateInput] = useState(gaokaoDate)
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
+  const [modelSearch, setModelSearch] = useState('')
 
   // 保存：先存 localStorage（通过 store persist），再异步测试
   // 测试失败只弹 Toast，绝对不清空表单
@@ -314,7 +316,7 @@ export default function Settings({ onBack }: Props) {
               mono
             />
 
-            {/* Model — 下拉框 + 获取模型列表按钮 */}
+            {/* Model — 自定义可搜索下拉框 + 获取模型列表按钮 */}
             <div style={{ marginBottom: 12 }}>
               <div style={{
                 fontSize: 11, color: 'var(--muted)',
@@ -324,29 +326,103 @@ export default function Settings({ onBack }: Props) {
                 MODEL
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <select
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  style={{
-                    flex: 1, padding: '10px 12px',
-                    background: 'var(--bg)', color: 'var(--fg)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 8, fontSize: 13,
-                    fontFamily: 'DM Mono, monospace',
-                    outline: 'none',
-                    cursor: 'pointer',
-                    appearance: 'none',
-                    WebkitAppearance: 'none',
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a8a' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 12px center',
-                    paddingRight: 32
-                  }}
-                >
-                  {modelList.map(m => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
+                <div style={{ flex: 1, position: 'relative' }}>
+                  {/* 触发按钮 */}
+                  <button
+                    onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                    style={{
+                      width: '100%', padding: '10px 12px',
+                      background: 'var(--bg)', color: 'var(--fg)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 8, fontSize: 13,
+                      fontFamily: 'DM Mono, monospace',
+                      cursor: 'pointer',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      gap: 8
+                    }}
+                  >
+                    <span style={{
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                    }}>
+                      {model || '选择模型'}
+                    </span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" style={{ flexShrink: 0, transition: 'transform 0.2s', transform: modelDropdownOpen ? 'rotate(180deg)' : 'none' }}>
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
+                  </button>
+
+                  {/* 下拉面板 */}
+                  {modelDropdownOpen && (
+                    <>
+                      {/* 点击外部关闭 */}
+                      <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 998 }}
+                        onClick={() => { setModelDropdownOpen(false); setModelSearch('') }}
+                      />
+                      <div style={{
+                        position: 'absolute', top: '100%', left: 0, right: 0,
+                        marginTop: 4, zIndex: 999,
+                        background: 'var(--card-bg)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 8,
+                        overflow: 'hidden',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.15)'
+                      }}>
+                        {/* 搜索框 */}
+                        <input
+                          type="text"
+                          value={modelSearch}
+                          onChange={(e) => setModelSearch(e.target.value)}
+                          placeholder="搜索模型…"
+                          autoFocus
+                          style={{
+                            width: '100%', padding: '10px 12px',
+                            background: 'var(--bg)', color: 'var(--fg)',
+                            border: 'none', borderBottom: '1px solid var(--border)',
+                            fontSize: 13, outline: 'none',
+                            boxSizing: 'border-box'
+                          }}
+                        />
+                        {/* 模型列表 */}
+                        <div style={{ maxHeight: 200, overflowY: 'auto' }} className="scrollbar-hide">
+                          {modelList.filter(m =>
+                            m.toLowerCase().includes(modelSearch.toLowerCase())
+                          ).length === 0 ? (
+                            <div style={{ padding: '16px', fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>
+                              {modelList.length === 0 ? '暂无模型，点击「获取模型列表」' : '无匹配模型'}
+                            </div>
+                          ) : modelList.filter(m =>
+                            m.toLowerCase().includes(modelSearch.toLowerCase())
+                          ).map(m => (
+                            <button
+                              key={m}
+                              onClick={() => {
+                                setModel(m)
+                                setModelDropdownOpen(false)
+                                setModelSearch('')
+                              }}
+                              style={{
+                                width: '100%', padding: '10px 12px',
+                                background: m === model ? 'var(--bg-alt)' : 'transparent',
+                                color: m === model ? 'var(--fg)' : 'var(--muted)',
+                                border: 'none', fontSize: 13,
+                                fontFamily: 'DM Mono, monospace',
+                                cursor: 'pointer', textAlign: 'left',
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                transition: 'background 0.15s'
+                              }}
+                              onMouseEnter={(e) => { if (m !== model) e.currentTarget.style.background = 'var(--bg-alt)' }}
+                              onMouseLeave={(e) => { if (m !== model) e.currentTarget.style.background = 'transparent' }}
+                            >
+                              <span>{m}</span>
+                              {m === model && <span style={{ color: 'var(--success)', fontSize: 14 }}>✓</span>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
                 <button
                   onClick={fetchModels}
                   disabled={fetchingModels}

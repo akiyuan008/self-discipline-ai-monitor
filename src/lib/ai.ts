@@ -338,21 +338,30 @@ async function callAPIStream(
     body.tool_choice = 'auto'
   }
 
+  // 60秒超时，防止请求永久挂起导致发送按钮卡死
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 60_000)
+
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${ai.apiKey}`
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    signal: controller.signal
   })
 
   if (!res.ok) {
+    clearTimeout(timer)
     const errText = await res.text()
     let detail = ''
     try { detail = JSON.parse(errText)?.error?.message || '' } catch { /* ignore */ }
     throw new Error(`请求失败 (${res.status})：${detail || errText.slice(0, 200)}`)
   }
+
+  // 连接成功，清除超时定时器（流式读取不受 60s 限制）
+  clearTimeout(timer)
 
   // 如果不支持流式（res.body 为空），回退到非流式 JSON 解析
   if (!res.body || typeof res.body.getReader !== 'function') {
