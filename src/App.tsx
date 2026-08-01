@@ -92,7 +92,10 @@ export default function App() {
   if (current === 'chat') {
     return (
       <>
-        <Chat onBack={() => setCurrent('home')} />
+        <Chat
+          onBack={() => setCurrent('home')}
+          onNavigateSettings={() => setCurrent('settings')}
+        />
         <Toast />
       </>
     )

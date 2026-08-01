@@ -5,6 +5,7 @@ import { chatWithAI } from '@/lib/ai'
 
 interface Props {
   onBack: () => void
+  onNavigateSettings?: () => void
 }
 
 const QUICK_PROMPTS = [
@@ -14,7 +15,7 @@ const QUICK_PROMPTS = [
   '看看我今天的进度'
 ]
 
-export default function Chat({ onBack }: Props) {
+export default function Chat({ onBack, onNavigateSettings }: Props) {
   const messages = useStore(s => s.chat)
   const pushChat = useStore(s => s.pushChat)
   const clearChat = useStore(s => s.clearChat)
@@ -34,23 +35,30 @@ export default function Chat({ onBack }: Props) {
   const studyMin = Math.floor(todayStudyMs / 60_000)
   const goalPct = dailyGoalMin > 0 ? Math.min(100, Math.round(studyMin / dailyGoalMin * 100)) : 0
 
+  // API 配置是否完整
+  const configured = !!(ai.apiKey?.trim() && ai.endpoint?.trim() && ai.model?.trim())
+
   useEffect(() => {
-    if (messages.length === 0) {
-      const configured = ai.apiKey && ai.endpoint && ai.model
+    // 挂载时：如果 API 已配置但聊天中只有旧的"未配置"开场白，清空重新开始
+    if (configured && messages.length === 1) {
+      const last = messages[0]
+      if (last.role === 'assistant' && last.text.includes('还差一步')) {
+        clearChat()
+        return // 等 clearChat 后 messages.length 变 0，useEffect 会重新触发
+      }
+    }
+
+    // 只有已配置且无消息时才 push 开场白（未配置时由配置卡片引导）
+    if (messages.length === 0 && configured) {
       let greeting: string
-      if (configured) {
-        // 根据当前状态生成更有温度的开场白
-        if (hp < 30) {
-          greeting = `状态拉响：HP ${hp}，精神力告急。\n今日学习 ${studyMin} 分钟，达成 ${goalPct}%。\n连胜 ${streak} 天——别断在这里。说吧，什么情况。`
-        } else if (goalPct >= 100) {
-          greeting = `今日目标已达成，HP ${hp}。\n连胜 ${streak} 天。状态不错，有什么打算？`
-        } else if (goalPct >= 50) {
-          greeting = `HP ${hp}，今日学习 ${studyMin} 分钟（${goalPct}%）。\n势头还行，继续推。需要我做什么？`
-        } else {
-          greeting = `HP ${hp}，今日学习 ${studyMin} 分钟，达成 ${goalPct}%。\n连胜 ${streak} 天。进度有点慢，说吧。`
-        }
+      if (hp < 30) {
+        greeting = `状态拉响：HP ${hp}，精神力告急。\n今日学习 ${studyMin} 分钟，达成 ${goalPct}%。\n连胜 ${streak} 天——别断在这里。说吧，什么情况。`
+      } else if (goalPct >= 100) {
+        greeting = `今日目标已达成，HP ${hp}。\n连胜 ${streak} 天。状态不错，有什么打算？`
+      } else if (goalPct >= 50) {
+        greeting = `HP ${hp}，今日学习 ${studyMin} 分钟（${goalPct}%）。\n势头还行，继续推。需要我做什么？`
       } else {
-        greeting = '监管者已就位。但还差一步：\n去「设置 → AI 监管者」填入 API Key、Endpoint 和模型名，我才能真正上线。'
+        greeting = `HP ${hp}，今日学习 ${studyMin} 分钟，达成 ${goalPct}%。\n连胜 ${streak} 天。进度有点慢，说吧。`
       }
       pushChat({ role: 'assistant', text: greeting })
     }
@@ -59,6 +67,12 @@ export default function Chat({ onBack }: Props) {
 
   async function send(text: string) {
     if (!text.trim() || sending) return
+    // 未配置时拦截，引导去设置
+    if (!configured) {
+      showToast('请先完成 API 配置')
+      onNavigateSettings?.()
+      return
+    }
     setSending(true)
     pushChat({ role: 'user', text: text.trim() })
     setInput('')
@@ -160,6 +174,47 @@ export default function Chat({ onBack }: Props) {
       <div ref={scrollRef} className="scrollbar-hide" style={{
         flex: 1, overflowY: 'auto', padding: '16px 16px 8px'
       }}>
+        {/* 未配置时显示醒目配置卡片 */}
+        {!configured && (
+          <div style={{
+            margin: '0 0 16px',
+            padding: '20px 16px',
+            borderRadius: 12,
+            background: 'rgba(245, 158, 11, 0.08)',
+            border: '1px solid rgba(245, 158, 11, 0.25)',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>⚠</div>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>
+              监管者未上线
+            </div>
+            <div style={{
+              fontSize: 12, color: 'var(--muted)', marginBottom: 16,
+              lineHeight: 1.8, whiteSpace: 'pre-line'
+            }}>
+              {!ai.apiKey?.trim() ? '· 缺少 API Key\n' : ''}
+              {!ai.endpoint?.trim() ? '· 缺少 Base URL\n' : ''}
+              {!ai.model?.trim() ? '· 缺少模型名称\n' : ''}
+              请前往设置完成配置，监管者才能真正对话。
+            </div>
+            <button
+              onClick={() => onNavigateSettings?.()}
+              style={{
+                padding: '10px 32px',
+                borderRadius: 100,
+                background: 'var(--fg)',
+                color: 'var(--bg)',
+                border: 'none',
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.12)'
+              }}
+            >
+              去设置 →
+            </button>
+          </div>
+        )}
         {messages.map(m => <Bubble key={m.id} role={m.role} text={m.text} />)}
         {/* 流式输出中：已有文字 → 显示打字机气泡；无文字 → 显示三点等待动画 */}
         {sending && streamingText && (
