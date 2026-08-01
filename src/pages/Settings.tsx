@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
+import ModelPicker from '@/components/ModelPicker'
+import { MODEL_PRESETS } from '@/data/modelPresets'
 
 interface Props {
   onBack: () => void
@@ -11,7 +14,41 @@ export default function Settings({ onBack }: Props) {
   const ai = useStore(s => s.ai)
   const setAI = useStore(s => s.setAI)
   const playerTag = useStore(s => s.playerTag)
+  const dailyGoalMin = useStore(s => s.dailyGoalMin)
+  const dungeonDurationMin = useStore(s => s.dungeonDurationMin)
+  const setDailyGoal = useStore(s => s.setDailyGoal)
+  const setDungeonDuration = useStore(s => s.setDungeonDuration)
   const reset = useStore(s => s.reset)
+
+  // 用 local state 缓存输入，避免每次 onChange 触发整个 store 重渲染（修闪退）
+  const [apiKey, setApiKey] = useState(ai.apiKey)
+  const [endpoint, setEndpoint] = useState(ai.endpoint)
+  const [model, setModel] = useState(ai.model)
+  const [showPicker, setShowPicker] = useState(false)
+
+  function save() {
+    setAI({ apiKey: apiKey.trim(), endpoint: endpoint.trim(), model: model.trim() })
+    showToast('已保存')
+    onBack()
+  }
+
+  // 找当前选中的供应商
+  const activePreset = MODEL_PRESETS.find(p => p.endpoint === endpoint)
+
+  if (showPicker) {
+    return (
+      <ModelPicker
+        currentEndpoint={endpoint}
+        currentModel={model}
+        onSelect={(ep, m) => {
+          setEndpoint(ep)
+          setModel(m)
+          showToast('已切换模型')
+        }}
+        onClose={() => setShowPicker(false)}
+      />
+    )
+  }
 
   return (
     <div
@@ -48,11 +85,11 @@ export default function Settings({ onBack }: Props) {
               {[60, 120, 180, 240, 360].map(m => (
                 <button
                   key={m}
-                  onClick={() => { useStore.getState().setDailyGoal(m); showToast(`目标设为 ${m} 分钟`) }}
+                  onClick={() => { setDailyGoal(m); showToast(`目标设为 ${m} 分钟`) }}
                   style={{
                     flex: 1, padding: '8px',
-                    background: useStore.getState().dailyGoalMin === m ? 'var(--fg)' : 'var(--bg-alt)',
-                    color: useStore.getState().dailyGoalMin === m ? 'var(--bg)' : 'var(--muted)',
+                    background: dailyGoalMin === m ? 'var(--fg)' : 'var(--bg-alt)',
+                    color: dailyGoalMin === m ? 'var(--bg)' : 'var(--muted)',
                     border: 'none', borderRadius: 8,
                     fontSize: 12, fontWeight: 600, cursor: 'pointer'
                   }}
@@ -68,11 +105,11 @@ export default function Settings({ onBack }: Props) {
               {[5, 15, 25, 50].map(m => (
                 <button
                   key={m}
-                  onClick={() => { useStore.getState().setDungeonDuration(m); showToast(`番茄钟设为 ${m} 分钟`) }}
+                  onClick={() => { setDungeonDuration(m); showToast(`番茄钟设为 ${m} 分钟`) }}
                   style={{
                     flex: 1, padding: '8px',
-                    background: useStore.getState().dungeonDurationMin === m ? 'var(--fg)' : 'var(--bg-alt)',
-                    color: useStore.getState().dungeonDurationMin === m ? 'var(--bg)' : 'var(--muted)',
+                    background: dungeonDurationMin === m ? 'var(--fg)' : 'var(--bg-alt)',
+                    color: dungeonDurationMin === m ? 'var(--bg)' : 'var(--muted)',
                     border: 'none', borderRadius: 8,
                     fontSize: 12, fontWeight: 600, cursor: 'pointer'
                   }}
@@ -87,37 +124,100 @@ export default function Settings({ onBack }: Props) {
         {/* AI 监管者配置 */}
         <Section title="AI 监管者">
           <div className="card" style={{ padding: 16, borderRadius: 12 }}>
+            {/* 模型选择按钮 */}
+            <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginBottom: 6 }}>
+              MODEL_PROVIDER
+            </div>
+            <button
+              onClick={() => setShowPicker(true)}
+              style={{
+                width: '100%', padding: '12px 14px',
+                background: 'var(--bg)', border: '1px solid var(--border)',
+                borderRadius: 8, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                marginBottom: 12
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                {activePreset && (
+                  <div style={{
+                    width: 24, height: 24, borderRadius: 6,
+                    background: activePreset.accent,
+                    color: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontWeight: 700, fontSize: 10, flexShrink: 0
+                  }}>
+                    {activePreset.emoji}
+                  </div>
+                )}
+                <div style={{ minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 13, fontWeight: 600,
+                    color: 'var(--fg)',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                  }}>
+                    {activePreset ? `${activePreset.vendor} · ${model || '未选模型'}` : '选择供应商和模型'}
+                  </div>
+                  <div style={{
+                    fontSize: 10, color: 'var(--muted)',
+                    fontFamily: 'DM Mono, monospace'
+                  }}>
+                    {endpoint || '点击右侧选择'}
+                  </div>
+                </div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+
             <Field
               label="API Key"
-              placeholder="请输入 API Key"
-              value={ai.apiKey}
-              onChange={(v) => setAI({ ...ai, apiKey: v })}
+              placeholder="sk-..."
+              value={apiKey}
+              onChange={setApiKey}
               type="password"
             />
+
             <Field
               label="Endpoint"
               placeholder="https://open.bigmodel.cn/api/paas/v4"
-              value={ai.endpoint}
-              onChange={(v) => setAI({ ...ai, endpoint: v })}
+              value={endpoint}
+              onChange={setEndpoint}
               mono
             />
+
             <Field
               label="Model"
               placeholder="glm-4-plus"
-              value={ai.model}
-              onChange={(v) => setAI({ ...ai, model: v })}
+              value={model}
+              onChange={setModel}
               mono
             />
+
+            {/* 状态提示 */}
+            {(!apiKey.trim() || !endpoint.trim() || !model.trim()) && (
+              <div style={{
+                padding: '8px 12px',
+                background: 'rgba(245, 158, 11, 0.1)',
+                color: 'var(--warning)',
+                borderRadius: 8,
+                fontSize: 11,
+                marginBottom: 12,
+                fontFamily: 'DM Mono, monospace'
+              }}>
+                ⚠ 三项缺一不可。配置完成后监管者才能真正对话与调用工具。
+              </div>
+            )}
+
             <button
-              onClick={() => {
-                showToast('已保存')
-                onBack()
-              }}
+              onClick={save}
               style={{
-                width: '100%', marginTop: 12,
+                width: '100%', marginTop: 4,
                 padding: '12px', borderRadius: 100,
                 background: 'var(--fg)', color: 'var(--bg)',
-                border: 'none', fontSize: 13, fontWeight: 600
+                border: 'none', fontSize: 13, fontWeight: 600,
+                cursor: 'pointer'
               }}
             >
               保存配置
@@ -156,7 +256,8 @@ export default function Settings({ onBack }: Props) {
               width: '100%', padding: 14, borderRadius: 12,
               background: 'transparent',
               border: `1px solid var(--danger)`,
-              color: 'var(--danger)', fontSize: 13, fontWeight: 600
+              color: 'var(--danger)', fontSize: 13, fontWeight: 600,
+              cursor: 'pointer'
             }}
           >
             重置全部进度
@@ -167,7 +268,7 @@ export default function Settings({ onBack }: Props) {
           textAlign: 'center', padding: '24px 0',
           fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace'
         }}>
-          CYBER SURVIVAL · v1.0.0<br />
+          CYBER SURVIVAL · v2.3.0<br />
           React + Capacitor + z-ai-web-dev-sdk
         </div>
       </div>
