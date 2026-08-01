@@ -423,33 +423,35 @@ async function callAPI(
   const controller = new AbortController()
   let timer = setTimeout(() => controller.abort(), 60_000)
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${ai.apiKey}`
-    },
-    body: JSON.stringify(body),
-    signal: controller.signal
-  })
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ai.apiKey}`
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    })
 
-  clearTimeout(timer)
+    if (!res.ok) {
+      const errText = await res.text()
+      let detail = ''
+      try { detail = JSON.parse(errText)?.error?.message || '' } catch { /* ignore */ }
+      throw new Error(`请求失败 (${res.status})：${detail || errText.slice(0, 200)}`)
+    }
 
-  if (!res.ok) {
-    const errText = await res.text()
-    let detail = ''
-    try { detail = JSON.parse(errText)?.error?.message || '' } catch { /* ignore */ }
-    throw new Error(`请求失败 (${res.status})：${detail || errText.slice(0, 200)}`)
-  }
+    const data = await res.json()
+    const choice = data.choices?.[0]
+    const content = choice?.message?.content?.trim() || ''
+    const tool_calls = choice?.message?.tool_calls
 
-  const data = await res.json()
-  const choice = data.choices?.[0]
-  const content = choice?.message?.content?.trim() || ''
-  const tool_calls = choice?.message?.tool_calls
-
-  return {
-    content,
-    tool_calls: tool_calls && tool_calls.length > 0 ? tool_calls : undefined
+    return {
+      content,
+      tool_calls: tool_calls && tool_calls.length > 0 ? tool_calls : undefined
+    }
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -484,103 +486,103 @@ async function callAPIStream(
   const controller = new AbortController()
   let timer = setTimeout(() => controller.abort(), 60_000)
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${ai.apiKey}`
-    },
-    body: JSON.stringify(body),
-    signal: controller.signal
-  })
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ai.apiKey}`
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    })
 
-  if (!res.ok) {
-    clearTimeout(timer)
-    const errText = await res.text()
-    let detail = ''
-    try { detail = JSON.parse(errText)?.error?.message || '' } catch { /* ignore */ }
-    throw new Error(`请求失败 (${res.status})：${detail || errText.slice(0, 200)}`)
-  }
-
-  // 如果不支持流式，回退到非流式 JSON 解析
-  if (!res.body || typeof res.body.getReader !== 'function') {
-    clearTimeout(timer)
-    const data = await res.json()
-    const choice = data.choices?.[0]
-    const content = choice?.message?.content?.trim() || ''
-    if (content && onChunk) onChunk(content)
-    return {
-      content,
-      tool_calls: choice?.message?.tool_calls
+    if (!res.ok) {
+      const errText = await res.text()
+      let detail = ''
+      try { detail = JSON.parse(errText)?.error?.message || '' } catch { /* ignore */ }
+      throw new Error(`请求失败 (${res.status})：${detail || errText.slice(0, 200)}`)
     }
-  }
 
-  // ── SSE 流式解析 ──
-  // timer 保持活跃：每次收到数据就重置超时，如果 reader.read() 卡住则触发 abort
-  const reader = res.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let content = ''
-  const toolCalls: any[] = []
-
-  const refreshTimer = () => {
-    clearTimeout(timer)
-    timer = setTimeout(() => controller.abort(), 30_000)
-  }
-
-  while (true) {
-    refreshTimer()
-    const { done, value } = await reader.read()
-    if (done) break
-
-    buffer += decoder.decode(value, { stream: true })
-
-    const lines = buffer.split('\n')
-    buffer = lines.pop() || ''
-
-    for (const line of lines) {
-      const trimmed = line.trim()
-      if (!trimmed || !trimmed.startsWith('data: ')) continue
-
-      const data = trimmed.slice(6)
-      if (data === '[DONE]') continue
-
-      try {
-        const json = JSON.parse(data)
-        const delta = json.choices?.[0]?.delta
-        if (!delta) continue
-
-        if (delta.content) {
-          content += delta.content
-          onChunk?.(delta.content)
-        }
-
-        if (delta.tool_calls) {
-          for (const tc of delta.tool_calls) {
-            const idx = tc.index ?? 0
-            if (!toolCalls[idx]) {
-              toolCalls[idx] = {
-                id: tc.id || '',
-                type: 'function',
-                function: { name: '', arguments: '' }
-              }
-            }
-            if (tc.id) toolCalls[idx].id = tc.id
-            if (tc.function?.name) toolCalls[idx].function.name += tc.function.name
-            if (tc.function?.arguments) toolCalls[idx].function.arguments += tc.function.arguments
-          }
-        }
-      } catch {
-        // 忽略 JSON 解析错误
+    // 如果不支持流式，回退到非流式 JSON 解析
+    if (!res.body || typeof res.body.getReader !== 'function') {
+      const data = await res.json()
+      const choice = data.choices?.[0]
+      const content = choice?.message?.content?.trim() || ''
+      if (content && onChunk) onChunk(content)
+      return {
+        content,
+        tool_calls: choice?.message?.tool_calls
       }
     }
-  }
 
-  clearTimeout(timer)
+    // ── SSE 流式解析 ──
+    // timer 保持活跃：每次收到数据就重置超时，如果 reader.read() 卡住则触发 abort
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let content = ''
+    const toolCalls: any[] = []
 
-  return {
-    content: content.trim(),
-    tool_calls: toolCalls.length > 0 ? toolCalls.filter(tc => tc.function.name) : undefined
+    const refreshTimer = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => controller.abort(), 30_000)
+    }
+
+    while (true) {
+      refreshTimer()
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed || !trimmed.startsWith('data: ')) continue
+
+        const data = trimmed.slice(6)
+        if (data === '[DONE]') continue
+
+        try {
+          const json = JSON.parse(data)
+          const delta = json.choices?.[0]?.delta
+          if (!delta) continue
+
+          if (delta.content) {
+            content += delta.content
+            onChunk?.(delta.content)
+          }
+
+          if (delta.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const idx = tc.index ?? 0
+              if (!toolCalls[idx]) {
+                toolCalls[idx] = {
+                  id: tc.id || '',
+                  type: 'function',
+                  function: { name: '', arguments: '' }
+                }
+              }
+              if (tc.id) toolCalls[idx].id = tc.id
+              if (tc.function?.name) toolCalls[idx].function.name += tc.function.name
+              if (tc.function?.arguments) toolCalls[idx].function.arguments += tc.function.arguments
+            }
+          }
+        } catch {
+          // 忽略 JSON 解析错误
+        }
+      }
+    }
+
+    return {
+      content: content.trim(),
+      tool_calls: toolCalls.length > 0 ? toolCalls.filter(tc => tc.function.name) : undefined
+    }
+  } finally {
+    clearTimeout(timer)
   }
 }
 
