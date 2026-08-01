@@ -26,9 +26,20 @@ export interface PointRecord {
 
 export interface AIConfig {
   apiKey: string
-  endpoint: string   // 例如 https://open.bigmodel.cn/api/paas/v4
-  model: string      // 例如 glm-4-plus
+  endpoint: string   // 例如 https://api.deepseek.com
+  model: string      // 例如 deepseek-v4-flash
 }
+
+export const DEFAULT_SYSTEM_PROMPT = `你是一个严格的个人成长监督智能体。你的核心职责是：
+1. 奖励机制：当用户汇报每日完成事项时，根据任务的难度和完成质量，给予具体的积分、成就或口头奖励。
+2. 计划与监督：主动帮助用户制定学习或工作计划，并监督其执行。
+3. 专注力监测：你可以模拟监测用户手机应用使用情况的行为。当用户表示分心或拖延时，你要严厉地提醒他，并引导他回到正轨。
+你的语气应该是专业、果断且带有一点激励性的。
+
+【工具使用规则】
+当用户的请求涉及"加任务"、"加成就"、"调积分"、"设精神力"、"完成某任务"时，必须调用对应工具，而不是只口头答应。
+调用工具后，再用一句话确认你做了什么。
+不要在没有用户明确意图的情况下擅自调积分（除非是惩罚/奖励场景）。`
 
 export interface ChatMessage {
   id: string
@@ -73,6 +84,8 @@ interface StoreState {
   // AI
   ai: AIConfig
   chat: ChatMessage[]
+  systemPrompt: string          // 系统提示词（存 localStorage）
+  modelList: string[]           // 从 API 拉取的模型列表
 
   // HP 锁：AI 手动设置 HP 后锁定，避免被定时同步覆盖
   hpLocked: boolean
@@ -91,6 +104,8 @@ interface StoreState {
   addFocusMs: (n: number) => void
   toggleDark: () => void
   setAI: (c: Partial<AIConfig>) => void
+  setSystemPrompt: (s: string) => void
+  setModelList: (m: string[]) => void
   completeQuest: (id: string) => void
   buyItem: (id: string) => boolean
   unlockAchievement: (id: string) => void
@@ -133,6 +148,8 @@ export const useStore = create<StoreState>()(
       isDark: false,
       ai: { apiKey: '', endpoint: '', model: 'deepseek-v4-flash' },
       chat: [],
+      systemPrompt: DEFAULT_SYSTEM_PROMPT,
+      modelList: ['deepseek-v4-flash', 'deepseek-v4-pro'],
       hpLocked: false,
       dungeonRemainingSec: 0,
       dungeonActive: false,
@@ -157,6 +174,8 @@ export const useStore = create<StoreState>()(
       addFocusMs: (n) => set(s => ({ totalFocusMs: s.totalFocusMs + n, todayStudyMs: s.todayStudyMs + n })),
       toggleDark: () => set(s => ({ isDark: !s.isDark })),
       setAI: (c) => set(s => ({ ai: { ...s.ai, ...c } })),
+      setSystemPrompt: (s) => set({ systemPrompt: s }),
+      setModelList: (m) => set({ modelList: m }),
       completeQuest: (id) => {
         const q = get().quests.find(x => x.id === id)
         if (!q || q.completed) return
@@ -259,6 +278,8 @@ export const useStore = create<StoreState>()(
           isDark: false,
           ai: { apiKey: '', endpoint: '', model: 'deepseek-v4-flash' },
           chat: [],
+          systemPrompt: DEFAULT_SYSTEM_PROMPT,
+          modelList: ['deepseek-v4-flash', 'deepseek-v4-pro'],
           hpLocked: false,
           dungeonRemainingSec: 0,
           dungeonActive: false,

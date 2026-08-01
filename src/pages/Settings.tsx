@@ -18,24 +18,35 @@ export default function Settings({ onBack }: Props) {
   const setDailyGoal = useStore(s => s.setDailyGoal)
   const setDungeonDuration = useStore(s => s.setDungeonDuration)
   const reset = useStore(s => s.reset)
+  const storedSystemPrompt = useStore(s => s.systemPrompt)
+  const modelList = useStore(s => s.modelList)
+  const setSystemPrompt = useStore(s => s.setSystemPrompt)
+  const setModelList = useStore(s => s.setModelList)
 
-  // 用 local state 缓存输入，避免每次 onChange 触发整个 store 重渲染
-  // 只在组件挂载时从 store 读取初始值，不使用 useEffect 反向同步（那会导致保存后表单被清空）
+  // local state — 仅挂载时从 store 读取，不使用 useEffect 反向同步
   const [apiKey, setApiKey] = useState(ai.apiKey)
-  const [endpoint, setEndpoint] = useState(ai.endpoint)
-  const [model, setModel] = useState(ai.model)
+  const [endpoint, setEndpoint] = useState(ai.endpoint || 'https://api.deepseek.com')
+  const [model, setModel] = useState(ai.model || 'deepseek-v4-flash')
+  const [systemPrompt, setSystemPromptLocal] = useState(storedSystemPrompt)
   const [testing, setTesting] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle')
   const [testMsg, setTestMsg] = useState('')
+  const [fetchingModels, setFetchingModels] = useState(false)
 
+  // 保存：先存 localStorage（通过 store persist），再异步测试
+  // 测试失败只弹 Toast，绝对不清空表单
   function save() {
-    const cfg = { apiKey: apiKey.trim(), endpoint: endpoint.trim(), model: model.trim() }
-    setAI(cfg)
+    setAI({ apiKey: apiKey.trim(), endpoint: endpoint.trim(), model: model.trim() })
+    setSystemPrompt(systemPrompt)
     showToast('配置已保存')
   }
 
   async function saveAndTest() {
     const cfg = { apiKey: apiKey.trim(), endpoint: endpoint.trim(), model: model.trim() }
+    // 先存入 localStorage
     setAI(cfg)
+    setSystemPrompt(systemPrompt)
+    showToast('配置已保存，正在测试连接…')
+
     setTesting('testing')
     setTestMsg('')
     const r = await testConnection(cfg)
@@ -43,6 +54,69 @@ export default function Settings({ onBack }: Props) {
     setTestMsg(r.msg)
     if (r.ok) showToast('连接成功，监管者已就绪')
     else showToast('连接失败：' + r.msg)
+    // 不清空表单 — local state 保持不变
+  }
+
+  // 获取模型列表：调用 ${baseUrl}/v1/models
+  async function fetchModels() {
+    const baseUrl = endpoint.trim().replace(/\/+$/, '')
+    if (!baseUrl) {
+      showToast('请先填写 Base URL')
+      return
+    }
+    if (!apiKey.trim()) {
+      showToast('请先填写 API Key')
+      return
+    }
+
+    setFetchingModels(true)
+    const url = baseUrl + '/v1/models'
+
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 15000)
+
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey.trim()}`,
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
+      })
+      clearTimeout(timer)
+
+      if (!res.ok) {
+        let detail = ''
+        try { detail = (await res.json())?.error?.message || '' } catch { /* ignore */ }
+        showToast(`获取失败 (${res.status})：${detail || res.statusText}`)
+        return
+      }
+
+      const data = await res.json()
+      // OpenAI 格式: { data: [{ id: "model-name" }, ...] }
+      const ids: string[] = (data.data || data.models || [])
+        .map((m: any) => m.id || m.name)
+        .filter(Boolean)
+
+      if (ids.length === 0) {
+        showToast('返回的模型列表为空')
+        return
+      }
+
+      setModelList(ids)
+      // 如果当前选中的模型不在新列表中，自动切到第一个
+      if (!ids.includes(model)) {
+        setModel(ids[0])
+        setAI({ model: ids[0] })
+      }
+      showToast(`已获取 ${ids.length} 个模型`)
+    } catch (e: any) {
+      if (e.name === 'AbortError') showToast('请求超时（15s）')
+      else showToast('网络错误：' + e.message)
+    } finally {
+      setFetchingModels(false)
+    }
   }
 
   return (
@@ -125,6 +199,7 @@ export default function Settings({ onBack }: Props) {
               填入你的 API 信息（兼容 OpenAI 协议的任意大模型均可）。三项缺一不可。
             </div>
 
+            {/* API Key */}
             <Field
               label="API Key"
               placeholder="sk-..."
@@ -133,21 +208,67 @@ export default function Settings({ onBack }: Props) {
               type="password"
             />
 
+            {/* Base URL */}
             <Field
-              label="Endpoint"
+              label="Base URL"
               placeholder="https://api.deepseek.com"
               value={endpoint}
               onChange={setEndpoint}
               mono
             />
 
-            <Field
-              label="Model"
-              placeholder="deepseek-v4-flash"
-              value={model}
-              onChange={setModel}
-              mono
-            />
+            {/* Model — 下拉框 + 获取模型列表按钮 */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{
+                fontSize: 11, color: 'var(--muted)',
+                fontFamily: 'DM Mono, monospace',
+                marginBottom: 6
+              }}>
+                MODEL
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  style={{
+                    flex: 1, padding: '10px 12px',
+                    background: 'var(--bg)', color: 'var(--fg)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8, fontSize: 13,
+                    fontFamily: 'DM Mono, monospace',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a8a' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 12px center',
+                    paddingRight: 32
+                  }}
+                >
+                  {modelList.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={fetchModels}
+                  disabled={fetchingModels}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    background: 'var(--bg-alt)',
+                    color: 'var(--fg)',
+                    border: '1px solid var(--border)',
+                    fontSize: 12, fontWeight: 600,
+                    cursor: fetchingModels ? 'wait' : 'pointer',
+                    opacity: fetchingModels ? 0.5 : 1,
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {fetchingModels ? '获取中…' : '获取模型列表'}
+                </button>
+              </div>
+            </div>
 
             {/* 常见 endpoint 参考 */}
             <div style={{
@@ -168,6 +289,36 @@ export default function Settings({ onBack }: Props) {
               </div>
             </div>
 
+            {/* 系统提示词 */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{
+                fontSize: 11, color: 'var(--muted)',
+                fontFamily: 'DM Mono, monospace',
+                marginBottom: 6
+              }}>
+                SYSTEM_PROMPT
+              </div>
+              <textarea
+                value={systemPrompt}
+                onChange={(e) => setSystemPromptLocal(e.target.value)}
+                rows={10}
+                placeholder="输入系统提示词…"
+                style={{
+                  width: '100%', padding: '10px 12px',
+                  background: 'var(--bg)', color: 'var(--fg)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8, fontSize: 12,
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  resize: 'vertical',
+                  lineHeight: 1.6
+                }}
+              />
+              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>
+                此提示词将作为 messages[0] 发送给大模型，定义监管者的人格和行为规则。
+              </div>
+            </div>
+
             {/* 状态提示 */}
             {(!apiKey.trim() || !endpoint.trim() || !model.trim()) && (
               <div style={{
@@ -184,50 +335,50 @@ export default function Settings({ onBack }: Props) {
             )}
 
             <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={save}
-              style={{
-                flex: 1, marginTop: 4,
-                padding: '12px', borderRadius: 100,
-                background: 'var(--bg-alt)', color: 'var(--fg)',
-                border: '1px solid var(--border)',
-                fontSize: 13, fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              保存
-            </button>
-            <button
-              onClick={saveAndTest}
-              disabled={testing === 'testing'}
-              style={{
-                flex: 2, marginTop: 4,
-                padding: '12px', borderRadius: 100,
-                background: 'var(--fg)', color: 'var(--bg)',
-                border: 'none', fontSize: 13, fontWeight: 600,
-                cursor: testing === 'testing' ? 'wait' : 'pointer',
-                opacity: testing === 'testing' ? 0.5 : 1
-              }}
-            >
-              {testing === 'testing' ? '测试中…' : '保存并测试连接'}
-            </button>
+              <button
+                onClick={save}
+                style={{
+                  flex: 1, marginTop: 4,
+                  padding: '12px', borderRadius: 100,
+                  background: 'var(--bg-alt)', color: 'var(--fg)',
+                  border: '1px solid var(--border)',
+                  fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                保存
+              </button>
+              <button
+                onClick={saveAndTest}
+                disabled={testing === 'testing'}
+                style={{
+                  flex: 2, marginTop: 4,
+                  padding: '12px', borderRadius: 100,
+                  background: 'var(--fg)', color: 'var(--bg)',
+                  border: 'none', fontSize: 13, fontWeight: 600,
+                  cursor: testing === 'testing' ? 'wait' : 'pointer',
+                  opacity: testing === 'testing' ? 0.5 : 1
+                }}
+              >
+                {testing === 'testing' ? '测试中…' : '保存并测试连接'}
+              </button>
             </div>
 
-          {/* 测试反馈 */}
-          {testMsg && (
-            <div style={{
-              marginTop: 12, padding: '10px 12px', borderRadius: 10,
-              background: testing === 'ok' ? 'rgba(22, 163, 74, 0.08)' : 'rgba(229, 77, 46, 0.08)',
-              color: testing === 'ok' ? 'var(--success)' : 'var(--danger)',
-              fontSize: 12,
-              display: 'flex', alignItems: 'center', gap: 6
-            }}>
-              {testing === 'ok' ? '✓ ' : '✕ '}
-              {testMsg}
-            </div>
-          )}
-        </div>
-      </Section>
+            {/* 测试反馈 */}
+            {testMsg && (
+              <div style={{
+                marginTop: 12, padding: '10px 12px', borderRadius: 10,
+                background: testing === 'ok' ? 'rgba(22, 163, 74, 0.08)' : 'rgba(229, 77, 46, 0.08)',
+                color: testing === 'ok' ? 'var(--success)' : 'var(--danger)',
+                fontSize: 12,
+                display: 'flex', alignItems: 'center', gap: 6
+              }}>
+                {testing === 'ok' ? '✓ ' : '✕ '}
+                {testMsg}
+              </div>
+            )}
+          </div>
+        </Section>
 
         {/* 玩家信息 */}
         <Section title="账户">
@@ -272,7 +423,7 @@ export default function Settings({ onBack }: Props) {
           textAlign: 'center', padding: '24px 0',
           fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace'
         }}>
-          CYBER SURVIVAL · v2.4.0<br />
+          CYBER SURVIVAL · v2.5.0<br />
           React + Capacitor
         </div>
       </div>

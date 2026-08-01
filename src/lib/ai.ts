@@ -184,12 +184,18 @@ export async function chatWithAI(
   }
 
   // ── 滑动窗口：System Prompt（index 0）+ 最近 20 条历史对话（10 轮）──
+  // 注意：Chat.tsx 在调用 chatWithAI 前已 pushChat 用户消息到 store，
+  // 所以 state.chat 的最后一条就是当前用户消息，无需重复添加。
   const history: ChatMessage[] = state.chat.slice(-20)
   const messages: any[] = [
     { role: 'system', content: buildContext(state) },
-    ...history.map(m => ({ role: m.role, content: m.text })),
-    { role: 'user', content: userMessage }
+    ...history.map(m => ({ role: m.role, content: m.text }))
   ]
+  // 兜底：如果调用方未预先 pushChat（history 末尾不是当前用户消息），则补上
+  const last = history[history.length - 1]
+  if (!last || last.role !== 'user' || last.text !== userMessage) {
+    messages.push({ role: 'user', content: userMessage })
+  }
 
   try {
     // 第一轮：流式请求，可能返回 tool_calls
@@ -377,7 +383,10 @@ function buildContext(state: any): string {
     .map((q: any) => `  - ${q.id} 「${q.title}」(${q.progress}/${q.total})`)
     .join('\n') || '  (无)'
 
-  return `${SYSTEM_PROMPT}
+  // 从 localStorage（store）读取用户自定义的系统提示词，兜底用硬编码默认值
+  const sysPrompt = state.systemPrompt || SYSTEM_PROMPT
+
+  return `${sysPrompt}
 
 【当前用户情况】
 - 玩家代号：${state.playerTag}
