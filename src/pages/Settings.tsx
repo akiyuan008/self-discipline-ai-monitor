@@ -135,7 +135,7 @@ export default function Settings({ onBack }: Props) {
 
             <Field
               label="Endpoint"
-              placeholder="https://api.deepseek.com/v1"
+              placeholder="https://api.deepseek.com"
               value={endpoint}
               onChange={setEndpoint}
               mono
@@ -143,7 +143,7 @@ export default function Settings({ onBack }: Props) {
 
             <Field
               label="Model"
-              placeholder="deepseek-chat"
+              placeholder="deepseek-v4-flash"
               value={model}
               onChange={setModel}
               mono
@@ -158,11 +158,14 @@ export default function Settings({ onBack }: Props) {
               fontSize: 11, color: 'var(--muted)',
               lineHeight: 1.8
             }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>常见 Endpoint 参考（注意末尾 /v1）：</div>
-              <div>DeepSeek：https://api.deepseek.com/v1</div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>常见 Endpoint 参考：</div>
+              <div>DeepSeek：https://api.deepseek.com</div>
               <div>智谱：https://open.bigmodel.cn/api/paas/v4</div>
               <div>千问：https://dashscope.aliyuncs.com/compatible-mode/v1</div>
               <div>Kimi：https://api.moonshot.cn/v1</div>
+              <div style={{ marginTop: 6, fontSize: 10, color: 'var(--muted)' }}>
+                DeepSeek 模型：deepseek-v4-flash / deepseek-v4-pro
+              </div>
             </div>
 
             {/* 状态提示 */}

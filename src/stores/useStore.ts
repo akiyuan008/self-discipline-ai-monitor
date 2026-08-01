@@ -131,7 +131,7 @@ export const useStore = create<StoreState>()(
       ownedItems: {},
       pointHistory: [],
       isDark: false,
-      ai: { apiKey: '', endpoint: '', model: 'deepseek-chat' },
+      ai: { apiKey: '', endpoint: '', model: 'deepseek-v4-flash' },
       chat: [],
       hpLocked: false,
       dungeonRemainingSec: 0,
@@ -239,7 +239,7 @@ export const useStore = create<StoreState>()(
           onboarded: true,
           playerTag: tag || 'PLAYER_01',
           dailyGoalMin: goal,
-          ai: ai ?? { apiKey: '', endpoint: '', model: 'deepseek-chat' }
+          ai: ai ?? { apiKey: '', endpoint: '', model: 'deepseek-v4-flash' }
         }),
       reset: () =>
         set({
@@ -257,7 +257,7 @@ export const useStore = create<StoreState>()(
           achievements: ACHIEVEMENTS,
           ownedItems: {},
           isDark: false,
-          ai: { apiKey: '', endpoint: '', model: 'deepseek-chat' },
+          ai: { apiKey: '', endpoint: '', model: 'deepseek-v4-flash' },
           chat: [],
           hpLocked: false,
           dungeonRemainingSec: 0,

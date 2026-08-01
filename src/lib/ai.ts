@@ -177,10 +177,10 @@ export async function chatWithAI(
     return '请在「设置 → AI 监管者」填入 API Key 后再开始对话。'
   }
   if (!ai.endpoint?.trim()) {
-    return '请在「设置 → AI 监管者」填入 Endpoint（例如 https://api.deepseek.com/v1）。'
+    return '请在「设置 → AI 监管者」填入 Endpoint（例如 https://api.deepseek.com）。'
   }
   if (!ai.model?.trim()) {
-    return '请在「设置 → AI 监管者」填入模型名称（例如 deepseek-chat）。'
+    return '请在「设置 → AI 监管者」填入模型名称（例如 deepseek-v4-flash）。'
   }
 
   // ── 滑动窗口：System Prompt（index 0）+ 最近 20 条历史对话（10 轮）──
@@ -258,7 +258,7 @@ async function callAPIStream(
 ): Promise<StreamResult> {
   const url = ai.endpoint.replace(/\/$/, '') + '/chat/completions'
   const body: any = {
-    model: ai.model || 'deepseek-chat',
+    model: ai.model || 'deepseek-v4-flash',
     messages,
     temperature: 0.7,
     max_tokens: 1024,
@@ -403,8 +403,8 @@ export async function testConnection(cfg: {
   model: string
 }): Promise<{ ok: boolean; msg: string }> {
   if (!cfg.apiKey?.trim()) return { ok: false, msg: '请先填入 API Key' }
-  if (!cfg.endpoint?.trim()) return { ok: false, msg: '请先填入 Endpoint（如 https://api.deepseek.com/v1）' }
-  if (!cfg.model?.trim()) return { ok: false, msg: '请先填入模型名称（如 deepseek-chat）' }
+  if (!cfg.endpoint?.trim()) return { ok: false, msg: '请先填入 Endpoint（如 https://api.deepseek.com）' }
+  if (!cfg.model?.trim()) return { ok: false, msg: '请先填入模型名称（如 deepseek-v4-flash）' }
 
   const url = cfg.endpoint.replace(/\/$/, '') + '/chat/completions'
   const controller = new AbortController()

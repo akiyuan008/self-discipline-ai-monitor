@@ -8,7 +8,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0)
   const [tag, setTag] = useState('PLAYER_01')
   const [goal, setGoal] = useState(120)
-  const [ai, setAI] = useState<AIConfig>({ apiKey: '', endpoint: '', model: 'deepseek-chat' })
+  const [ai, setAI] = useState<AIConfig>({ apiKey: '', endpoint: '', model: 'deepseek-v4-flash' })
 
   function finish() {
     init(tag.trim() || 'PLAYER_01', goal, ai)
@@ -166,7 +166,7 @@ export default function Onboarding() {
           <input
             value={ai.endpoint}
             onChange={(e) => setAI({ ...ai, endpoint: e.target.value })}
-            placeholder="https://api.deepseek.com/v1"
+            placeholder="https://api.deepseek.com"
             style={{
               width: '100%',
               padding: '14px 16px',
@@ -185,7 +185,7 @@ export default function Onboarding() {
           <input
             value={ai.model}
             onChange={(e) => setAI({ ...ai, model: e.target.value })}
-            placeholder="deepseek-chat"
+            placeholder="deepseek-v4-flash"
             style={{
               width: '100%',
               padding: '14px 16px',
@@ -210,9 +210,9 @@ export default function Onboarding() {
             marginBottom: 16
           }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>常见参考：</div>
+            <div>DeepSeek：api.deepseek.com / deepseek-v4-flash</div>
             <div>智谱：open.bigmodel.cn/api/paas/v4 / glm-4-plus</div>
             <div>千问：dashscope.aliyuncs.com/compatible-mode/v1 / qwen-plus</div>
-            <div>DeepSeek：api.deepseek.com/v1 / deepseek-chat</div>
           </div>
 
           <div style={{ flex: 1 }} />

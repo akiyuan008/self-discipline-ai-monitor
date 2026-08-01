@@ -55,14 +55,14 @@ export const MODEL_PRESETS: ModelPreset[] = [
     vendor: 'DeepSeek',
     vendorEn: 'DEEPSEEK',
     tagline: '幻方量化，开源推理王者',
-    endpoint: 'https://api.deepseek.com/v1',
+    endpoint: 'https://api.deepseek.com',
     getApiKeyUrl: 'https://platform.deepseek.com/api_keys',
     logoText: 'DS',
     accent: '#4D6BFE',
     featured: true,
     models: [
-      { id: 'deepseek-chat', name: 'DeepSeek-V3.2', desc: '通用旗舰，对话首选', tags: ['推荐'] },
-      { id: 'deepseek-reasoner', name: 'DeepSeek-R1', desc: '推理专用，对标 o1', tags: ['推理'] }
+      { id: 'deepseek-v4-flash', name: 'DeepSeek-V4-Flash', desc: '最新 V4 Flash，极速+Agent能力强', tags: ['推荐', '新'] },
+      { id: 'deepseek-v4-pro', name: 'DeepSeek-V4-Pro', desc: 'V4 Pro 旗舰，推理最强', tags: ['推理'] }
     ]
   },
   {
