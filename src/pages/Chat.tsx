@@ -253,10 +253,12 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
 
       {/* 输入框 — 固定在 Dock 上方 */}
       <div style={{
-        padding: '8px 16px max(8px, env(safe-area-inset-bottom))',
+        padding: '8px 16px calc(90px + env(safe-area-inset-bottom))',
         borderTop: '1px solid var(--border)',
         background: 'var(--card-bg)', display: 'flex', gap: 8,
-        flexShrink: 0
+        flexShrink: 0,
+        position: 'relative',
+        zIndex: 1
       }}>
         <input
           value={input}

@@ -1,4 +1,7 @@
+import { useState, useRef } from 'react'
 import { useStore } from '@/stores/useStore'
+import { showToast } from '@/components/Toast'
+import { exportBackup, importBackup } from '@/lib/backup'
 import GaokaoProgress from '@/components/GaokaoProgress'
 
 interface ProfileProps {
@@ -6,6 +9,8 @@ interface ProfileProps {
 }
 
 export default function Profile({ onNavigate }: ProfileProps) {
+  const [importing, setImporting] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
   const playerTag = useStore(s => s.playerTag)
   const streak = useStore(s => s.streak)
   const totalFocusMs = useStore(s => s.totalFocusMs)
@@ -15,6 +20,34 @@ export default function Profile({ onNavigate }: ProfileProps) {
   const focusHours = Math.floor(totalFocusMs / 3600_000)
   // 同步率 = HP * 0.8 + 连胜 * 1（mock 算法）
   const syncRate = Math.min(100, Math.round(hp * 0.8 + streak * 1.5))
+
+  // ── 备份导入导出 ──
+  function handleExport() {
+    try {
+      exportBackup()
+      showToast('备份已导出')
+    } catch {
+      showToast('导出失败，请重试')
+    }
+  }
+
+  function handleImportClick() {
+    fileRef.current?.click()
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // 重置以便重复选择同一文件
+    if (!file) return
+    setImporting(true)
+    try {
+      await importBackup(file)
+      // importBackup 成功后会自动 reload，不需要 showToast
+    } catch (err: any) {
+      showToast(err?.message || '导入失败')
+      setImporting(false)
+    }
+  }
 
   return (
     <div className="safe-top" style={{ padding: '24px 20px 140px' }}>
@@ -84,11 +117,6 @@ export default function Profile({ onNavigate }: ProfileProps) {
         onClick={() => onNavigate?.('archive')}
       />
       <ListRow
-        title="监管者"
-        desc="对话式督促"
-        onClick={() => onNavigate?.('chat')}
-      />
-      <ListRow
         title="成就殿堂"
         desc="查看成就进度"
         onClick={() => onNavigate?.('achievements')}
@@ -98,6 +126,32 @@ export default function Profile({ onNavigate }: ProfileProps) {
         desc="深色模式、AI 配置"
         onClick={() => onNavigate?.('settings')}
       />
+      {/* 数据备份 */}
+      <div style={{ marginTop: 16, marginBottom: 8 }}>
+        <div style={{
+          fontSize: 10, color: 'var(--muted)',
+          fontFamily: 'DM Mono, monospace', marginBottom: 8, paddingLeft: 4
+        }}>
+          DATA BACKUP
+        </div>
+        <ListRow
+          title="导出备份"
+          desc="保存全部数据到文件"
+          onClick={handleExport}
+        />
+        <ListRow
+          title={importing ? '导入中…' : '导入备份'}
+          desc="从备份文件恢复数据"
+          onClick={importing ? () => {} : handleImportClick}
+        />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/json,.json"
+          onChange={handleImportFile}
+          style={{ display: 'none' }}
+        />
+      </div>
       <ListRow
         title="关于 Cyber Survival"
         desc="v2.0.0 · React + Capacitor"
