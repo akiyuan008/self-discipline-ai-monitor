@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react'
-import { useStore } from '@/stores/useStore'
+import { useStore, hpFromStudy } from '@/stores/useStore'
 import Onboarding from '@/pages/Onboarding'
 import Home from '@/pages/Home'
 import Dungeon from '@/pages/Dungeon'
 import Quests from '@/pages/Quests'
 import Shop from '@/pages/Shop'
 import Profile from '@/pages/Profile'
+import Chat from '@/pages/Chat'
 import Achievements from '@/pages/Achievements'
 import Settings from '@/pages/Settings'
 import Dock from '@/components/Dock'
 import Toast from '@/components/Toast'
+import { fetchUsageStats } from '@/lib/usageStats'
 import type { PageId } from '@/stores/useStore'
 
 export default function App() {
@@ -17,9 +19,28 @@ export default function App() {
   const isDark = useStore(s => s.isDark)
   const [current, setCurrent] = useState<PageId>('home')
 
+  // 深色模式
   useEffect(() => {
     document.body.classList.toggle('dark', isDark)
   }, [isDark])
+
+  // 启动时跨日结算 + 拉取 UsageStats
+  useEffect(() => {
+    if (!onboarded) return
+    const s = useStore.getState()
+    s.dailySettle()
+    // 拉取今天 0 点到现在
+    const now = Date.now()
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    fetchUsageStats(start.getTime(), now).then(({ study, ent }) => {
+      s.syncUsage(study, ent)
+      // 根据学习时长自动更新 HP
+      const goalMs = s.dailyGoalMin * 60_000
+      const newHp = hpFromStudy(s.todayStudyMs, goalMs)
+      if (newHp > 0) s.setHp(newHp)
+    })
+  }, [onboarded])
 
   if (!onboarded) {
     return (
@@ -30,17 +51,15 @@ export default function App() {
     )
   }
 
-  // 深渊页全屏，不带 dock
+  // 全屏页
   if (current === 'dungeon') {
     return (
       <>
-        <Dungeon />
+        <Dungeon onExit={() => setCurrent('home')} />
         <Toast />
       </>
     )
   }
-
-  // 全屏弹层页
   if (current === 'achievements') {
     return (
       <>
@@ -57,15 +76,25 @@ export default function App() {
       </>
     )
   }
-
-  // 主页面：home / quests / shop / profile
-  const main: Record<'home' | 'quests' | 'shop' | 'profile', React.ComponentType<any>> = {
-    home: (props: any) => <Home {...props} onNavigate={(p: PageId) => setCurrent(p)} />,
-    quests: Quests,
-    shop: Shop,
-    profile: (props: any) => <Profile {...props} onNavigate={(p: 'achievements' | 'settings') => setCurrent(p)} />
+  if (current === 'chat') {
+    return (
+      <>
+        <Chat onBack={() => setCurrent('home')} />
+        <Toast />
+      </>
+    )
   }
-  const M = main[current as 'home' | 'quests' | 'shop' | 'profile'] || Home
+
+  // 主页面
+  const M = current === 'home'
+    ? (props: any) => <Home {...props} onNavigate={(p: PageId) => setCurrent(p)} />
+    : current === 'profile'
+      ? (props: any) => <Profile {...props} onNavigate={(p: 'achievements' | 'settings' | 'chat') => setCurrent(p)} />
+      : current === 'quests'
+        ? Quests
+        : current === 'shop'
+          ? Shop
+          : Home
 
   return (
     <div className="min-h-full relative">

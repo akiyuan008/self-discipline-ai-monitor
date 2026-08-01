@@ -8,13 +8,18 @@ interface DockProps {
 const ICONS: Record<string, string> = {
   home: 'M3 12l9-9 9 9M5 10v10h14V10',
   quests: 'M9 11l3 3L22 4M2 13l3 3 5-5',
+  dungeon: 'M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83',
   shop: 'M3 9h18l-2 11H5L3 9zM8 9V5a4 4 0 0 1 8 0v4',
-  profile: 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2'
+  profile: 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2',
+  chat: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z'
 }
 
-export default function Dock({ current, onChange }: DockProps) {
-  const items: PageId[] = ['home', 'quests', 'dungeon', 'shop', 'profile']
+// 新顺序：[quests, dungeon, home(中间大黑圆), shop, profile]
+// 中间大黑圆是 home，第二个位置是 dungeon
+const ORDER: PageId[] = ['quests', 'dungeon', 'home', 'shop', 'profile']
+const CENTER: PageId = 'home'
 
+export default function Dock({ current, onChange }: DockProps) {
   return (
     <div
       style={{
@@ -37,8 +42,8 @@ export default function Dock({ current, onChange }: DockProps) {
           border: '1px solid var(--border)'
         }}
       >
-        {items.map((it) => {
-          const isCenter = it === 'dungeon'
+        {ORDER.map((it) => {
+          const isCenter = it === CENTER
           const active = current === it
           if (isCenter) {
             return (
@@ -62,7 +67,7 @@ export default function Dock({ current, onChange }: DockProps) {
                 }}
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                  <path d={ICONS[it]} />
                 </svg>
               </button>
             )

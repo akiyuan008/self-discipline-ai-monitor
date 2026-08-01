@@ -38,6 +38,52 @@ export default function Settings({ onBack }: Props) {
           </Row>
         </Section>
 
+        {/* 番茄钟 + 学习目标 */}
+        <Section title="玩法参数">
+          <div className="card" style={{ padding: 16, borderRadius: 12 }}>
+            <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginBottom: 8 }}>
+              DAILY_GOAL_MIN
+            </div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+              {[60, 120, 180, 240, 360].map(m => (
+                <button
+                  key={m}
+                  onClick={() => { useStore.getState().setDailyGoal(m); showToast(`目标设为 ${m} 分钟`) }}
+                  style={{
+                    flex: 1, padding: '8px',
+                    background: useStore.getState().dailyGoalMin === m ? 'var(--fg)' : 'var(--bg-alt)',
+                    color: useStore.getState().dailyGoalMin === m ? 'var(--bg)' : 'var(--muted)',
+                    border: 'none', borderRadius: 8,
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  {m}m
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginBottom: 8 }}>
+              DUNGEON_DURATION_MIN
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[5, 15, 25, 50].map(m => (
+                <button
+                  key={m}
+                  onClick={() => { useStore.getState().setDungeonDuration(m); showToast(`番茄钟设为 ${m} 分钟`) }}
+                  style={{
+                    flex: 1, padding: '8px',
+                    background: useStore.getState().dungeonDurationMin === m ? 'var(--fg)' : 'var(--bg-alt)',
+                    color: useStore.getState().dungeonDurationMin === m ? 'var(--bg)' : 'var(--muted)',
+                    border: 'none', borderRadius: 8,
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  {m}m
+                </button>
+              ))}
+            </div>
+          </div>
+        </Section>
+
         {/* AI 监管者配置 */}
         <Section title="AI 监管者">
           <div className="card" style={{ padding: 16, borderRadius: 12 }}>

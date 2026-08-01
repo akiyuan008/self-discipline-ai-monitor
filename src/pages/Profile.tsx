@@ -1,7 +1,7 @@
 import { useStore } from '@/stores/useStore'
 
 interface ProfileProps {
-  onNavigate?: (page: 'achievements' | 'settings') => void
+  onNavigate?: (page: 'achievements' | 'settings' | 'chat') => void
 }
 
 export default function Profile({ onNavigate }: ProfileProps) {
@@ -75,6 +75,11 @@ export default function Profile({ onNavigate }: ProfileProps) {
 
       {/* 列表 */}
       <ListRow
+        title="监管者"
+        desc="对话式督促"
+        onClick={() => onNavigate?.('chat')}
+      />
+      <ListRow
         title="成就殿堂"
         desc="查看成就进度"
         onClick={() => onNavigate?.('achievements')}
@@ -86,7 +91,7 @@ export default function Profile({ onNavigate }: ProfileProps) {
       />
       <ListRow
         title="关于 Cyber Survival"
-        desc="v1.0.0 · React + Capacitor"
+        desc="v2.0.0 · React + Capacitor"
         onClick={() => {}}
       />
     </div>

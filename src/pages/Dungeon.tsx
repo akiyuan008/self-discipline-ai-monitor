@@ -1,87 +1,124 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 
-export default function Dungeon() {
+interface Props {
+  onExit: () => void
+}
+
+export default function Dungeon({ onExit }: Props) {
+  const dungeonDurationMin = useStore(s => s.dungeonDurationMin)
   const setDungeon = useStore(s => s.setDungeon)
   const setHp = useStore(s => s.setHp)
   const addPoints = useStore(s => s.addPoints)
   const completeQuest = useStore(s => s.completeQuest)
+  const unlockAchievement = useStore(s => s.unlockAchievement)
+  const addFocusMs = useStore(s => s.addFocusMs)
   const hp = useStore(s => s.hp)
 
+  const totalSec = dungeonDurationMin * 60
+  const [remaining, setRemaining] = useState(totalSec)
+  const [paused, setPaused] = useState(false)
   const timerRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
-    let time = 10
-    setDungeon(time, true)
+    setDungeon(totalSec, true)
     const tick = () => {
-      time -= 1
-      setDungeon(time, true)
-      if (time <= 0) {
-        window.clearInterval(timerRef.current)
-        addPoints(500)
-        completeQuest('q3')
-        showToast('胜利 +500')
-        window.history.back()
-      }
+      if (paused) return
+      setRemaining(prev => {
+        const next = prev - 1
+        setDungeon(next, true)
+        if (next <= 0) {
+          window.clearInterval(timerRef.current)
+          const reward = 100 + dungeonDurationMin * 20
+          addPoints(reward)
+          addFocusMs(dungeonDurationMin * 60_000)
+          completeQuest('q3')
+          unlockAchievement('a1')
+          showToast(`胜利 +${reward} 积分`)
+          setTimeout(onExit, 800)
+        }
+        return next
+      })
     }
     timerRef.current = window.setInterval(tick, 1000)
     return () => window.clearInterval(timerRef.current)
-  }, [])
+  }, [paused])
 
-  const remaining = useStore(s => s.dungeonRemainingSec)
+  const mins = Math.floor(remaining / 60)
+  const secs = remaining % 60
+  const progress = ((totalSec - remaining) / totalSec) * 100
 
   return (
     <div
       className="dungeon-bg"
       style={{
-        position: 'fixed',
-        inset: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000
+        position: 'fixed', inset: 0,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        zIndex: 500,
+        padding: 'max(40px, env(safe-area-inset-top)) 20px max(40px, env(safe-area-inset-bottom))'
       }}
     >
-      <div style={{ fontSize: 11, color: '#8a8a8a', fontFamily: 'DM Mono, monospace', marginBottom: 12, letterSpacing: 2 }}>
-        DEEP DIVE MODE
+      <div style={{ fontSize: 11, color: '#8a8a8a', fontFamily: 'DM Mono, monospace', letterSpacing: 1 }}>
+        DEEP_DIVE_MODE
       </div>
-      <div style={{ fontSize: 96, fontWeight: 200, color: '#fff', letterSpacing: -2 }}>
-        00:{remaining < 10 ? '0' + remaining : remaining}
+      <div style={{ fontSize: 13, color: '#fff', marginTop: 8, opacity: 0.8 }}>
+        全神贯注 {dungeonDurationMin} 分钟
       </div>
-      <div style={{ width: 240, height: 2, background: '#1F1F1F', marginTop: 24, borderRadius: 100, overflow: 'hidden' }}>
+
+      <div className="timer-text" style={{ marginTop: 32, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>
+        {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+      </div>
+
+      <div style={{ width: 240, height: 2, background: '#1F1F1F', marginTop: 32, borderRadius: 100, overflow: 'hidden' }}>
         <div style={{
           height: '100%',
-          width: `${(10 - remaining) * 10}%`,
+          width: `${progress}%`,
           background: '#fff',
           transition: 'width 1s linear'
         }} />
       </div>
+
       <div style={{ fontSize: 12, color: '#8a8a8a', marginTop: 16 }}>
-        全神贯注完成挑战
+        {paused ? '已暂停' : '专注中... 放下手机'}
       </div>
 
-      <button
-        onClick={() => {
-          window.clearInterval(timerRef.current)
-          setHp(Math.max(0, hp - 30))
-          showToast('放弃挑战 -30 HP')
-          window.history.back()
-        }}
-        style={{
-          position: 'absolute',
-          bottom: 'max(40px, env(safe-area-inset-bottom))',
-          padding: '12px 32px',
-          borderRadius: 100,
-          background: 'transparent',
-          border: '1px solid #333',
-          color: '#8a8a8a',
-          fontSize: 13
-        }}
-      >
-        放弃
-      </button>
+      {/* 控制按钮 */}
+      <div style={{ display: 'flex', gap: 12, position: 'absolute', bottom: 'max(40px, env(safe-area-inset-bottom))' }}>
+        <button
+          onClick={() => setPaused(p => !p)}
+          style={{
+            padding: '12px 24px',
+            borderRadius: 100,
+            background: 'transparent',
+            border: '1px solid #333',
+            color: '#fff',
+            fontSize: 13
+          }}
+        >
+          {paused ? '继续' : '暂停'}
+        </button>
+        <button
+          onClick={() => {
+            window.clearInterval(timerRef.current)
+            const penalty = Math.min(hp, 30)
+            setHp(Math.max(0, hp - 30))
+            showToast(`放弃挑战 -${penalty} HP`)
+            onExit()
+          }}
+          style={{
+            padding: '12px 24px',
+            borderRadius: 100,
+            background: 'transparent',
+            border: '1px solid #E54D2E',
+            color: '#E54D2E',
+            fontSize: 13
+          }}
+        >
+          放弃
+        </button>
+      </div>
     </div>
   )
 }
