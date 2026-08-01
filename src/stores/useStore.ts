@@ -131,7 +131,7 @@ export const useStore = create<StoreState>()(
       ownedItems: {},
       pointHistory: [],
       isDark: false,
-      ai: { apiKey: '', endpoint: '', model: 'glm-4-plus' },
+      ai: { apiKey: '', endpoint: '', model: 'deepseek-chat' },
       chat: [],
       hpLocked: false,
       dungeonRemainingSec: 0,
@@ -239,7 +239,7 @@ export const useStore = create<StoreState>()(
           onboarded: true,
           playerTag: tag || 'PLAYER_01',
           dailyGoalMin: goal,
-          ai: ai ?? { apiKey: '', endpoint: '', model: 'glm-4-plus' }
+          ai: ai ?? { apiKey: '', endpoint: '', model: 'deepseek-chat' }
         }),
       reset: () =>
         set({
@@ -257,7 +257,7 @@ export const useStore = create<StoreState>()(
           achievements: ACHIEVEMENTS,
           ownedItems: {},
           isDark: false,
-          ai: { apiKey: '', endpoint: '', model: 'glm-4-plus' },
+          ai: { apiKey: '', endpoint: '', model: 'deepseek-chat' },
           chat: [],
           hpLocked: false,
           dungeonRemainingSec: 0,
@@ -302,7 +302,20 @@ export const useStore = create<StoreState>()(
         set({ todayStudyMs: 0, todayEntMs: 0 })
       }
     }),
-    { name: 'cyber-survival-store', storage: createJSONStorage(() => localStorage) }
+    {
+      name: 'cyber-survival-store',
+      storage: createJSONStorage(() => localStorage),
+      // 深度合并 ai 字段，防止 rehydration 时覆盖已保存的配置
+      merge: (persisted, current) => {
+        const p = (persisted || {}) as any
+        const c = current as any
+        return {
+          ...c,
+          ...p,
+          ai: { ...c.ai, ...(p.ai || {}) }
+        }
+      }
+    }
   )
 )
 

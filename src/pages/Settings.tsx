@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { testConnection } from '@/lib/ai'
@@ -20,33 +20,29 @@ export default function Settings({ onBack }: Props) {
   const reset = useStore(s => s.reset)
 
   // 用 local state 缓存输入，避免每次 onChange 触发整个 store 重渲染
+  // 只在组件挂载时从 store 读取初始值，不使用 useEffect 反向同步（那会导致保存后表单被清空）
   const [apiKey, setApiKey] = useState(ai.apiKey)
   const [endpoint, setEndpoint] = useState(ai.endpoint)
   const [model, setModel] = useState(ai.model)
   const [testing, setTesting] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle')
   const [testMsg, setTestMsg] = useState('')
 
-  // 如果 store 中的 ai 配置变化了（比如从其他页面回来），同步到 local state
-  useEffect(() => {
-    setApiKey(ai.apiKey)
-    setEndpoint(ai.endpoint)
-    setModel(ai.model)
-  }, [ai.apiKey, ai.endpoint, ai.model])
-
   function save() {
-    setAI({ apiKey: apiKey.trim(), endpoint: endpoint.trim(), model: model.trim() })
+    const cfg = { apiKey: apiKey.trim(), endpoint: endpoint.trim(), model: model.trim() }
+    setAI(cfg)
     showToast('配置已保存')
   }
 
-  async function test() {
-    // 先保存再测试
-    setAI({ apiKey: apiKey.trim(), endpoint: endpoint.trim(), model: model.trim() })
+  async function saveAndTest() {
+    const cfg = { apiKey: apiKey.trim(), endpoint: endpoint.trim(), model: model.trim() }
+    setAI(cfg)
     setTesting('testing')
     setTestMsg('')
-    const r = await testConnection({ apiKey: apiKey.trim(), endpoint: endpoint.trim(), model: model.trim() })
+    const r = await testConnection(cfg)
     setTesting(r.ok ? 'ok' : 'fail')
     setTestMsg(r.msg)
-    if (r.ok) showToast('连接成功')
+    if (r.ok) showToast('连接成功，监管者已就绪')
+    else showToast('连接失败：' + r.msg)
   }
 
   return (
@@ -139,7 +135,7 @@ export default function Settings({ onBack }: Props) {
 
             <Field
               label="Endpoint"
-              placeholder="https://open.bigmodel.cn/api/paas/v4"
+              placeholder="https://api.deepseek.com/v1"
               value={endpoint}
               onChange={setEndpoint}
               mono
@@ -147,7 +143,7 @@ export default function Settings({ onBack }: Props) {
 
             <Field
               label="Model"
-              placeholder="glm-4-plus"
+              placeholder="deepseek-chat"
               value={model}
               onChange={setModel}
               mono
@@ -162,10 +158,10 @@ export default function Settings({ onBack }: Props) {
               fontSize: 11, color: 'var(--muted)',
               lineHeight: 1.8
             }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>常见 Endpoint 参考：</div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>常见 Endpoint 参考（注意末尾 /v1）：</div>
+              <div>DeepSeek：https://api.deepseek.com/v1</div>
               <div>智谱：https://open.bigmodel.cn/api/paas/v4</div>
               <div>千问：https://dashscope.aliyuncs.com/compatible-mode/v1</div>
-              <div>DeepSeek：https://api.deepseek.com/v1</div>
               <div>Kimi：https://api.moonshot.cn/v1</div>
             </div>
 
@@ -190,27 +186,27 @@ export default function Settings({ onBack }: Props) {
               style={{
                 flex: 1, marginTop: 4,
                 padding: '12px', borderRadius: 100,
-                background: 'var(--fg)', color: 'var(--bg)',
-                border: 'none', fontSize: 13, fontWeight: 600,
+                background: 'var(--bg-alt)', color: 'var(--fg)',
+                border: '1px solid var(--border)',
+                fontSize: 13, fontWeight: 600,
                 cursor: 'pointer'
               }}
             >
-              保存配置
+              保存
             </button>
             <button
-              onClick={test}
+              onClick={saveAndTest}
               disabled={testing === 'testing'}
               style={{
-                flex: 1, marginTop: 4,
+                flex: 2, marginTop: 4,
                 padding: '12px', borderRadius: 100,
-                background: 'transparent', color: 'var(--fg)',
-                border: '1px solid var(--border)',
-                fontSize: 13, fontWeight: 600,
+                background: 'var(--fg)', color: 'var(--bg)',
+                border: 'none', fontSize: 13, fontWeight: 600,
                 cursor: testing === 'testing' ? 'wait' : 'pointer',
                 opacity: testing === 'testing' ? 0.5 : 1
               }}
             >
-              {testing === 'testing' ? '测试中…' : '测试连接'}
+              {testing === 'testing' ? '测试中…' : '保存并测试连接'}
             </button>
             </div>
 

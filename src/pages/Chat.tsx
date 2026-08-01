@@ -27,6 +27,8 @@ export default function Chat({ onBack }: Props) {
 
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [streamingText, setStreamingText] = useState('')
+  const streamingRef = useRef('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const studyMin = Math.floor(todayStudyMs / 60_000)
@@ -53,15 +55,30 @@ export default function Chat({ onBack }: Props) {
       pushChat({ role: 'assistant', text: greeting })
     }
     setTimeout(() => scrollRef.current?.scrollTo({ top: 99999, behavior: 'smooth' }), 80)
-  }, [messages.length])
+  }, [messages.length, streamingText])
 
   async function send(text: string) {
     if (!text.trim() || sending) return
     setSending(true)
     pushChat({ role: 'user', text: text.trim() })
     setInput('')
-    const reply = await chatWithAI(text.trim())
-    pushChat({ role: 'assistant', text: reply })
+    // 重置流式状态
+    streamingRef.current = ''
+    setStreamingText('')
+
+    // 流式回调：每收到一段文字就更新 UI（打字机效果）
+    const reply = await chatWithAI(text.trim(), (chunk) => {
+      streamingRef.current += chunk
+      setStreamingText(streamingRef.current)
+      // 滚动到底部
+      setTimeout(() => scrollRef.current?.scrollTo({ top: 99999, behavior: 'smooth' }), 30)
+    })
+
+    // 如果流式过程中有内容，优先使用流式内容；否则用返回的字符串（可能是错误信息）
+    const finalText = streamingRef.current || reply
+    pushChat({ role: 'assistant', text: finalText })
+    streamingRef.current = ''
+    setStreamingText('')
     setSending(false)
   }
 
@@ -144,7 +161,11 @@ export default function Chat({ onBack }: Props) {
         flex: 1, overflowY: 'auto', padding: '16px 16px 8px'
       }}>
         {messages.map(m => <Bubble key={m.id} role={m.role} text={m.text} />)}
-        {sending && (
+        {/* 流式输出中：已有文字 → 显示打字机气泡；无文字 → 显示三点等待动画 */}
+        {sending && streamingText && (
+          <Bubble role="assistant" text={streamingText} />
+        )}
+        {sending && !streamingText && (
           <div style={{
             display: 'flex', gap: 6, alignItems: 'center',
             marginBottom: 12

@@ -8,7 +8,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0)
   const [tag, setTag] = useState('PLAYER_01')
   const [goal, setGoal] = useState(120)
-  const [ai, setAI] = useState<AIConfig>({ apiKey: '', endpoint: '', model: '' })
+  const [ai, setAI] = useState<AIConfig>({ apiKey: '', endpoint: '', model: 'deepseek-chat' })
 
   function finish() {
     init(tag.trim() || 'PLAYER_01', goal, ai)
@@ -166,7 +166,7 @@ export default function Onboarding() {
           <input
             value={ai.endpoint}
             onChange={(e) => setAI({ ...ai, endpoint: e.target.value })}
-            placeholder="https://open.bigmodel.cn/api/paas/v4"
+            placeholder="https://api.deepseek.com/v1"
             style={{
               width: '100%',
               padding: '14px 16px',
@@ -185,7 +185,7 @@ export default function Onboarding() {
           <input
             value={ai.model}
             onChange={(e) => setAI({ ...ai, model: e.target.value })}
-            placeholder="glm-4-plus"
+            placeholder="deepseek-chat"
             style={{
               width: '100%',
               padding: '14px 16px',
