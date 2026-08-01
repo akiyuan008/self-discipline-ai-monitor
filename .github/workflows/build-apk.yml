@@ -38,7 +38,7 @@ jobs:
 
       - name: ➕ Add Capacitor Android platform
         run: |
-          npx cap add android --no-sync
+          npx cap add android
           npx cap sync android
 
       - name: 📋 Copy native plugin files into Android project
