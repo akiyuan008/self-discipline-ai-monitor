@@ -3,6 +3,7 @@ import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import ModelPicker from '@/components/ModelPicker'
 import { MODEL_PRESETS } from '@/data/modelPresets'
+import { testConnection } from '@/lib/ai'
 
 interface Props {
   onBack: () => void
@@ -25,11 +26,21 @@ export default function Settings({ onBack }: Props) {
   const [endpoint, setEndpoint] = useState(ai.endpoint)
   const [model, setModel] = useState(ai.model)
   const [showPicker, setShowPicker] = useState(false)
+  const [testing, setTesting] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle')
+  const [testMsg, setTestMsg] = useState('')
 
   function save() {
     setAI({ apiKey: apiKey.trim(), endpoint: endpoint.trim(), model: model.trim() })
-    showToast('已保存')
-    onBack()
+    showToast('配置已保存')
+  }
+
+  async function test() {
+    setTesting('testing')
+    setTestMsg('')
+    const r = await testConnection({ apiKey, endpoint, model })
+    setTesting(r.ok ? 'ok' : 'fail')
+    setTestMsg(r.msg)
+    if (r.ok) showToast('连接成功')
   }
 
   // 找当前选中的供应商
@@ -147,7 +158,7 @@ export default function Settings({ onBack }: Props) {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontWeight: 700, fontSize: 10, flexShrink: 0
                   }}>
-                    {activePreset.emoji}
+                    {activePreset.logoText}
                   </div>
                 )}
                 <div style={{ minWidth: 0 }}>
@@ -210,10 +221,11 @@ export default function Settings({ onBack }: Props) {
               </div>
             )}
 
+            <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={save}
               style={{
-                width: '100%', marginTop: 4,
+                flex: 1, marginTop: 4,
                 padding: '12px', borderRadius: 100,
                 background: 'var(--fg)', color: 'var(--bg)',
                 border: 'none', fontSize: 13, fontWeight: 600,
@@ -222,8 +234,38 @@ export default function Settings({ onBack }: Props) {
             >
               保存配置
             </button>
-          </div>
-        </Section>
+            <button
+              onClick={test}
+              disabled={testing === 'testing'}
+              style={{
+                flex: 1, marginTop: 4,
+                padding: '12px', borderRadius: 100,
+                background: 'transparent', color: 'var(--fg)',
+                border: '1px solid var(--border)',
+                fontSize: 13, fontWeight: 600,
+                cursor: testing === 'testing' ? 'wait' : 'pointer',
+                opacity: testing === 'testing' ? 0.5 : 1
+              }}
+            >
+              {testing === 'testing' ? '测试中…' : '测试连接'}
+            </button>
+            </div>
+
+          {/* 测试反馈 */}
+          {testMsg && (
+            <div style={{
+              marginTop: 12, padding: '10px 12px', borderRadius: 10,
+              background: testing === 'ok' ? 'rgba(22, 163, 74, 0.08)' : 'rgba(229, 77, 46, 0.08)',
+              color: testing === 'ok' ? 'var(--success)' : 'var(--danger)',
+              fontSize: 12,
+              display: 'flex', alignItems: 'center', gap: 6
+            }}>
+              {testing === 'ok' ? '✓ ' : '✕ '}
+              {testMsg}
+            </div>
+          )}
+        </div>
+      </Section>
 
         {/* 玩家信息 */}
         <Section title="账户">

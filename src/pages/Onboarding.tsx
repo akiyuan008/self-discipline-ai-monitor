@@ -179,7 +179,7 @@ export default function Onboarding() {
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontWeight: 700, fontSize: 11, flexShrink: 0
                     }}>
-                      {p.emoji}
+                      {p.logoText}
                     </div>
                     <div style={{ minWidth: 0 }}>
                       <div style={{

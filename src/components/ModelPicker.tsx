@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MODEL_PRESETS } from '@/data/modelPresets'
+import { MODEL_PRESETS, type ModelPreset } from '@/data/modelPresets'
 
 interface Props {
   onSelect: (endpoint: string, model: string) => void
@@ -9,14 +9,7 @@ interface Props {
 }
 
 export default function ModelPicker({ onSelect, onClose, currentEndpoint, currentModel }: Props) {
-  const [expanded, setExpanded] = useState<string | null>(
-    MODEL_PRESETS.find(p => p.endpoint === currentEndpoint)?.id ?? null
-  )
-
-  function pick(endpoint: string, model: string) {
-    onSelect(endpoint, model)
-    onClose()
-  }
+  const [selectedPreset, setSelectedPreset] = useState<ModelPreset | null>(null)
 
   return (
     <div
@@ -24,177 +17,278 @@ export default function ModelPicker({ onSelect, onClose, currentEndpoint, curren
         position: 'fixed', inset: 0,
         background: 'var(--bg)',
         zIndex: 600,
-        overflow: 'auto'
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column'
       }}
       className="safe-top safe-bottom animate-in"
     >
-      <div style={{ padding: '16px 20px 32px' }}>
-        <Header onClose={onClose} />
+      {/* Header */}
+      <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+        <button
+          onClick={onClose}
+          style={{
+            width: 36, height: 36, borderRadius: '50%',
+            background: 'var(--card-bg)', border: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', color: 'var(--fg)'
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+            MODEL_PICKER
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>选择 AI 供应商</div>
+        </div>
+      </div>
 
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>选择模型供应商</h1>
-        <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 20 }}>
-          共 {MODEL_PRESETS.length} 家国内主流大模型，全部兼容 OpenAI 协议
-        </p>
-
-        {MODEL_PRESETS.map(p => {
-          const isExpanded = expanded === p.id
-          const isActive = currentEndpoint === p.endpoint
-          return (
-            <div key={p.id} style={{
-              marginBottom: 8,
-              background: 'var(--card-bg)',
-              borderRadius: 12,
-              border: `1px solid ${isActive ? p.accent : 'var(--border)'}`,
-              overflow: 'hidden'
-            }}>
+      {/* 卡片网格 */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 16px 24px' }} className="scrollbar-hide">
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: 10
+        }}>
+          {MODEL_PRESETS.map(p => {
+            const isActive = p.endpoint === currentEndpoint
+            return (
               <button
-                onClick={() => setExpanded(isExpanded ? null : p.id)}
+                key={p.id}
+                onClick={() => setSelectedPreset(p)}
                 style={{
-                  width: '100%',
-                  padding: '14px 16px',
-                  background: 'transparent',
-                  border: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
+                  textAlign: 'left',
+                  padding: 12,
+                  borderRadius: 14,
+                  background: 'var(--card-bg)',
+                  border: isActive ? `2px solid ${p.accent}` : '1px solid var(--border)',
                   cursor: 'pointer',
-                  textAlign: 'left'
+                  position: 'relative',
+                  overflow: 'hidden'
                 }}
               >
-                <div style={{
-                  width: 36, height: 36, borderRadius: 8,
-                  background: p.accent,
-                  color: '#fff',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 700, fontSize: 14, flexShrink: 0
-                }}>
-                  {p.emoji}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--fg)' }}>
-                    {p.vendor}
-                  </div>
+                {p.featured && (
                   <div style={{
-                    fontSize: 11, color: 'var(--muted)',
-                    fontFamily: 'DM Mono, monospace',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                    position: 'absolute', top: 6, right: 6,
+                    fontSize: 9, fontWeight: 700,
+                    background: p.accent, color: '#fff',
+                    padding: '2px 6px', borderRadius: 4
                   }}>
-                    {p.vendorEn} · {p.models.length} 个模型
+                    推荐
                   </div>
+                )}
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10,
+                  background: p.accent, color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 700, fontSize: 13,
+                  marginBottom: 10
+                }}>
+                  {p.logoText}
+                </div>
+                <div style={{
+                  fontSize: 14, fontWeight: 600,
+                  color: 'var(--fg)',
+                  marginBottom: 2
+                }}>
+                  {p.vendor}
+                </div>
+                <div style={{
+                  fontSize: 11, color: 'var(--muted)',
+                  lineHeight: 1.4
+                }}>
+                  {p.tagline}
                 </div>
                 {isActive && (
                   <div style={{
                     fontSize: 10, color: p.accent,
-                    fontWeight: 600,
-                    padding: '2px 8px',
-                    background: p.accent + '14',
-                    borderRadius: 100,
-                    fontFamily: 'DM Mono, monospace'
+                    marginTop: 6, fontFamily: 'DM Mono, monospace', fontWeight: 600
                   }}>
-                    ACTIVE
+                    当前: {currentModel}
                   </div>
                 )}
-                <svg
-                  width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="var(--muted)" strokeWidth="2"
-                  style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
-                >
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
               </button>
+            )
+          })}
+        </div>
+      </div>
 
-              {isExpanded && (
-                <div style={{ padding: '4px 0 12px' }}>
-                  {p.getApiKeyUrl && (
-                    <a
-                      href={p.getApiKeyUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      style={{
-                        display: 'block',
-                        padding: '8px 16px',
-                        fontSize: 12, color: p.accent,
-                        textDecoration: 'none'
-                      }}
-                    >
-                      → 获取 {p.vendor} API Key
-                    </a>
-                  )}
-                  {p.models.map(m => {
-                    const selected = isActive && currentModel === m.id
-                    return (
-                      <button
-                        key={m.id}
-                        onClick={() => pick(p.endpoint, m.id)}
-                        style={{
-                          width: '100%',
-                          padding: '10px 16px 10px 60px',
-                          background: selected ? p.accent + '0F' : 'transparent',
-                          border: 'none',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          cursor: 'pointer',
-                          textAlign: 'left'
-                        }}
-                      >
-                        <div>
-                          <div style={{
-                            fontSize: 13, fontWeight: 500,
-                            color: selected ? p.accent : 'var(--fg)'
-                          }}>
-                            {m.name}
-                          </div>
-                          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-                            {m.desc}
-                          </div>
-                        </div>
-                        {selected && (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                            stroke={p.accent} strokeWidth="2.5">
-                            <path d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </button>
-                    )
-                  })}
-                  <div style={{
-                    padding: '6px 16px 0 60px',
-                    fontSize: 10,
-                    color: 'var(--muted)',
-                    fontFamily: 'DM Mono, monospace'
-                  }}>
-                    ENDPOINT: {p.endpoint || '(待自填)'}
-                  </div>
-                </div>
-              )}
+      {/* 底部 Sheet 选模型 */}
+      {selectedPreset && (
+        <div
+          style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            zIndex: 700,
+            display: 'flex',
+            alignItems: 'flex-end'
+          }}
+          onClick={() => setSelectedPreset(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxHeight: '80vh',
+              background: 'var(--bg)',
+              borderRadius: '20px 20px 0 0',
+              padding: 16,
+              overflowY: 'auto',
+              animation: 'fadeInUp 0.3s ease-out'
+            }}
+            className="scrollbar-hide safe-bottom"
+          >
+            {/* 抓手 */}
+            <div style={{
+              width: 40, height: 4,
+              background: 'var(--border)',
+              borderRadius: 2,
+              margin: '0 auto 16px'
+            }} />
+
+            {/* 供应商信息 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{
+                width: 48, height: 48, borderRadius: 12,
+                background: selectedPreset.accent,
+                color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 700, fontSize: 15
+              }}>
+                {selectedPreset.logoText}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{selectedPreset.vendor}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)' }}>{selectedPreset.tagline}</div>
+              </div>
             </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
 
-function Header({ onClose }: { onClose: () => void }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-      <button
-        onClick={onClose}
-        style={{
-          width: 36, height: 36, borderRadius: '50%',
-          background: 'var(--card-bg)', border: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', color: 'var(--fg)'
-        }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
-      </button>
-      <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-        MODEL_PICKER
-      </div>
+            {/* 申请 API Key */}
+            {selectedPreset.getApiKeyUrl && (
+              <a
+                href={selectedPreset.getApiKeyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'block',
+                  padding: '10px 14px',
+                  background: 'var(--bg-alt)',
+                  color: 'var(--fg)',
+                  borderRadius: 10,
+                  fontSize: 12,
+                  marginBottom: 16,
+                  textDecoration: 'none',
+                  textAlign: 'center',
+                  fontWeight: 600
+                }}
+              >
+                前往 {selectedPreset.vendor} 申请 API Key →
+              </a>
+            )}
+
+            {/* Endpoint 提示 */}
+            {selectedPreset.endpoint && (
+              <div style={{
+                padding: '8px 12px',
+                background: 'var(--bg-alt)',
+                borderRadius: 8,
+                marginBottom: 16,
+                fontSize: 10, fontFamily: 'DM Mono, monospace',
+                color: 'var(--muted)',
+                wordBreak: 'break-all'
+              }}>
+                ENDPOINT: {selectedPreset.endpoint}
+              </div>
+            )}
+
+            {/* 模型列表 */}
+            <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginBottom: 8 }}>
+              选择模型
+            </div>
+            {selectedPreset.models.map(m => {
+              const selected = selectedPreset.endpoint === currentEndpoint && m.id === currentModel
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => {
+                    onSelect(selectedPreset.endpoint, m.id)
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    background: selected ? 'var(--fg)' : 'var(--card-bg)',
+                    color: selected ? 'var(--bg)' : 'var(--fg)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    marginBottom: 8,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 14, fontWeight: 600,
+                      marginBottom: 2,
+                      display: 'flex', alignItems: 'center', gap: 6
+                    }}>
+                      {m.name}
+                      {m.tags?.map(t => (
+                        <span key={t} style={{
+                          fontSize: 9, padding: '1px 5px',
+                          borderRadius: 3,
+                          background: selected ? 'rgba(255,255,255,0.2)' : 'var(--bg-alt)',
+                          color: selected ? '#fff' : 'var(--muted)',
+                          fontWeight: 600
+                        }}>
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{
+                      fontSize: 11,
+                      color: selected ? 'rgba(255,255,255,0.7)' : 'var(--muted)'
+                    }}>
+                      {m.desc}
+                    </div>
+                  </div>
+                  {selected && (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <path d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              )
+            })}
+
+            {/* 自定义供应商：让用户直接输入 endpoint 和 model */}
+            {selectedPreset.id === 'custom' && (
+              <div style={{ marginTop: 12 }}>
+                <p style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12 }}>
+                  选「自定义」后回到设置页，手动填入 endpoint 和 model 名称。任何兼容 OpenAI 协议的服务都可以接入。
+                </p>
+                <button
+                  onClick={() => onSelect('', 'custom')}
+                  style={{
+                    width: '100%', padding: 12,
+                    background: 'var(--fg)', color: 'var(--bg)',
+                    border: 'none', borderRadius: 10,
+                    fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  返回手填
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

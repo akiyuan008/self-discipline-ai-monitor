@@ -239,7 +239,6 @@ function buildContext(state: any): string {
   const ratio = dailyGoalMin > 0 ? Math.min(100, Math.round(studyMin / dailyGoalMin * 100)) : 0
   const hour = new Date().getHours()
   const isLate = hour >= 23 || hour < 5
-
   // 列出已有任务 ID 供 AI 调用 complete_quest
   const questList = state.quests
     .filter((q: any) => !q.completed)
@@ -262,4 +261,48 @@ function buildContext(state: any): string {
 
 【用户未完成的任务】（调用 complete_quest 时用对应 ID）
 ${questList}`
+}
+
+/**
+ * 测试 AI 连接 — 发送一条最小请求验证 API Key + Endpoint + Model 可用
+ */
+export async function testConnection(cfg: { apiKey: string; endpoint: string; model: string }): Promise<{ ok: boolean; msg: string }> {
+  if (!cfg.apiKey?.trim()) return { ok: false, msg: '请先填入 API Key' }
+  if (!cfg.endpoint?.trim()) return { ok: false, msg: '请先选模型供应商' }
+  if (!cfg.model?.trim() || cfg.model === 'custom') return { ok: false, msg: '请选择具体模型' }
+
+  const url = cfg.endpoint.replace(/\/$/, '') + '/chat/completions'
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 15000)
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cfg.apiKey}`
+      },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 8
+      }),
+      signal: controller.signal
+    })
+    clearTimeout(timer)
+
+    if (res.ok) {
+      return { ok: true, msg: '连接成功，监管者已就绪' }
+    }
+    const text = await res.text()
+    let detail = ''
+    try { detail = JSON.parse(text)?.error?.message || '' } catch { /* ignore */ }
+    if (res.status === 401) return { ok: false, msg: 'API Key 错误或已失效' }
+    if (res.status === 404) return { ok: false, msg: '模型名或 endpoint 不对：' + (detail || res.status) }
+    return { ok: false, msg: `HTTP ${res.status} ${detail || ''}`.trim() }
+  } catch (e: any) {
+    clearTimeout(timer)
+    if (e.name === 'AbortError') return { ok: false, msg: '请求超时（15s），可能 endpoint 不通' }
+    return { ok: false, msg: `网络错误：${e.message}` }
+  }
 }
