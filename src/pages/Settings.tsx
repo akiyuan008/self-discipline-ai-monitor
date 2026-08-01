@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useStore, PRESET_AI_CONFIG } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { testConnection } from '@/lib/ai'
+import { exportBackup, importBackup } from '@/lib/backup'
 
 interface Props {
   onBack: () => void
@@ -39,6 +40,8 @@ export default function Settings({ onBack }: Props) {
   const [gaokaoDateInput, setGaokaoDateInput] = useState(gaokaoDate)
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
   const [modelSearch, setModelSearch] = useState('')
+  const [importing, setImporting] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   // 保存：先存 localStorage（通过 store persist），再异步测试
   // 测试失败只弹 Toast，绝对不清空表单
@@ -443,25 +446,6 @@ export default function Settings({ onBack }: Props) {
               </div>
             </div>
 
-            {/* 常见 endpoint 参考 */}
-            <div style={{
-              padding: '10px 12px',
-              background: 'var(--bg-alt)',
-              borderRadius: 8,
-              marginBottom: 12,
-              fontSize: 11, color: 'var(--muted)',
-              lineHeight: 1.8
-            }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>常见 Endpoint 参考：</div>
-              <div>百炼（千问）：https://dashscope.aliyuncs.com/compatible-mode/v1</div>
-              <div>DeepSeek：https://api.deepseek.com</div>
-              <div>智谱：https://open.bigmodel.cn/api/paas/v4</div>
-              <div>Kimi：https://api.moonshot.cn/v1</div>
-              <div style={{ marginTop: 6, fontSize: 10, color: 'var(--muted)' }}>
-                百炼模型：qwen-plus / qwen-turbo / qwen-max / qwen3.7-max
-              </div>
-            </div>
-
             {/* 系统提示词 */}
             <div style={{ marginBottom: 12 }}>
               <div style={{
@@ -590,6 +574,89 @@ export default function Settings({ onBack }: Props) {
           >
             重置全部进度
           </button>
+        </Section>
+
+        {/* 数据备份 */}
+        <Section title="数据备份">
+          <div className="card" style={{ padding: 16, borderRadius: 12 }}>
+            <div style={{
+              fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6
+            }}>
+              导出全部数据（HP、积分、任务、成就、AI 配置、高考档案等）到文件，或从备份文件恢复。
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={async () => {
+                  try {
+                    const method = await exportBackup()
+                    if (method === 'download') showToast('备份已下载')
+                    else if (method === 'share') showToast('备份已分享')
+                    else showToast('备份数据已展示，请手动复制')
+                  } catch {
+                    showToast('导出失败，请重试')
+                  }
+                }}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: 100,
+                  background: 'var(--fg)', color: 'var(--bg)',
+                  border: 'none', fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                导出备份
+              </button>
+              <button
+                onClick={() => importing ? {} : fileRef.current?.click()}
+                disabled={importing}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: 100,
+                  background: 'var(--bg-alt)', color: 'var(--fg)',
+                  border: '1px solid var(--border)',
+                  fontSize: 13, fontWeight: 600,
+                  cursor: importing ? 'not-allowed' : 'pointer',
+                  opacity: importing ? 0.5 : 1
+                }}
+              >
+                {importing ? '导入中…' : '导入备份'}
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/json,.json"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  e.target.value = ''
+                  if (!file) return
+                  setImporting(true)
+                  try {
+                    await importBackup(file)
+                  } catch (err: any) {
+                    showToast(err?.message || '导入失败')
+                    setImporting(false)
+                  }
+                }}
+                style={{ display: 'none' }}
+              />
+            </div>
+          </div>
+        </Section>
+
+        {/* 关于 */}
+        <Section title="关于">
+          <div className="card" style={{
+            padding: 16, borderRadius: 12,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+          }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>Cyber Survival</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+                v2.5.0 · React + Capacitor
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+              LOCAL · OFFLINE
+            </div>
+          </div>
         </Section>
 
         <div style={{

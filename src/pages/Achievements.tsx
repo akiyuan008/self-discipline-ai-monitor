@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useStore } from '@/stores/useStore'
+import { useGaoKaoStore } from '@/stores/gaoKaoStore'
 import { ACHIEVEMENT_TABS } from '@/data/achievements'
+import { showToast } from '@/components/Toast'
 
 interface Props {
   onBack: () => void
@@ -9,6 +11,13 @@ interface Props {
 export default function Achievements({ onBack }: Props) {
   const [tab, setTab] = useState<'all' | 'unlocked' | 'locked'>('all')
   const achievements = useStore(s => s.achievements)
+  const streak = useStore(s => s.streak)
+  const totalFocusMs = useStore(s => s.totalFocusMs)
+
+  const milestones = useGaoKaoStore(s => s.profile.milestones)
+  const addMilestone = useGaoKaoStore(s => s.addMilestone)
+
+  const focusHours = Math.floor(totalFocusMs / 3_600_000)
 
   const list = achievements.filter(a => {
     if (tab === 'unlocked') return a.unlocked
@@ -123,6 +132,89 @@ export default function Achievements({ onBack }: Props) {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* ═══ 备考里程碑（从档案馆合并） ═══ */}
+        <div style={{ marginTop: 24, marginBottom: 8, paddingLeft: 4 }}>
+          <div style={{
+            display: 'flex', alignItems: 'baseline', gap: 8
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>备考里程碑</div>
+            <div style={{
+              fontSize: 10, color: 'var(--muted)',
+              fontFamily: 'DM Mono, monospace'
+            }}>MILESTONES</div>
+          </div>
+        </div>
+        <div className="card" style={{ padding: 14, borderRadius: 12 }}>
+          {milestones.length === 0 ? (
+            <div style={{
+              padding: 20, textAlign: 'center',
+              fontSize: 12, color: 'var(--muted)'
+            }}>
+              暂无里程碑记录
+            </div>
+          ) : (
+            milestones.map((m, i) => (
+              <div key={m.id} style={{
+                display: 'flex', gap: 12,
+                paddingBottom: i < milestones.length - 1 ? 16 : 0,
+                position: 'relative'
+              }}>
+                {/* 时间线 */}
+                <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center'
+                }}>
+                  <div style={{
+                    width: 10, height: 10, borderRadius: '50%',
+                    background: m.type === 'scoreUp' ? 'var(--success)'
+                      : m.type === 'errorClear' ? 'var(--info)'
+                      : m.type === 'streak' ? '#F59E0B'
+                      : 'var(--fg)',
+                    flexShrink: 0, marginTop: 3
+                  }} />
+                  {i < milestones.length - 1 && (
+                    <div style={{
+                      width: 2, flex: 1, background: 'var(--border)', marginTop: 2
+                    }} />
+                  )}
+                </div>
+                <div style={{ flex: 1, paddingBottom: 4 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{m.title}</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                    {m.desc}
+                  </div>
+                  <div style={{
+                    fontSize: 10, color: 'var(--muted)',
+                    fontFamily: 'DM Mono, monospace', marginTop: 4
+                  }}>
+                    {new Date(m.ts).toLocaleString('zh-CN', { hour12: false })}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+
+          {/* 快速添加里程碑 */}
+          <button
+            onClick={() => {
+              addMilestone({
+                title: `连续专注 ${streak} 天`,
+                desc: `总学习时长 ${focusHours} 小时`,
+                type: 'streak'
+              })
+              showToast('里程碑已记录')
+            }}
+            style={{
+              width: '100%', marginTop: 8,
+              padding: '10px', borderRadius: 8,
+              background: 'var(--bg-alt)', border: '1px dashed var(--border)',
+              color: 'var(--muted)', fontSize: 12,
+              cursor: 'pointer'
+            }}
+          >
+            + 记录当前进度为里程碑
+          </button>
         </div>
       </div>
     </div>

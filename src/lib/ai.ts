@@ -1,5 +1,6 @@
 import { useStore, type AIConfig, type ChatMessage, calcGaokaoScore, daysUntilGaokao } from '@/stores/useStore'
 import { useGaoKaoStore } from '@/stores/gaoKaoStore'
+import { fetchUsageStats, hasUsageAccess, openUsageAccessSettings, fmtMs } from '@/lib/usageStats'
 
 /**
  * 前端直连用户配置的 OpenAI 兼容 API
@@ -175,13 +176,37 @@ const TOOLS = [
         required: ['subject', 'score']
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'check_phone_usage',
+      description: '查阅用户今天的手机使用状况，包括学习App和娱乐App的使用时长。当你想了解用户是否在偷懒、是否在刷娱乐App时调用。用户说"看看我今天的表现"、"我是不是在偷懒"、"查查我的手机使用"时也调用。',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'request_usage_permission',
+      description: '引导用户去系统设置开启使用情况访问权限。当check_phone_usage返回权限不足时调用。',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
+    }
   }
 ]
 
 // ═══════════════════════════════════════════════════════════
 // 工具执行
 // ═══════════════════════════════════════════════════════════
-function executeTool(name: string, args: any): string {
+async function executeTool(name: string, args: any): Promise<string> {
   const s = useStore.getState()
   try {
     switch (name) {
@@ -266,6 +291,46 @@ function executeTool(name: string, args: any): string {
         gkStore.updateProfile({ currentTotalScore: newSubjects.reduce((sum, s) => sum + s.currentScore, 0) })
         return JSON.stringify({ ok: true, subject: args.subject, newScore: score })
       }
+      case 'check_phone_usage': {
+        // 先检查权限
+        const granted = await hasUsageAccess()
+        if (!granted) {
+          return JSON.stringify({
+            ok: false,
+            error: '权限不足',
+            needPermission: true,
+            msg: '用户尚未授予使用情况访问权限，请调用 request_usage_permission 引导用户去设置。'
+          })
+        }
+        // 拉取今天的使用数据
+        const now = Date.now()
+        const start = new Date()
+        start.setHours(0, 0, 0, 0)
+        const { study, ent } = await fetchUsageStats(start.getTime(), now)
+
+        const studyTotal = study.reduce((sum, x) => sum + x.totalMs, 0)
+        const entTotal = ent.reduce((sum, x) => sum + x.totalMs, 0)
+        const studyTop = study.sort((a, b) => b.totalMs - a.totalMs).slice(0, 3)
+          .map(x => `${x.label}:${fmtMs(x.totalMs)}`).join(', ')
+        const entTop = ent.sort((a, b) => b.totalMs - a.totalMs).slice(0, 3)
+          .map(x => `${x.label}:${fmtMs(x.totalMs)}`).join(', ')
+
+        // 同步到 store
+        useStore.getState().syncUsage(study, ent)
+
+        return JSON.stringify({
+          ok: true,
+          studyTotal: fmtMs(studyTotal),
+          entTotal: fmtMs(entTotal),
+          studyTop,
+          entTop,
+          msg: `今日学习${fmtMs(studyTotal)}，娱乐${fmtMs(entTotal)}。学习Top: ${studyTop || '无'}。娱乐Top: ${entTop || '无'}。`
+        })
+      }
+      case 'request_usage_permission': {
+        await openUsageAccessSettings()
+        return JSON.stringify({ ok: true, msg: '已跳转到使用情况访问权限设置页面，请引导用户开启权限后返回。' })
+      }
       default:
         return JSON.stringify({ ok: false, error: `unknown tool: ${name}` })
     }
@@ -334,7 +399,7 @@ export async function chatWithAI(
         } catch {
           args = {}
         }
-        const result = executeTool(fnName, args)
+        const result = await executeTool(fnName, args)
         messages.push({
           role: 'tool',
           tool_call_id: call.id,
@@ -568,6 +633,11 @@ function buildContext(state: any): string {
 代号:${state.playerTag} HP:${state.hp}/100 积分:${state.points} 连胜:${state.streak}天
 学习:${studyMin}min/${dailyGoalMin}min(${ratio}%) 娱乐:${entMin}min 总专注:${Math.floor(state.totalFocusMs / 3600_000)}h
 时间:${new Date().toLocaleString('zh-CN', { hour12: false })} ${isLate ? '[深夜]' : ''}
+
+【手机使用监测】
+你可以随时调用 check_phone_usage 工具查阅用户今天的手机使用详情（学习App和娱乐App的时长排行）。
+如果返回权限不足，调用 request_usage_permission 引导用户去系统设置开启权限。
+当前已同步的学习时长:${studyMin}分钟 娱乐时长:${entMin}分钟（此数据可能不是实时的，如需最新数据请调check_phone_usage）
 
 【高考档案】
 距高考:${gaokaoDays}天 日期:${state.gaokaoDate}

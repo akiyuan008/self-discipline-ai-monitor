@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { chatWithAI } from '@/lib/ai'
+import { hasUsageAccess, openUsageAccessSettings } from '@/lib/usageStats'
 import GaokaoProgress from '@/components/GaokaoProgress'
 
 interface Props {
@@ -30,8 +31,14 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [streamingText, setStreamingText] = useState('')
+  const [usageAccess, setUsageAccess] = useState(true)
   const streamingRef = useRef('')
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // 检查使用情况访问权限
+  useEffect(() => {
+    hasUsageAccess().then(setUsageAccess)
+  }, [])
 
   const studyMin = Math.floor(todayStudyMs / 60_000)
   const goalPct = dailyGoalMin > 0 ? Math.min(100, Math.round(studyMin / dailyGoalMin * 100)) : 0
@@ -204,6 +211,41 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
         )}
         {/* 高考进度精简版 — 仅在已配置时显示 */}
         {configured && <GaokaoProgress variant="compact" />}
+
+        {/* 使用情况权限引导 — 仅在已配置且缺少权限时显示 */}
+        {configured && !usageAccess && (
+          <div style={{
+            margin: '0 0 12px',
+            padding: '12px 16px',
+            borderRadius: 12,
+            background: 'rgba(229, 77, 46, 0.08)',
+            border: '1px solid rgba(229, 77, 46, 0.2)',
+            display: 'flex', alignItems: 'center', gap: 10
+          }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: '#E54D2E' }}>
+                缺少使用情况访问权限
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
+                监管者需要此权限查阅你的真实学习/娱乐时长
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                await openUsageAccessSettings()
+                setTimeout(() => hasUsageAccess().then(setUsageAccess), 2000)
+              }}
+              style={{
+                padding: '6px 14px', borderRadius: 100,
+                background: '#E54D2E', color: '#fff',
+                border: 'none', fontSize: 11, fontWeight: 600,
+                cursor: 'pointer', whiteSpace: 'nowrap'
+              }}
+            >
+              去授权
+            </button>
+          </div>
+        )}
         {messages.map(m => <Bubble key={m.id} role={m.role} text={m.text} />)}
         {/* 流式输出中 */}
         {sending && streamingText && (
@@ -263,7 +305,12 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && send(input)}
+          onInput={e => setInput((e.target as HTMLInputElement).value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+              send(input)
+            }
+          }}
           placeholder="告诉监管者…"
           style={{
             flex: 1, padding: '10px 14px', borderRadius: 100,
@@ -276,13 +323,13 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
         />
         <button
           onClick={() => send(input)}
-          disabled={sending || !input.trim()}
+          disabled={sending}
           style={{
             padding: '10px 20px', borderRadius: 100,
             background: 'var(--fg)', color: 'var(--bg)',
             border: 'none', fontSize: 13, fontWeight: 600,
-            cursor: sending || !input.trim() ? 'not-allowed' : 'pointer',
-            opacity: sending || !input.trim() ? 0.5 : 1,
+            cursor: sending ? 'not-allowed' : 'pointer',
+            opacity: sending ? 0.5 : 1,
             transition: 'opacity 0.2s, transform 0.1s'
           }}
         >发送</button>

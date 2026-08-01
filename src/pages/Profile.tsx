@@ -1,7 +1,6 @@
-import { useState, useRef } from 'react'
-import { useStore } from '@/stores/useStore'
-import { showToast } from '@/components/Toast'
-import { exportBackup, importBackup } from '@/lib/backup'
+import { useState } from 'react'
+import { useStore, daysUntilGaokao } from '@/stores/useStore'
+import { useGaoKaoStore } from '@/stores/gaoKaoStore'
 import GaokaoProgress from '@/components/GaokaoProgress'
 
 interface ProfileProps {
@@ -9,45 +8,21 @@ interface ProfileProps {
 }
 
 export default function Profile({ onNavigate }: ProfileProps) {
-  const [importing, setImporting] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
   const playerTag = useStore(s => s.playerTag)
   const streak = useStore(s => s.streak)
-  const totalFocusMs = useStore(s => s.totalFocusMs)
   const points = useStore(s => s.points)
   const hp = useStore(s => s.hp)
+  const gaokaoDate = useStore(s => s.gaokaoDate)
 
-  const focusHours = Math.floor(totalFocusMs / 3600_000)
-  // 同步率 = HP * 0.8 + 连胜 * 1（mock 算法）
+  const profile = useGaoKaoStore(s => s.profile)
+  const updateSubject = useGaoKaoStore(s => s.updateSubject)
+  const updateProfile = useGaoKaoStore(s => s.updateProfile)
+
+  const [editingSubject, setEditingSubject] = useState<string | null>(null)
+
+  const days = daysUntilGaokao(gaokaoDate)
+  const scoreGap = profile.targetTotalScore - profile.currentTotalScore
   const syncRate = Math.min(100, Math.round(hp * 0.8 + streak * 1.5))
-
-  // ── 备份导入导出 ──
-  function handleExport() {
-    try {
-      exportBackup()
-      showToast('备份已导出')
-    } catch {
-      showToast('导出失败，请重试')
-    }
-  }
-
-  function handleImportClick() {
-    fileRef.current?.click()
-  }
-
-  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = '' // 重置以便重复选择同一文件
-    if (!file) return
-    setImporting(true)
-    try {
-      await importBackup(file)
-      // importBackup 成功后会自动 reload，不需要 showToast
-    } catch (err: any) {
-      showToast(err?.message || '导入失败')
-      setImporting(false)
-    }
-  }
 
   return (
     <div className="safe-top" style={{ padding: '24px 20px 140px' }}>
@@ -58,127 +33,233 @@ export default function Profile({ onNavigate }: ProfileProps) {
         个人中心
       </h1>
 
-      {/* 高考进度精简版 */}
-      <GaokaoProgress variant="compact" />
-
-      {/* 玩家卡 */}
+      {/* ═══ 档案馆内容提上来：绝密档案头 ═══ */}
       <div className="card" style={{
-        padding: 20, borderRadius: 16, marginBottom: 12
+        padding: 20, borderRadius: 16, marginBottom: 12,
+        position: 'relative', overflow: 'hidden'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(135deg, rgba(59,130,246,0.06) 0%, transparent 60%)',
+          pointerEvents: 'none'
+        }} />
+        <div style={{ position: 'relative' }}>
           <div style={{
-            width: 56, height: 56,
-            borderRadius: 16,
-            background: 'var(--bg-alt)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 24
+            display: 'flex', justifyContent: 'space-between',
+            alignItems: 'flex-start', marginBottom: 12
           }}>
-            🎮
-          </div>
-          <div>
-            <div style={{ fontSize: 18, fontWeight: 700 }}>{playerTag}</div>
-            <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-              LV.{Math.floor(streak / 7) + 1} · {syncRate}% SYNC
+            <div>
+              <div style={{
+                fontSize: 11, color: 'var(--muted)',
+                fontFamily: 'DM Mono, monospace', marginBottom: 4
+              }}>
+                CANDIDATE_FILE · {playerTag}
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 700 }}>
+                {profile.nickname}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                目标：{profile.targetUniversity}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{
+                fontSize: 28, fontWeight: 700, lineHeight: 1,
+                color: days <= 100 ? 'var(--danger)' : 'var(--fg)'
+              }}>
+                {days}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--muted)' }}>天后高考</div>
             </div>
           </div>
-        </div>
-        <div style={{ height: 6, background: 'var(--bg-alt)', borderRadius: 100, overflow: 'hidden' }}>
+
+          {/* 分数对比 */}
           <div style={{
-            height: '100%',
-            width: `${syncRate}%`,
-            background: 'var(--success)',
-            borderRadius: 100
-          }} />
+            display: 'flex', alignItems: 'flex-end', gap: 12,
+            padding: '10px 0', borderTop: '1px solid var(--border)'
+          }}>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--muted)' }}>当前</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--fg)' }}>
+                {profile.currentTotalScore}
+              </div>
+            </div>
+            <div style={{ fontSize: 16, color: 'var(--muted)', paddingBottom: 2 }}>→</div>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--muted)' }}>目标</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--success)' }}>
+                {profile.targetTotalScore}
+              </div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'right' }}>
+              <div style={{
+                display: 'inline-block', padding: '3px 10px',
+                borderRadius: 100,
+                background: scoreGap > 0 ? 'rgba(229,77,46,0.1)' : 'rgba(22,163,74,0.1)',
+                color: scoreGap > 0 ? 'var(--danger)' : 'var(--success)',
+                fontSize: 12, fontWeight: 600
+              }}>
+                {scoreGap > 0 ? `差 ${scoreGap} 分` : '已达标'}
+              </div>
+            </div>
+          </div>
+
+          {/* 快速统计 */}
+          <div style={{
+            display: 'flex', gap: 0,
+            borderTop: '1px solid var(--border)',
+            paddingTop: 8, marginTop: 4
+          }}>
+            <MiniStat label="连胜" value={`${streak}天`} />
+            <Divider />
+            <MiniStat label="积分" value={`${points}`} />
+            <Divider />
+            <MiniStat label="HP" value={`${hp}`} />
+            <Divider />
+            <MiniStat label="同步率" value={`${syncRate}%`} />
+          </div>
         </div>
       </div>
 
-      {/* 数据网格 */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 8, marginBottom: 12
-      }}>
-        <Stat label="总专注" value={`${focusHours}`} suffix="HOURS" />
-        <Stat label="连胜" value={`${streak}`} suffix="DAYS" />
+      {/* ═══ 各科提分雷达 ═══ */}
+      <div style={{ marginBottom: 8, paddingLeft: 4 }}>
+        <div style={{
+          fontSize: 11, color: 'var(--muted)',
+          fontFamily: 'DM Mono, monospace', marginBottom: 8
+        }}>
+          SUBJECT_RADAR
+        </div>
       </div>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 8, marginBottom: 12
-      }}>
-        <Stat label="积分" value={points.toString()} />
-        <Stat label="精神力" value={`${hp}`} suffix="/100" />
-      </div>
+      {profile.subjects.map(sub => {
+        const pct = Math.min(100, (sub.currentScore / sub.targetScore) * 100)
+        const gap = sub.targetScore - sub.currentScore
+        const isWeak = gap > sub.fullScore * 0.2 || sub.currentScore < sub.fullScore * 0.5
+
+        return (
+          <div key={sub.name} className="card" style={{
+            padding: 12, borderRadius: 12, marginBottom: 6,
+            borderLeft: `3px solid ${isWeak ? 'var(--danger)' : 'var(--success)'}`
+          }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', marginBottom: 6
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{sub.name}</span>
+                {isWeak && (
+                  <span style={{
+                    padding: '2px 6px', borderRadius: 100,
+                    background: 'rgba(229,77,46,0.1)',
+                    color: 'var(--danger)', fontSize: 9, fontWeight: 600
+                  }}>薄弱</span>
+                )}
+              </div>
+              {editingSubject === sub.name ? (
+                <input
+                  type="number"
+                  defaultValue={sub.currentScore}
+                  max={sub.fullScore}
+                  min={0}
+                  onBlur={(e) => {
+                    const val = Math.max(0, Math.min(sub.fullScore, Number(e.target.value) || 0))
+                    updateSubject(sub.name, { currentScore: val })
+                    const newSubjects = profile.subjects.map(s =>
+                      s.name === sub.name ? { ...s, currentScore: val } : s
+                    )
+                    updateProfile({ currentTotalScore: newSubjects.reduce((sum, s) => sum + s.currentScore, 0) })
+                    setEditingSubject(null)
+                  }}
+                  style={{
+                    width: 60, padding: '4px 8px',
+                    background: 'var(--bg)', color: 'var(--fg)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6, fontSize: 13,
+                    outline: 'none', textAlign: 'right'
+                  }}
+                  autoFocus
+                />
+              ) : (
+                <div style={{
+                  fontSize: 12, fontFamily: 'DM Mono, monospace',
+                  cursor: 'pointer',
+                  color: isWeak ? 'var(--danger)' : 'var(--fg)'
+                }} onClick={() => setEditingSubject(sub.name)}>
+                  {sub.currentScore} / {sub.targetScore}
+                </div>
+              )}
+            </div>
+            <div style={{
+              height: 5, background: 'var(--bg-alt)',
+              borderRadius: 100, overflow: 'hidden'
+            }}>
+              <div style={{
+                height: '100%', width: `${pct}%`,
+                background: isWeak
+                  ? 'linear-gradient(90deg, #E54D2E, #F59E0B)'
+                  : 'linear-gradient(90deg, #16A34A, #3B82F6)',
+                borderRadius: 100, transition: 'width 0.5s'
+              }} />
+            </div>
+          </div>
+        )
+      })}
+
+      {/* ═══ 薄弱点 ═══ */}
+      {profile.weakSubjects.length > 0 && (
+        <div className="card" style={{ padding: 12, borderRadius: 12, marginBottom: 12, marginTop: 6 }}>
+          <div style={{
+            fontSize: 11, color: 'var(--danger)',
+            fontFamily: 'DM Mono, monospace', marginBottom: 8
+          }}>
+            WEAK_POINTS
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {profile.weakSubjects.map((w, i) => (
+              <span key={i} style={{
+                padding: '4px 10px', borderRadius: 100,
+                background: 'rgba(229,77,46,0.08)',
+                color: 'var(--danger)',
+                fontSize: 11, fontWeight: 500
+              }}>{w}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 高考进度精简版 */}
+      <GaokaoProgress variant="compact" />
 
       {/* 列表 */}
       <ListRow
         title="高考档案馆"
-        desc="科目分析、错题追踪、复习计划"
+        desc="详细科目分析"
         onClick={() => onNavigate?.('archive')}
       />
       <ListRow
         title="成就殿堂"
-        desc="查看成就进度"
+        desc="成就与里程碑"
         onClick={() => onNavigate?.('achievements')}
       />
       <ListRow
         title="系统设置"
-        desc="深色模式、AI 配置"
+        desc="深色模式、AI 配置、备份、关于"
         onClick={() => onNavigate?.('settings')}
-      />
-      {/* 数据备份 */}
-      <div style={{ marginTop: 16, marginBottom: 8 }}>
-        <div style={{
-          fontSize: 10, color: 'var(--muted)',
-          fontFamily: 'DM Mono, monospace', marginBottom: 8, paddingLeft: 4
-        }}>
-          DATA BACKUP
-        </div>
-        <ListRow
-          title="导出备份"
-          desc="保存全部数据到文件"
-          onClick={handleExport}
-        />
-        <ListRow
-          title={importing ? '导入中…' : '导入备份'}
-          desc="从备份文件恢复数据"
-          onClick={importing ? () => {} : handleImportClick}
-        />
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json,.json"
-          onChange={handleImportFile}
-          style={{ display: 'none' }}
-        />
-      </div>
-      <ListRow
-        title="关于 Cyber Survival"
-        desc="v2.0.0 · React + Capacitor"
-        onClick={() => {}}
       />
     </div>
   )
 }
 
-function Stat({ label, value, suffix }: { label: string; value: string; suffix?: string }) {
+function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="card" style={{
-      padding: 14, borderRadius: 12, textAlign: 'center'
-    }}>
-      <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-        {label.toUpperCase()}
-      </div>
-      <div style={{ fontSize: 22, fontWeight: 500, marginTop: 4 }}>
-        {value}
-        {suffix && (
-          <span style={{ fontSize: 9, color: 'var(--muted)', marginLeft: 3, fontFamily: 'DM Mono, monospace' }}>
-            {suffix}
-          </span>
-        )}
-      </div>
+    <div style={{ flex: 1, textAlign: 'center' }}>
+      <div style={{ fontSize: 9, color: 'var(--muted)', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 12, fontWeight: 600 }}>{value}</div>
     </div>
   )
+}
+
+function Divider() {
+  return <div style={{ width: 1, background: 'var(--border)' }} />
 }
 
 function ListRow({ title, desc, onClick }: { title: string; desc: string; onClick: () => void }) {
