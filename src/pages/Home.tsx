@@ -1,212 +1,189 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useUserStore, currentPersona } from '@/stores/userStore'
-import { useStatsStore, studyMinutesToday, entertainmentMinutesToday, focusScoreToday } from '@/stores/statsStore'
-import { fmtMs, fmtHM, todayDateLabel } from '@/lib/format'
-import { isLateNight } from '@/lib/usageStats'
-import { careCheck } from '@/lib/ai'
-import { useChatStore } from '@/stores/chatStore'
-import { ACHIEVEMENTS, WORLD_MAPS, PETS } from '@/data/world'
+import { useStore } from '@/stores/useStore'
+import { showToast } from '@/components/Toast'
+import type { PageId } from '@/stores/useStore'
 
-export default function Home() {
-  const nav = useNavigate()
-  const u = useUserStore()
-  const persona = currentPersona()
-  const stats = useStatsStore()
-  const push = useChatStore(s => s.push)
+interface Props {
+  onNavigate?: (p: PageId) => void
+}
 
-  const studyMin = studyMinutesToday()
-  const entMin = entertainmentMinutesToday()
-  const focus = focusScoreToday()
-  const goalMin = u.dailyGoalMin
-  const progress = Math.min(100, Math.round((studyMin / goalMin) * 100))
-  const today = todayDateLabel()
+export default function Home({ onNavigate }: Props) {
+  const hp = useStore(s => s.hp)
+  const points = useStore(s => s.points)
+  const streak = useStore(s => s.streak)
+  const totalFocusMs = useStore(s => s.totalFocusMs)
+  const setHp = useStore(s => s.setHp)
+  const addPoints = useStore(s => s.addPoints)
+  const dailyGoalMin = useStore(s => s.dailyGoalMin)
+  const playerTag = useStore(s => s.playerTag)
 
-  const [careMsg, setCareMsg] = useState<string | null>(null)
-  const [careMood, setCareMood] = useState<string>('care')
+  const focusHours = Math.floor(totalFocusMs / 3600_000)
+  // 主线进度：今日专注 / 目标（mock 当前 45%）
+  const mainProgress = 45
 
-  useEffect(() => {
-    let stop = false
-    async function poll() {
-      while (!stop) {
-        const r = await careCheck()
-        if (r.trigger && !stop) {
-          setCareMsg(r.reply)
-          setCareMood(r.mood)
-          push({ sender: 'ai', text: r.reply, mood: r.mood as any })
-        }
-        await new Promise(r => setTimeout(r, 15 * 60 * 1000)) // 15 分钟一次
-      }
-    }
-    poll()
-    return () => { stop = true }
-  }, [push])
-
-  const ringCirc = 2 * Math.PI * 60
-  const ringOffset = ringCirc * (1 - progress / 100)
-
-  const unlockedMapsCount = u.unlockedMaps.length
-  const unlockedPetsCount = u.unlockedPets.length
-  const achievementsCount = ACHIEVEMENTS.filter(a => a.unlocked).length
+  const circumference = 2 * Math.PI * 90
+  const offset = circumference - (hp / 100) * circumference
 
   return (
-    <div className="px-4 pb-4 pt-3">
-      {/* 问候 */}
-      <div className="animate-in mb-4">
-        <p className="text-xs text-ink-3">{today}</p>
-        <h1 className="text-xl font-bold mt-0.5">{persona.greeting}</h1>
-      </div>
-
-      {/* 关怀提示 */}
-      {careMsg && (
-        <div className={`card p-4 mb-4 animate-in border-l-4 ${
-          careMood === 'punish' ? 'border-l-rose-500 bg-rose-50' :
-          careMood === 'warn' ? 'border-l-amber-500 bg-amber-50' :
-          'border-l-brand bg-bg-soft'
-        }`}>
-          <div className="flex items-start gap-2">
-            <span className="text-xl">{persona.emoji}</span>
-            <div className="flex-1">
-              <p className="text-sm text-ink-1 leading-relaxed">{careMsg}</p>
-            </div>
-            <button className="text-xs text-brand font-medium" onClick={() => nav('/chat')}>回复</button>
+    <div className="safe-top" style={{ padding: '24px 20px 140px' }}>
+      {/* 头部 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div>
+          <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', color: 'var(--muted)' }}>
+            STATUS // ACTIVE
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5 }}>
+            {playerTag}
           </div>
         </div>
-      )}
+        <div style={{
+          padding: '6px 12px',
+          borderRadius: 100,
+          background: 'var(--card-bg)',
+          border: '1px solid var(--border)',
+          fontSize: 12,
+          fontFamily: 'DM Mono, monospace'
+        }}>
+          DAY_{(streak + 1).toString().padStart(2, '0')}
+        </div>
+      </div>
 
-      {/* 焦点：今日学习进度环 */}
-      <div className="card p-5 mb-4 animate-in relative overflow-hidden">
-        <div className="absolute -right-12 -top-12 w-32 h-32 rounded-full bg-brand-50 opacity-60" />
-        <div className="relative flex items-center gap-5">
-          <svg width="140" height="140" viewBox="0 0 140 140" className="shrink-0">
-            <circle cx="70" cy="70" r="60" fill="none" stroke="#EEEEEE" strokeWidth="10" />
+      {/* 精神力环 */}
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0 24px' }}>
+        <div style={{ position: 'relative', width: 220, height: 220 }}>
+          <svg width="220" height="220" viewBox="0 0 220 220">
+            <circle cx="110" cy="110" r="90" fill="none" stroke="var(--border)" strokeWidth="2" />
             <circle
-              cx="70" cy="70" r="60" fill="none" stroke={persona.color} strokeWidth="10"
+              cx="110" cy="110" r="90"
+              fill="none"
+              stroke={hp > 50 ? 'var(--success)' : hp > 20 ? 'var(--warning)' : 'var(--danger)'}
+              strokeWidth="2"
+              strokeDasharray={circumference}
+              strokeDashoffset={offset}
               strokeLinecap="round"
-              strokeDasharray={ringCirc}
-              strokeDashoffset={ringOffset}
-              transform="rotate(-90 70 70)"
+              transform="rotate(-90 110 110)"
               style={{ transition: 'stroke-dashoffset 0.6s ease' }}
             />
-            <text x="70" y="68" textAnchor="middle" fontSize="24" fontWeight="700" fill="#1A2029">{progress}%</text>
-            <text x="70" y="86" textAnchor="middle" fontSize="10" fill="#838A95">目标 {goalMin}min</text>
           </svg>
-          <div className="flex-1 space-y-2">
-            <Metric label="学习" value={fmtMs(studyMin * 60_000)} color="#16a34a" />
-            <Metric label="娱乐" value={fmtMs(entMin * 60_000)} color="#F43F5E" />
-            <Metric label="专注度" value={`${focus}`} color={persona.color} suffix="/100" />
-          </div>
-        </div>
-      </div>
-
-      {/* 今日人格亮点 */}
-      <div className="card p-4 mb-4 animate-in">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold">今日人格反馈</h3>
-          <button className="text-xs text-brand" onClick={() => nav('/chat')}>聊聊 ›</button>
-        </div>
-        <p className="text-sm text-ink-2 leading-relaxed">
-          {focus >= 80
-            ? `${persona.catchphrases[3]} 学习时长 ${(studyMin / 60).toFixed(1)}h，专注度 ${focus}，状态在线。${persona.name}对你的评价：稳。`
-            : focus >= 60
-              ? `学了 ${fmtMs(studyMin * 60_000)}，但娱乐时长有点高。${persona.catchphrases[1] || persona.catchphrases[0]}`
-              : `今天专注度只有 ${focus}，${persona.catchphrases[1] || '别拖了'} 下个番茄钟走起。`}
-        </p>
-      </div>
-
-      {/* 快速入口 */}
-      <div className="grid grid-cols-4 gap-3 mb-4">
-        {[
-          { icon: '📊', label: '深度分析', to: '/analysis', color: '#2454FF' },
-          { icon: '🛍️', label: '奖励商店', to: '/reward', color: '#D946EF' },
-          { icon: '🐾', label: '虚拟宠物', to: '/pet', color: '#8b5cf6' },
-          { icon: '🗺️', label: '自律地图', to: '/pet', color: '#16a34a' }
-        ].map(item => (
-          <button key={item.label} onClick={() => nav(item.to)}
-            className="card p-3 flex flex-col items-center gap-1 active:scale-95 transition"
-          >
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg" style={{ background: item.color + '14' }}>{item.icon}</div>
-            <span className="text-[11px] text-ink-2">{item.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* 自律世界概览 */}
-      <div className="card p-4 mb-4 animate-in">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold">自律世界</h3>
-          <button className="text-xs text-brand" onClick={() => nav('/pet')}>查看全部 ›</button>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-bg-soft rounded-xl p-3 text-center">
-            <p className="text-2xl font-bold text-brand">{unlockedMapsCount}<span className="text-xs text-ink-3 font-normal">/{WORLD_MAPS.length}</span></p>
-            <p className="text-[11px] text-ink-3 mt-0.5">地图</p>
-          </div>
-          <div className="bg-bg-soft rounded-xl p-3 text-center">
-            <p className="text-2xl font-bold text-brand">{unlockedPetsCount}<span className="text-xs text-ink-3 font-normal">/{PETS.length}</span></p>
-            <p className="text-[11px] text-ink-3 mt-0.5">宠物</p>
-          </div>
-          <div className="bg-bg-soft rounded-xl p-3 text-center">
-            <p className="text-2xl font-bold text-brand">{achievementsCount}<span className="text-xs text-ink-3 font-normal">/{ACHIEVEMENTS.length}</span></p>
-            <p className="text-[11px] text-ink-3 mt-0.5">成就</p>
-          </div>
-        </div>
-      </div>
-
-      {/* 用时分布 mini */}
-      <div className="card p-4 mb-4 animate-in">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold">今日时长 Top5</h3>
-          <button className="text-xs text-brand" onClick={() => nav('/stats')}>详细 ›</button>
-        </div>
-        <TopBars />
-      </div>
-
-      {/* 深夜提醒 */}
-      {isLateNight() && (
-        <div className="card p-4 mb-4 animate-in bg-amber-50 border border-amber-200">
-          <div className="flex items-start gap-2">
-            <span className="text-xl">🌙</span>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-amber-800">深夜了，{u.nickname}</p>
-              <p className="text-xs text-amber-700 mt-1">{persona.catchphrases[3] || '别硬撑'} 明天的脑子会感谢你今晚的睡眠。</p>
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center'
+          }}>
+            <div style={{ fontSize: 64, fontWeight: 300, letterSpacing: -2, lineHeight: 1 }}>
+              {hp}
             </div>
-            <button className="text-xs text-amber-700 font-medium" onClick={() => nav('/chat')}>说说</button>
+            <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginTop: 4 }}>
+              SPIRIT_POWER
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+              今日目标 {dailyGoalMin}m · 已 {Math.floor(totalFocusMs / 60_000)}m
+            </div>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* 主线任务 */}
+      <div
+        className="card"
+        style={{
+          padding: 20,
+          borderRadius: 16,
+          marginBottom: 12
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div style={{ fontSize: 12, color: 'var(--muted)' }}>主线任务</div>
+          <div style={{ fontSize: 12, color: 'var(--fg)', fontWeight: 500 }}>{mainProgress}%</div>
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>
+          完成今日 2 小时专注
+        </div>
+        <div style={{
+          height: 6,
+          background: 'var(--bg-alt)',
+          borderRadius: 100,
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            height: '100%',
+            width: `${mainProgress}%`,
+            background: 'var(--fg)',
+            borderRadius: 100,
+            transition: 'width 0.6s ease'
+          }} />
+        </div>
+      </div>
+
+      {/* 操作按钮 */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+        <button
+          onClick={() => {
+            addPoints(-50)
+            setHp(Math.max(0, hp - 15))
+            showToast('检测到分心！HP -15')
+          }}
+          style={{
+            flex: 1, padding: '14px',
+            borderRadius: 12,
+            background: 'var(--card-bg)',
+            border: '1px solid var(--border)',
+            color: 'var(--fg)',
+            fontSize: 13,
+            fontWeight: 500
+          }}
+        >
+          模拟分心
+        </button>
+        <button
+          onClick={() => {
+            onNavigate?.('dungeon')
+          }}
+          style={{
+            flex: 1, padding: '14px',
+            borderRadius: 12,
+            background: 'var(--fg)',
+            border: 'none',
+            color: 'var(--bg)',
+            fontSize: 13,
+            fontWeight: 600
+          }}
+        >
+          进入深渊
+        </button>
+      </div>
+
+      {/* 状态摘要 */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr 1fr',
+        gap: 8
+      }}>
+        <Stat label="连胜" value={`${streak}`} suffix="DAYS" />
+        <Stat label="积分" value={points.toString()} />
+        <Stat label="总专注" value={`${focusHours}`} suffix="HOURS" />
+      </div>
     </div>
   )
 }
 
-function Metric({ label, value, color, suffix }: { label: string; value: string; color: string; suffix?: string }) {
+function Stat({ label, value, suffix }: { label: string; value: string; suffix?: string }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-ink-3">{label}</span>
-      <span className="font-semibold" style={{ color }}>{value}{suffix}</span>
-    </div>
-  )
-}
-
-function TopBars() {
-  const stats = useStatsStore(s => s.todayStats)
-  const sorted = [...stats].sort((a, b) => b.totalMs - a.totalMs).slice(0, 5)
-  const max = sorted[0]?.totalMs || 1
-  return (
-    <div className="space-y-2">
-      {sorted.map(s => (
-        <div key={s.packageName} className="flex items-center gap-2">
-          <div className="w-20 text-xs text-ink-2 truncate">{s.label}</div>
-          <div className="flex-1 h-5 bg-bg-soft rounded overflow-hidden">
-            <div
-              className="h-full rounded flex items-center justify-end px-1.5"
-              style={{ width: `${Math.max(8, (s.totalMs / max) * 100)}%`, background: s.isStudy ? '#16a34a' : '#F43F5E' }}
-            >
-              <span className="text-[9px] text-white font-medium">{fmtHM(s.totalMs).h}h{fmtHM(s.totalMs).m}m</span>
-            </div>
-          </div>
-        </div>
-      ))}
+    <div className="card" style={{
+      padding: 14,
+      borderRadius: 12,
+      textAlign: 'center'
+    }}>
+      <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+        {label.toUpperCase()}
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 500, marginTop: 4 }}>
+        {value}
+        {suffix && (
+          <span style={{ fontSize: 9, color: 'var(--muted)', marginLeft: 3, fontFamily: 'DM Mono, monospace' }}>
+            {suffix}
+          </span>
+        )}
+      </div>
     </div>
   )
 }

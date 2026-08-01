@@ -1,151 +1,239 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { PERSONAS, type PersonaId } from '@/data/personas'
-import { useUserStore } from '@/stores/userStore'
+import { useStore } from '@/stores/useStore'
+import { showToast } from '@/components/Toast'
+import type { AIConfig } from '@/stores/useStore'
 
 export default function Onboarding() {
-  const nav = useNavigate()
-  const init = useUserStore(s => s.init)
-  const [step, setStep] = useState<0 | 1 | 2>(0)
-  const [nickname, setNickname] = useState('')
-  const [personaId, setPersonaId] = useState<PersonaId | null>(null)
+  const init = useStore(s => s.init)
+  const [step, setStep] = useState(0)
+  const [tag, setTag] = useState('PLAYER_01')
   const [goal, setGoal] = useState(120)
-
-  const persona = PERSONAS.find(p => p.id === personaId)
+  const [ai, setAI] = useState<AIConfig>({ apiKey: '', endpoint: '', model: 'glm-4-plus' })
 
   function finish() {
-    init(nickname.trim() || '同学', personaId || 'mentor', goal)
-    nav('/', { replace: true })
+    init(tag.trim() || 'PLAYER_01', goal, ai)
+    showToast(`欢迎，${tag || 'PLAYER_01'}`)
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-brand-50 to-bg-page max-w-[480px] mx-auto flex flex-col">
-      <div className="safe-top" />
-      <div className="px-6 py-8 flex-1 flex flex-col">
-        {/* 进度 */}
-        <div className="flex gap-2 mb-8">
-          {[0, 1, 2].map(i => (
-            <div key={i} className={`h-1 flex-1 rounded-full ${i <= step ? 'bg-brand' : 'bg-stroke'}`} />
-          ))}
+    <div className="min-h-full flex flex-col" style={{ padding: 'max(48px, env(safe-area-inset-top)) 24px max(48px, env(safe-area-inset-bottom))' }}>
+      {/* 步骤指示 */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 32 }}>
+        {[0, 1, 2].map(i => (
+          <div
+            key={i}
+            style={{
+              flex: 1,
+              height: 2,
+              background: i <= step ? 'var(--fg)' : 'var(--border)'
+            }}
+          />
+        ))}
+      </div>
+
+      {step === 0 && (
+        <div className="flex-1 flex flex-col animate-in">
+          <div style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: 'var(--muted)', marginBottom: 8 }}>
+            INITIALIZATION // 01
+          </div>
+          <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: -0.5, marginBottom: 12 }}>
+            欢迎接入
+            <br />
+            Cyber Survival
+          </h1>
+          <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 40 }}>
+            在这个赛博自律世界里，你的精神力即是 HP，深渊挑战是学习时段，AI 监管者会守护你的进度曲线。
+          </p>
+
+          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>玩家代号</label>
+          <input
+            value={tag}
+            onChange={(e) => setTag(e.target.value)}
+            placeholder="PLAYER_01"
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              borderRadius: 12,
+              background: 'var(--card-bg)',
+              border: '1px solid var(--border)',
+              color: 'var(--fg)',
+              fontSize: 16,
+              fontFamily: 'DM Mono, monospace',
+              outline: 'none',
+              marginBottom: 24
+            }}
+          />
+
+          <div style={{ flex: 1 }} />
+
+          <button
+            onClick={() => setStep(1)}
+            style={{
+              width: '100%',
+              padding: '16px',
+              borderRadius: 100,
+              background: 'var(--fg)',
+              color: 'var(--bg)',
+              fontSize: 16,
+              fontWeight: 600,
+              border: 'none'
+            }}
+          >
+            继续
+          </button>
         </div>
+      )}
 
-        {step === 0 && (
-          <div className="flex-1 flex flex-col animate-in">
-            <div className="text-6xl mb-6 mt-12 text-center">🌱</div>
-            <h1 className="text-2xl font-bold text-center mb-2">自律养成</h1>
-            <p className="text-ink-3 text-center mb-12">AI 监工陪你不摆烂</p>
-            <label className="text-sm text-ink-2 mb-2">先告诉我，怎么称呼你？</label>
-            <input
-              className="w-full bg-white rounded-2xl px-4 py-3.5 text-base outline-none border border-stroke focus:border-brand"
-              placeholder="昵称 / 姓名"
-              value={nickname}
-              onChange={e => setNickname(e.target.value)}
-              autoFocus
-            />
-            <div className="flex-1" />
+      {step === 1 && (
+        <div className="flex-1 flex flex-col animate-in">
+          <div style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: 'var(--muted)', marginBottom: 8 }}>
+            INITIALIZATION // 02
+          </div>
+          <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: -0.5, marginBottom: 12 }}>
+            每日目标
+          </h1>
+          <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 32 }}>
+            系统会根据目标时长判断你的 HP 走势，未达 60% 视为「精神力流失」。
+          </p>
+
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
+            <span style={{ fontSize: 48, fontWeight: 300, color: 'var(--fg)' }}>{goal}</span>
+            <span style={{ fontSize: 14, color: 'var(--muted)' }}>分钟</span>
+          </div>
+          <input
+            type="range" min={30} max={480} step={30}
+            value={goal}
+            onChange={(e) => setGoal(+e.target.value)}
+            style={{ width: '100%', accentColor: 'var(--fg)' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
+            <span>30m</span><span>2h</span><span>4h</span><span>8h</span>
+          </div>
+
+          <div style={{ flex: 1 }} />
+
+          <button
+            onClick={() => setStep(2)}
+            style={{
+              width: '100%',
+              padding: '16px',
+              borderRadius: 100,
+              background: 'var(--fg)',
+              color: 'var(--bg)',
+              fontSize: 16,
+              fontWeight: 600,
+              border: 'none'
+            }}
+          >
+            继续
+          </button>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div className="flex-1 flex flex-col animate-in">
+          <div style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: 'var(--muted)', marginBottom: 8 }}>
+            INITIALIZATION // 03
+          </div>
+          <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: -0.5, marginBottom: 12 }}>
+            接入 AI 监管者
+          </h1>
+          <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 32 }}>
+            填入 GLM/OpenAI 兼容的 API Key 与 Endpoint，监管者会在你低谷时主动开口。可跳过，使用本地默认提醒。
+          </p>
+
+          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>API Endpoint</label>
+          <input
+            value={ai.endpoint}
+            onChange={(e) => setAI({ ...ai, endpoint: e.target.value })}
+            placeholder="https://open.bigmodel.cn/api/paas/v4"
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: 'var(--card-bg)',
+              border: '1px solid var(--border)',
+              color: 'var(--fg)',
+              fontSize: 14,
+              fontFamily: 'DM Mono, monospace',
+              outline: 'none',
+              marginBottom: 16
+            }}
+          />
+
+          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>API Key</label>
+          <input
+            value={ai.apiKey}
+            onChange={(e) => setAI({ ...ai, apiKey: e.target.value })}
+            placeholder="sk-xxx"
+            type="password"
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: 'var(--card-bg)',
+              border: '1px solid var(--border)',
+              color: 'var(--fg)',
+              fontSize: 14,
+              fontFamily: 'DM Mono, monospace',
+              outline: 'none',
+              marginBottom: 16
+            }}
+          />
+
+          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>Model</label>
+          <input
+            value={ai.model}
+            onChange={(e) => setAI({ ...ai, model: e.target.value })}
+            placeholder="glm-4-plus"
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: 'var(--card-bg)',
+              border: '1px solid var(--border)',
+              color: 'var(--fg)',
+              fontSize: 14,
+              fontFamily: 'DM Mono, monospace',
+              outline: 'none',
+              marginBottom: 24
+            }}
+          />
+
+          <div style={{ flex: 1 }} />
+
+          <div style={{ display: 'flex', gap: 12 }}>
             <button
-              className="btn-primary w-full py-3.5 text-base mt-6"
-              onClick={() => setStep(1)}
-            >下一步</button>
-          </div>
-        )}
-
-        {step === 1 && (
-          <div className="flex-1 flex flex-col animate-in">
-            <h1 className="text-2xl font-bold mb-1">选你的监工</h1>
-            <p className="text-ink-3 text-sm mb-6">不同人格不同语气，想换可以随时改</p>
-            <div className="flex-1 overflow-y-auto space-y-3 scrollbar-hide">
-              {PERSONAS.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => setPersonaId(p.id)}
-                  className={`w-full text-left bg-white rounded-2xl p-4 border-2 transition ${
-                    personaId === p.id ? 'border-brand' : 'border-transparent'
-                  }`}
-                  style={{ boxShadow: personaId === p.id ? `0 8px 24px ${p.color}22` : '0 4px 16px rgba(0,0,0,0.04)' }}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shrink-0"
-                      style={{ background: p.color + '18' }}
-                    >{p.emoji}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold" style={{ color: p.color }}>{p.name}</h3>
-                        <span className="text-xs text-ink-3 truncate">{p.tagline}</span>
-                      </div>
-                      <p className="text-sm text-ink-2 mt-1 leading-relaxed">{p.desc}</p>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {p.strengths.map(s => (
-                          <span key={s} className="chip" style={{ color: p.color, background: p.color + '14' }}>{s}</span>
-                        ))}
-                      </div>
-                    </div>
-                    {personaId === p.id && (
-                      <div className="w-5 h-5 rounded-full bg-brand text-white flex items-center justify-center text-xs shrink-0">✓</div>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button className="btn-ghost flex-1 py-3" onClick={() => setStep(0)}>上一步</button>
-              <button
-                className="btn-primary flex-[2] py-3 disabled:opacity-50"
-                disabled={!personaId}
-                onClick={() => setStep(2)}
-              >选定：{persona?.name}</button>
-            </div>
-          </div>
-        )}
-
-        {step === 2 && persona && (
-          <div className="flex-1 flex flex-col animate-in">
-            <h1 className="text-2xl font-bold mb-1">最后一步</h1>
-            <p className="text-ink-3 text-sm mb-6">设置每日学习目标，监工会按此给分</p>
-
-            <div className="card p-5 mb-4">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl" style={{ background: persona.color + '18' }}>{persona.emoji}</div>
-                <div>
-                  <h3 className="font-semibold" style={{ color: persona.color }}>{persona.name}</h3>
-                  <p className="text-xs text-ink-3">{persona.tagline}</p>
-                </div>
-              </div>
-              <div className="bg-bg-soft rounded-xl p-3 text-sm text-ink-2 leading-relaxed">
-                "{persona.greeting}"
-              </div>
-            </div>
-
-            <div className="card p-5 mb-4">
-              <div className="flex justify-between items-baseline mb-3">
-                <span className="text-sm text-ink-2">每日学习目标</span>
-                <span className="text-2xl font-bold text-brand">{goal}<span className="text-sm font-normal text-ink-3 ml-1">分钟</span></span>
-              </div>
-              <input
-                type="range" min={30} max={360} step={30}
-                value={goal}
-                onChange={e => setGoal(+e.target.value)}
-                className="w-full accent-brand"
-              />
-              <div className="flex justify-between text-[10px] text-ink-3 mt-1">
-                <span>30</span><span>2h</span><span>4h</span><span>6h</span>
-              </div>
-              <p className="text-xs text-ink-3 mt-3 leading-relaxed">
-                · 达成目标得 50 分基础分 + 专注度加成<br />
-                · 超过娱乐时长阈值会触发惩罚<br />
-                · 深夜连续学习监工会主动劝休
-              </p>
-            </div>
-
-            <div className="flex-1" />
-            <button className="btn-primary w-full py-3.5 text-base" onClick={finish}>
-              开始自律 ✨
+              onClick={finish}
+              style={{
+                flex: 1, padding: '16px',
+                borderRadius: 100,
+                background: 'transparent',
+                color: 'var(--muted)',
+                fontSize: 14,
+                fontWeight: 600,
+                border: '1px solid var(--border)'
+              }}
+            >
+              跳过
+            </button>
+            <button
+              onClick={finish}
+              style={{
+                flex: 2, padding: '16px',
+                borderRadius: 100,
+                background: 'var(--fg)',
+                color: 'var(--bg)',
+                fontSize: 16,
+                fontWeight: 600,
+                border: 'none'
+              }}
+            >
+              进入赛博世界
             </button>
           </div>
-        )}
-      </div>
-      <div className="safe-bottom" />
+        </div>
+      )}
     </div>
   )
 }
