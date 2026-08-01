@@ -1,0 +1,84 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+    background: #F6F7F9;
+    color: #1A2029;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    overscroll-behavior-y: none;
+  }
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+  input, textarea {
+    user-select: text;
+  }
+}
+
+@layer components {
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .card {
+    @apply bg-white rounded-card shadow-card;
+  }
+  .btn-primary {
+    @apply bg-brand text-white rounded-pill px-5 py-2.5 font-medium active:opacity-80 transition;
+  }
+  .btn-ghost {
+    @apply bg-bg-soft text-brand rounded-pill px-5 py-2.5 font-medium active:opacity-80 transition;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-pill text-xs bg-bg-soft text-ink-2;
+  }
+  .tab-active {
+    @apply text-brand;
+  }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { scrollbar-width: none; }
+}
+
+/* 入场动画 */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in {
+  animation: fadeInUp 0.32s ease-out both;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  70% { transform: scale(1.3); opacity: 0; }
+  100% { transform: scale(0.9); opacity: 0; }
+}
+.pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+.breathe {
+  animation: breathe 3s ease-in-out infinite;
+}

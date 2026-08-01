@@ -1,0 +1,178 @@
+# 自律养成 · AI监工
+
+> 一个仿智谱清言设计语言的 Android 自律养成 App。AI 监工根据手机使用时长、深夜时段、连续低分等自动督促、关怀、锁屏，把自律变成养成游戏。
+
+## ✨ 功能一览
+
+| 序号 | 功能 | 实现位置 |
+|------|------|----------|
+| 1 | 手机 App 使用时长统计 | `src/pages/Stats.tsx` + `src/lib/usageStats.ts` + `android_plugin/.../SelfDisciplinePlugin.kt` |
+| 2 | AI 人格与语气自定义 | `src/data/personas.ts` (6 种) + `server/index.ts` (LLM system prompt) |
+| 3 | 情绪关怀与防倦怠 | `src/lib/ai.ts careCheck` + `server/index.ts /api/care-check` + `MonitorService.kt` |
+| 4 | 奖励兑换商店 | `src/pages/Reward.tsx` + `src/data/world.ts REWARD_SHOP` |
+| 5 | 学习效率深度分析 | `src/pages/Analysis.tsx` + `server/index.ts /api/analysis` |
+| 6 | 成就剧情化与养成 | `src/pages/Pet.tsx` + `src/data/world.ts` (地图/宠物/成就/悔悟钥匙) |
+
+## 🧱 技术栈
+
+- **前端**：React 18 + Vite 5 + TypeScript 5 + Tailwind 3 + Zustand 4 + React Router 6
+- **AI 后端**：Express + z-ai-web-dev-sdk（GLM-4-Plus 多人格对话 / 周月报分析）
+- **Android 桥接**：Capacitor 6 + 自定义 Kotlin 插件（UsageStatsManager / 强制锁屏 Activity / 前台轮询 Service / BootReceiver）
+- **设计语言**：仿智谱清言（#2454FF 主色、卡片式、移动 ≤480px、安全区适配）
+
+## 📁 项目结构
+
+```
+self_discipline_app/
+├── capacitor.config.ts            # Capacitor 配置
+├── index.html                     # Vite 入口
+├── package.json
+├── tailwind.config.js             # 仿清言配色 + 圆角 + 阴影 token
+├── vite.config.ts                 # dev 模式 /api 代理到 8787
+├── tsconfig.json
+├── src/
+│   ├── main.tsx                   # 路由表
+│   ├── components/AppShell.tsx    # 顶部条 + 底部 5 Tab
+│   ├── pages/
+│   │   ├── Onboarding.tsx         # 首启：昵称+监工选择+日目标
+│   │   ├── Home.tsx               # 今日进度环 + 监工卡片 + 快捷面板
+│   │   ├── Stats.tsx              # 今日榜单/趋势/分类圆环
+│   │   ├── Chat.tsx               # 与 AI 监工对话（人格化）
+│   │   ├── Reward.tsx             # 积分商店 5 类商品
+│   │   ├── Analysis.tsx           # 周报/月报 + AI 建议
+│   │   ├── Pet.tsx                # 自律世界：地图/宠物/成就
+│   │   └── Settings.tsx           # 切换人格/调整目标/测试锁屏/重置
+│   ├── stores/                    # Zustand 持久化：用户/统计/聊天
+│   ├── lib/
+│   │   ├── ai.ts                  # 封装 4 个 AI 接口调用
+│   │   ├── usageStats.ts          # 原生桥接 + mock fallback
+│   │   ├── format.ts              # 时间格式化
+│   │   └── native-bridge.d.ts     # window.SelfDiscipline 类型声明
+│   ├── data/                      # 静态数据：人格/分类/世界/奖励
+│   └── styles/index.css           # Tailwind 基础 + 动画
+├── server/
+│   └── index.ts                   # Express + ZAI SDK，4 个 API
+└── android_plugin/                # Kotlin 原生代码（拷到 android/app/src/main/）
+    ├── AndroidManifest.xml        # 权限 + Activity/Service/Receiver 注册
+    ├── res/values/{styles,strings}.xml
+    └── java/cn/selfdiscipline/app/
+        ├── MainActivity.kt        # 注册 SelfDiscipline 插件
+        └── plugin/
+            ├── SelfDisciplinePlugin.kt   # UsageStats / 锁屏 / 权限
+            ├── LockScreenActivity.kt     # 全屏倒计时遮罩
+            ├── MonitorService.kt         # 前台轮询 + 深夜/超长学习触发
+            └── BootReceiver.kt           # 开机自启
+```
+
+## 🚀 本地预览（Web/PWA）
+
+```bash
+# 1. 启动 AI 后端
+npm install
+npm run server        # 监听 http://127.0.0.1:8787
+
+# 2. 启动前端（另开终端）
+npm run dev          # http://localhost:5173，自动代理 /api → 8787
+```
+
+打开浏览器开发者工具切到移动端视图（建议 390×844 iPhone 14），即可体验完整 6 大功能。
+
+> ⚠️ 浏览器环境拿不到 Android UsageStats 真实数据，会自动降级到 mock 数据；锁屏会以 alert 形式模拟。
+
+## 📱 打包 Android APK
+
+云端环境无 Android SDK，请按以下步骤在本机（Mac/Win/Linux）执行：
+
+```bash
+# 1. 安装 Capacitor CLI（已含在 devDependencies）
+npm install
+
+# 2. 拷贝 android_plugin/ 内文件到生成的 android 工程
+npm run build
+npx cap add android
+# 此时生成 android/ 目录
+
+# 3. 覆盖原生代码与权限
+cp -r android_plugin/java/* android/app/src/main/java/
+cp android_plugin/AndroidManifest.xml android/app/src/main/AndroidManifest.xml  # 注意合并而非直接覆盖
+cp -r android_plugin/res/* android/app/src/main/res/
+
+# 4. 在 app/build.gradle 添加 LockScreenActivity 主题
+#    （android_plugin/res/values/styles.xml 已就绪，Capacitor 默认会合并）
+
+# 5. 同步 Web 资源到 Android 工程
+npx cap sync android
+
+# 6. 用 Android Studio 打开 android/ 目录
+npx cap open android
+
+# 7. 在 Android Studio 中 Build → Build APK(s)
+#    输出：android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+### 真机部署后必做
+
+1. 打开 App 后系统会引导到「使用情况访问」权限页 → 找到「自律养成 · AI监工」→ 开启
+2. 长按桌面 → 添加桌面小组件（可选，后续迭代支持）
+3. 系统设置 → 电池 → 自启动管理 → 允许本 App 后台运行（保证 MonitorService 持续轮询）
+
+## 🧠 AI 接口说明
+
+| 接口 | 方法 | 用途 |
+|------|------|------|
+| `/api/health` | GET | 健康检查 + ZAI 就绪状态 |
+| `/api/chat` | POST | 多人格监工对话（带 userCtx 上下文） |
+| `/api/care-check` | POST | 深夜/超长学习/连续低分 → 触发情绪关怀或深度谈话 |
+| `/api/analysis` | POST | 周报/月报：summary + 3-5 条 suggestions JSON |
+| `/api/poster-text` | POST | 学霸战绩图文字素材 |
+
+**人格切换**：通过 `persona.voice` 字段切换 LLM system prompt，6 种人格在 `src/data/personas.ts`：
+
+- 📚 严师（冷峻、目标拆解）
+- 🎓 学姐（情绪价值拉满）
+- 😏 毒舌损友（讽刺打击）
+- 🐱 猫娘（撒娇黏人）
+- 👨‍👩‍👧 严父慈母（生活关怀）
+- 🤙 好兄弟（打赌 PK 陪练）
+
+## 🎮 玩法机制
+
+### 积分体系
+- 完成日目标 → +50 基础分
+- 专注度每提升 10 → +10 分
+- 娱乐时长超阈值 → 扣分（人格化警告）
+- 免罚卡 ×1 抵消一次扣分
+
+### 自律能量（养成用）
+- 每日结算积分的 30% 转为能量
+- 解锁地图（200/800/2000/5000）
+- 解锁宠物（普通/稀有/史诗/传说）
+- 投喂监工养成
+
+### 悔悟机制
+- 失败日可在 7 天内用「悔悟钥匙」弥补
+- 涅槃凤凰宠物：失败后连续 7 天满分解锁
+
+### 深度谈话模式
+连续 3 天评分 < 60 时，监工进入"深度谈话"模式：
+1. 先承认情绪
+2. 分析最近 3 天行为模式
+3. 提出调整方案
+4. 承诺重置 30% 惩罚
+
+## 📝 设计决策
+
+1. **为什么用 Capacitor 而不是 React Native**：保留 Web 开发体验，原生 API 通过自定义插件桥接，对前端代码无侵入。
+2. **为什么 AI 走后端中转**：避免在客户端暴露 API key；同时方便做人格系统提示词集中管理、未来切多模型。
+3. **为什么 6 种人格不用 RAG**：人格是 prompt 工程，不需要知识库；后续若要"个人化记忆"再上向量库。
+4. **为什么锁屏用 Activity 不用 DPM**：DPM.lockNow() 需要 Device Admin 权限，用户接受度低；Activity 全屏遮罩 + 屏蔽返回键已能满足"强制休息"诉求。
+
+## 🛡️ 隐私
+
+- 使用时长数据仅本地存储，不上传服务器
+- AI 对话仅传 userCtx（昵称、分钟数、专注度），不传应用列表
+- 服务器日志仅记录 token 消耗，不记录对话内容
+
+## 📜 License
+
+MIT

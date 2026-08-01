@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- 基础权限 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- 使用情况访问（特殊权限，需用户手动授权） -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions,QueryUsageStats" />
+
+    <!-- 前台服务：长时间锁屏、定时拉取使用统计 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- 锁屏 / 唤醒 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- 启动时禁止显示初始权限弹窗 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="自律养成"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="false"
+        tools:targetApi="34">
+
+        <!-- Capacitor 主入口 -->
+        <activity
+            android:name="cn.selfdiscipline.app.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/AppTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|fontScale|uiMode">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- 强制锁屏遮罩 Activity -->
+        <activity
+            android:name="cn.selfdiscipline.app.plugin.LockScreenActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:lockTaskMode="if_whitelisted"
+            android:theme="@style/LockScreenTheme"
+            android:launchMode="singleInstance"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true" />
+
+        <!-- 开机自启监工（可选） -->
+        <receiver
+            android:name="cn.selfdiscipline.app.plugin.BootReceiver"
+            android:exported="true"
+            android:permission="android.permission.RECEIVE_BOOT_COMPLETED">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 前台服务 -->
+        <service
+            android:name="cn.selfdiscipline.app.plugin.MonitorService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false" />
+
+        <!-- Capacitor 深度链接 -->
+        <activity-alias
+            android:name="com.getcapacitor.MainActivity"
+            android:exported="true"
+            android:targetActivity="cn.selfdiscipline.app.MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="selfdiscipline" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Capacitor 通知转发（如需推送） -->
+        <receiver android:name="com.getcapacitor.plugin.notification.NotificationActionReceiver" />
+
+    </application>
+</manifest>
