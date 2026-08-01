@@ -52,6 +52,25 @@ jobs:
       - name: 📝 Overwrite AndroidManifest with full declarations
         run: cp android_plugin/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
 
+      - name: 🎨 Copy resource files (styles, strings)
+        run: |
+          RES_DIR=android/app/src/main/res/values
+          mkdir -p "$RES_DIR"
+          cp android_plugin/res/values/styles.xml "$RES_DIR/styles.xml"
+          cp android_plugin/res/values/strings.xml "$RES_DIR/strings.xml"
+          echo "=== res/values ==="
+          ls -la "$RES_DIR"
+
+      - name: 🔧 Ensure AppCompat dependency in build.gradle
+        run: |
+          GRADLE_FILE=android/app/build.gradle
+          if ! grep -q "androidx.appcompat:appcompat" "$GRADLE_FILE"; then
+            sed -i '/dependencies {/a \    implementation "androidx.appcompat:appcompat:1.6.1"' "$GRADLE_FILE"
+            echo "Added AppCompat dependency"
+          fi
+          echo "=== build.gradle dependencies ==="
+          grep -A 30 "dependencies {" "$GRADLE_FILE" | head -35
+
       - name: 🔨 Build Debug APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon -x lint --stacktrace

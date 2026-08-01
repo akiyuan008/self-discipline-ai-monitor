@@ -41,7 +41,11 @@ export default function Home({ onNavigate }: Props) {
       .map(e => ({ label: e.label, ms: e.totalMs }))
     setEntTop3(top)
     const s = useStore.getState()
-    setHp(hpFromStudy(s.todayStudyMs, s.dailyGoalMin * 60_000))
+    // 仅在 HP 未被 AI 锁定时才根据学习时长自动设置
+    if (!s.hpLocked) {
+      setHp(hpFromStudy(s.todayStudyMs, s.dailyGoalMin * 60_000))
+      useStore.setState({ hpLocked: false })
+    }
   }
 
   const focusHours = Math.floor(totalFocusMs / 3600_000)

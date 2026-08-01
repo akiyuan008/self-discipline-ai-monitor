@@ -132,11 +132,17 @@ function executeTool(name: string, args: any): string {
       }
       case 'set_hp': {
         s.setHp(Number(args.value))
+        // 标记 HP 为 AI 手动设置，避免被定时同步覆盖
+        useStore.setState({ hpLocked: true })
         return JSON.stringify({ ok: true, hp: useStore.getState().hp })
       }
       case 'complete_quest': {
+        const q = s.quests.find(x => x.id === args.quest_id)
+        if (!q || q.completed) {
+          return JSON.stringify({ ok: false, error: '任务不存在或已完成' })
+        }
         s.completeQuest(String(args.quest_id))
-        return JSON.stringify({ ok: true, msg: '任务标记完成' })
+        return JSON.stringify({ ok: true, msg: '任务标记完成', reward: q.reward })
       }
       default:
         return JSON.stringify({ ok: false, error: `unknown tool: ${name}` })
@@ -166,7 +172,7 @@ export async function chatWithAI(userMessage: string): Promise<string> {
 
   try {
     // 第一轮：可能返回 tool_calls
-    const r1 = await callAPI(ai, messages)
+    const r1 = await callAPI(ai, messages, true)
     const choice = r1?.choices?.[0]
     const msg = choice?.message
     if (!msg) return '（空回复）'
@@ -196,7 +202,7 @@ export async function chatWithAI(userMessage: string): Promise<string> {
         })
       }
       // 第二轮：让 AI 生成最终文字回复
-      const r2 = await callAPI(ai, messages)
+      const r2 = await callAPI(ai, messages, true)
       const finalText = r2?.choices?.[0]?.message?.content?.trim()
       if (finalText) return finalText
       return '已执行操作。'   // 兜底
@@ -204,30 +210,48 @@ export async function chatWithAI(userMessage: string): Promise<string> {
 
     return msg.content?.trim() || '（空回复）'
   } catch (e: any) {
+    // 如果带工具的请求失败，尝试不带工具重试
+    if (e.message && (e.message.includes('tool') || e.message.includes('function') || e.message.includes('400'))) {
+      try {
+        const r = await callAPI(ai, messages, false)
+        const text = r?.choices?.[0]?.message?.content?.trim()
+        if (text) return text
+        return '（空回复）'
+      } catch (e2: any) {
+        return `网络错误：${e2.message}`
+      }
+    }
     return `网络错误：${e.message}`
   }
 }
 
-async function callAPI(ai: AIConfig, messages: any[]) {
+/**
+ * 调用 API
+ * @param withTools 是否携带工具定义（部分模型不支持 function calling）
+ */
+async function callAPI(ai: AIConfig, messages: any[], withTools: boolean) {
   const url = ai.endpoint.replace(/\/$/, '') + '/chat/completions'
+  const body: any = {
+    model: ai.model || 'glm-4-plus',
+    messages,
+    temperature: 0.7,
+    max_tokens: 600
+  }
+  if (withTools) {
+    body.tools = TOOLS
+    body.tool_choice = 'auto'
+  }
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${ai.apiKey}`
     },
-    body: JSON.stringify({
-      model: ai.model || 'glm-4-plus',
-      messages,
-      tools: TOOLS,
-      tool_choice: 'auto',
-      temperature: 0.7,
-      max_tokens: 600
-    })
+    body: JSON.stringify(body)
   })
   if (!res.ok) {
     const errText = await res.text()
-    throw new Error(`请求失败 (${res.status})：${errText.slice(0, 100)}`)
+    throw new Error(`请求失败 (${res.status})：${errText.slice(0, 200)}`)
   }
   return await res.json()
 }

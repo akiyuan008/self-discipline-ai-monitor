@@ -62,6 +62,9 @@ interface StoreState {
   ai: AIConfig
   chat: ChatMessage[]
 
+  // HP 锁：AI 手动设置 HP 后锁定，避免被定时同步覆盖
+  hpLocked: boolean
+
   // 深渊状态
   dungeonRemainingSec: number
   dungeonActive: boolean
@@ -116,11 +119,12 @@ export const useStore = create<StoreState>()(
       isDark: false,
       ai: { apiKey: '', endpoint: '', model: 'glm-4-plus' },
       chat: [],
+      hpLocked: false,
       dungeonRemainingSec: 0,
       dungeonActive: false,
       dungeonDurationMin: 25,
 
-      setHp: (n) => set(s => ({ hp: Math.max(0, Math.min(100, n)) })),
+      setHp: (n) => set(s => ({ hp: Math.max(0, Math.min(100, Math.round(n))), hpLocked: true })),
       hitHp: (n) => set(s => ({ hp: Math.max(0, s.hp - n) })),
       addPoints: (n) => set(s => ({ points: s.points + n })),
       spendPoints: (cost) => {
@@ -134,8 +138,10 @@ export const useStore = create<StoreState>()(
       setAI: (c) => set(s => ({ ai: { ...s.ai, ...c } })),
       completeQuest: (id) => {
         const q = get().quests.find(x => x.id === id)
+        if (!q || q.completed) return
         set(s => ({
-          quests: s.quests.map(qx => qx.id === id ? { ...qx, progress: qx.total, completed: true } : qx)
+          quests: s.quests.map(qx => qx.id === id ? { ...qx, progress: qx.total, completed: true } : qx),
+          points: s.points + (q.reward || 0)
         }))
         // 自动尝试解锁"完美主义者"成就：一周内完成所有日常任务
         if (q?.category === 'daily') {
@@ -228,6 +234,7 @@ export const useStore = create<StoreState>()(
           isDark: false,
           ai: { apiKey: '', endpoint: '', model: 'glm-4-plus' },
           chat: [],
+          hpLocked: false,
           dungeonRemainingSec: 0,
           dungeonActive: false,
           dungeonDurationMin: 25
@@ -261,11 +268,11 @@ export const useStore = create<StoreState>()(
         // 跨日：达成目标 +连胜，未达成 -1
         const dailyGoalMs = s.dailyGoalMin * 60_000
         if (s.todayStudyMs >= dailyGoalMs) {
-          set({ streak: s.streak + 1, lastSyncDay: today })
+          set({ streak: s.streak + 1, lastSyncDay: today, hpLocked: false })
           if (s.streak + 1 >= 7) get().unlockAchievement('a2')
           if (s.streak + 1 >= 30) get().unlockAchievement('a3')
         } else {
-          set({ streak: 0, lastSyncDay: today })
+          set({ streak: 0, lastSyncDay: today, hpLocked: false })
         }
         set({ todayStudyMs: 0, todayEntMs: 0 })
       }

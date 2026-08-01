@@ -13,7 +13,6 @@ export default function Quests() {
   const [tab, setTab] = useState<'daily' | 'weekly' | 'main'>('daily')
   const quests = useStore(s => s.quests)
   const completeQuest = useStore(s => s.completeQuest)
-  const addPoints = useStore(s => s.addPoints)
 
   const list = quests.filter(q => q.category === tab)
 
@@ -109,10 +108,7 @@ export default function Quests() {
                 <button
                   onClick={() => {
                     completeQuest(q.id)
-                    if (q.progress + 1 >= q.total) {
-                      addPoints(q.reward)
-                      showToast(`任务完成 +${q.reward}`)
-                    }
+                    showToast(`任务完成 +${q.reward}`)
                   }}
                   style={{
                     marginTop: 10, width: '100%',
@@ -125,7 +121,7 @@ export default function Quests() {
                     fontWeight: 500
                   }}
                 >
-                  进度 +1
+                  完成
                 </button>
               )}
             </div>

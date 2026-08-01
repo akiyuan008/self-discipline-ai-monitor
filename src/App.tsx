@@ -28,17 +28,27 @@ export default function App() {
     if (!onboarded) return
     const s = useStore.getState()
     s.dailySettle()
-    // 启动时同步使用情况
+    // 启动时同步使用情况（初始同步可以覆盖 HP）
     fetchUsageStats(Date.now() - 24 * 3600_000, Date.now()).then(({ study, ent }) => {
       s.syncUsage(study, ent)
-      s.setHp(hpFromStudy(s.todayStudyMs, s.dailyGoalMin * 60_000))
+      // 仅在 HP 未被 AI 锁定时才根据学习时长自动设置
+      if (!useStore.getState().hpLocked) {
+        s.setHp(hpFromStudy(s.todayStudyMs, s.dailyGoalMin * 60_000))
+        useStore.setState({ hpLocked: false }) // 初始同步后解除锁定
+      }
     })
     // 每 5 分钟同步一次
     const id = window.setInterval(() => {
       const st = useStore.getState()
+      // 每次定时同步都检查跨日结算
+      st.dailySettle()
       fetchUsageStats(Date.now() - 24 * 3600_000, Date.now()).then(({ study, ent }) => {
         st.syncUsage(study, ent)
-        st.setHp(hpFromStudy(st.todayStudyMs, st.dailyGoalMin * 60_000))
+        // 仅在 HP 未被 AI 锁定时才根据学习时长自动设置
+        if (!useStore.getState().hpLocked) {
+          st.setHp(hpFromStudy(st.todayStudyMs, st.dailyGoalMin * 60_000))
+          useStore.setState({ hpLocked: false })
+        }
       })
     }, 5 * 60_000)
     return () => window.clearInterval(id)

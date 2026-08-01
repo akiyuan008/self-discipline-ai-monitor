@@ -1,6 +1,6 @@
 package cn.selfdiscipline.app
 
-import android.app.Application
+import android.os.Bundle
 import cn.selfdiscipline.app.plugin.LockScreenActivity
 import com.getcapacitor.BridgeActivity
 
