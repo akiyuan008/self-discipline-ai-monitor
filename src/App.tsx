@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import { App as CapacitorApp } from '@capacitor/app'
 import { useStore, hpFromStudy } from '@/stores/useStore'
 import Onboarding from '@/pages/Onboarding'
 import Home from '@/pages/Home'
@@ -10,7 +11,6 @@ import Chat from '@/pages/Chat'
 import Achievements from '@/pages/Achievements'
 import Settings from '@/pages/Settings'
 import PointsDetail from '@/pages/PointsDetail'
-import Archive from '@/pages/Archive'
 import Dock from '@/components/Dock'
 import Toast from '@/components/Toast'
 import { fetchUsageStats } from '@/lib/usageStats'
@@ -19,14 +19,53 @@ import type { PageId } from '@/stores/useStore'
 // Dock 栏可见的主页面
 const DOCK_PAGES: PageId[] = ['home', 'quests', 'chat', 'shop', 'profile']
 
+// 全屏子页面 → 返回目标页
+const BACK_MAP: Partial<Record<PageId, PageId>> = {
+  dungeon: 'home',
+  achievements: 'profile',
+  settings: 'profile',
+  pointsDetail: 'home',
+}
+
 export default function App() {
   const onboarded = useStore(s => s.onboarded)
   const isDark = useStore(s => s.isDark)
   const [current, setCurrent] = useState<PageId>('home')
 
+  // 用 ref 持有最新页面，避免 backButton 监听器闭包过期
+  const currentRef = useRef(current)
+  currentRef.current = current
+
   useEffect(() => {
     document.body.classList.toggle('dark', isDark)
   }, [isDark])
+
+  // ═══ Android 返回键 / 全面屏手势返回 ═══
+  useEffect(() => {
+    let listenerHandle: any
+
+    CapacitorApp.addListener('backButton', () => {
+      const page = currentRef.current
+      // 在全屏子页面 → 返回上级
+      if (BACK_MAP[page]) {
+        setCurrent(BACK_MAP[page]!)
+        return
+      }
+      // 在 Dock 页面但不是首页 → 回首页
+      if (page !== 'home') {
+        setCurrent('home')
+        return
+      }
+      // 在首页 → 退出 App
+      CapacitorApp.exitApp()
+    }).then((h: any) => {
+      listenerHandle = h
+    })
+
+    return () => {
+      listenerHandle?.remove?.()
+    }
+  }, [])
 
   // 启动时跨日结算 + 拉取 UsageStats
   useEffect(() => {
@@ -63,7 +102,7 @@ export default function App() {
     )
   }
 
-  // 全屏页（无 Dock）：深渊/设置/成就/积分详情/档案馆
+  // 全屏页（无 Dock）：深渊/设置/成就/积分详情
   if (current === 'dungeon') {
     return (
       <>
@@ -96,14 +135,6 @@ export default function App() {
       </>
     )
   }
-  if (current === 'archive') {
-    return (
-      <>
-        <Archive onBack={() => setCurrent('profile')} />
-        <Toast />
-      </>
-    )
-  }
 
   // 带 Dock 的主页面（包括 Chat）
   const showDock = DOCK_PAGES.includes(current)
@@ -119,7 +150,7 @@ export default function App() {
       case 'shop':
         return <Shop onNavigate={(p: PageId) => setCurrent(p)} />
       case 'profile':
-        return <Profile onNavigate={(p: 'achievements' | 'settings' | 'archive' | 'chat') => setCurrent(p)} />
+        return <Profile onNavigate={(p: 'achievements' | 'settings' | 'chat') => setCurrent(p)} />
       default:
         return <Home onNavigate={(p: PageId) => setCurrent(p)} />
     }

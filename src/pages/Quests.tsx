@@ -83,6 +83,20 @@ export default function Quests({ onNavigate }: Props) {
 
       {/* task list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {list.length === 0 && (
+          <div className="card" style={{
+            padding: '32px 16px', borderRadius: 16,
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.3 }}>📋</div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>
+              暂无任务
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.6 }}>
+              去和监管者对话，让它给你布置任务
+            </div>
+          </div>
+        )}
         {list.map(q => {
           const pct = Math.min(100, (q.progress / q.total) * 100)
           const accent = ACCENT_COLOR[q.accent]

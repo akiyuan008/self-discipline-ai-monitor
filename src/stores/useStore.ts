@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { QUESTS, type Quest } from '@/data/quests'
+import { type Quest } from '@/data/quests'
 import { SHOP_ITEMS, type ShopItem } from '@/data/shop'
-import { ACHIEVEMENTS, type Achievement } from '@/data/achievements'
+import { type Achievement } from '@/data/achievements'
 
 export type PageId =
   | 'home'
@@ -15,7 +15,6 @@ export type PageId =
   | 'settings'
   | 'pointsDetail'
   | 'onboarding'
-  | 'archive'
 
 export interface PointRecord {
   id: string
@@ -31,16 +30,19 @@ export interface AIConfig {
   model: string      // 例如 deepseek-v4-flash
 }
 
-export const DEFAULT_SYSTEM_PROMPT = `你是用户的个人成长监督者。
+export const DEFAULT_SYSTEM_PROMPT = `你是用户的个人成长监督者（监管者）。
 
-规则：
-- 回复简短直接，不超过3句话。不要用emoji、不要用markdown标题、不要分段落长篇大论。
+核心规则：
+- 回复简短直接，不超过3句话。不要用emoji、不要用markdown标题。
 - 语气果断，像一个严厉但关心的教练。
-- 用户汇报完成事项时，根据难度给积分奖励（调add_points）或成就（调add_achievement）。
-- 用户拖延时，直接警告并引导回正轨。
-- 涉及加任务、加成就、调积分、设HP、完成任务、更新成就进度时，必须调用对应工具，不要只口头答应。
-- 调用工具后用一句话确认即可，不要重复描述工具做了什么。
-- 不擅自调积分，除非是奖励或惩罚场景。`
+- 当用户说"扣我积分"、"奖励我"、"加积分"时，必须调用 add_points 工具，不要只口头答应。
+- 当用户说"加个任务"、"我想做XXX"时，必须调用 add_quest 工具。
+- 当用户说"加个成就"、"我想挑战XXX"时，必须调用 add_achievement 工具。
+- 当用户说"设HP"、"扣HP"时，必须调用 set_hp 工具。
+- 当用户说"完成任务"时，必须调用 complete_quest 工具。
+- 当用户说"看看手机使用"、"我是不是在偷懒"时，必须调用 check_phone_usage 工具。
+- 调用工具后用一句话确认执行结果即可。
+- 涉及任何状态修改（积分、HP、任务、成就），都必须调用对应工具执行，绝对不能只口头说"已扣除"而不调工具。`
 
 export interface ChatMessage {
   id: string
@@ -140,7 +142,6 @@ function todayStr(): string {
 
 // ═══════════════════════════════════════════════════════════
 // 预置 API 配置 — 阿里云百炼（通义千问）
-// 文档：https://help.aliyun.com/zh/model-studio/compatibility-of-openai-with-dashscope
 // ═══════════════════════════════════════════════════════════
 export const PRESET_AI_CONFIG: AIConfig = {
   apiKey: 'sk-ws-H.ELMIRHL.w9Oo.MEUCIQC5cbZG1Y-LQ32Q_8bkf2vgaoNVH3lJN6kfVgaOAQ555AIgUPNCX2J3odM5XSJwAobp3awAQlZeQ8CoeqlrGq2q4gs',
@@ -163,10 +164,10 @@ export const useStore = create<StoreState>()(
       onboarded: false,
       playerTag: 'PLAYER_01',
       dailyGoalMin: 120,
-      hp: 78,
-      points: 1280,
-      streak: 15,
-      totalFocusMs: 45 * 3600_000,
+      hp: 100,
+      points: 0,
+      streak: 0,
+      totalFocusMs: 0,
       todayStudyMs: 0,
       todayEntMs: 0,
       totalEntMs: 0,
@@ -174,8 +175,8 @@ export const useStore = create<StoreState>()(
       gaokaoDate: '2027-06-07',
       gaokaoTargetScore: 680,
       gaokaoBaseScore: 400,
-      quests: QUESTS,
-      achievements: ACHIEVEMENTS,
+      quests: [],
+      achievements: [],
       ownedItems: {},
       pointHistory: [],
       isDark: false,
@@ -201,7 +202,7 @@ export const useStore = create<StoreState>()(
           pointHistory: [
             { id: crypto.randomUUID(), type, amount: Math.abs(amount), reason, ts: Date.now() },
             ...s.pointHistory
-          ].slice(0, 200) // 保留最近 200 条
+          ].slice(0, 200)
         })),
       addStreak: (n) => set(s => ({ streak: Math.max(0, s.streak + n) })),
       addFocusMs: (n) => set(s => ({ totalFocusMs: s.totalFocusMs + n, todayStudyMs: s.todayStudyMs + n })),
@@ -218,13 +219,6 @@ export const useStore = create<StoreState>()(
           points: s.points + reward
         }))
         if (reward > 0) get().addPointRecord('earn', reward, `完成任务：${q.title}`)
-        // 自动尝试解锁"完美主义者"成就：一周内完成所有日常任务
-        if (q?.category === 'daily') {
-          const all = get().quests.filter(x => x.category === 'daily')
-          if (all.every(x => x.completed)) {
-            get().unlockAchievement('a4')
-          }
-        }
       },
       buyItem: (id) => {
         const item = SHOP_ITEMS.find(i => i.id === id)
@@ -305,7 +299,6 @@ export const useStore = create<StoreState>()(
           onboarded: true,
           playerTag: tag || 'PLAYER_01',
           dailyGoalMin: goal,
-          // 如果用户没填 API 配置，使用预置的百炼配置
           ai: ai?.apiKey?.trim() ? ai : { ...PRESET_AI_CONFIG }
         }),
       reset: () =>
@@ -313,10 +306,10 @@ export const useStore = create<StoreState>()(
           onboarded: false,
           playerTag: 'PLAYER_01',
           dailyGoalMin: 120,
-          hp: 78,
-          points: 1280,
-          streak: 15,
-          totalFocusMs: 45 * 3600_000,
+          hp: 100,
+          points: 0,
+          streak: 0,
+          totalFocusMs: 0,
           todayStudyMs: 0,
           todayEntMs: 0,
           totalEntMs: 0,
@@ -324,8 +317,8 @@ export const useStore = create<StoreState>()(
           gaokaoDate: '2027-06-07',
           gaokaoTargetScore: 680,
           gaokaoBaseScore: 400,
-          quests: QUESTS,
-          achievements: ACHIEVEMENTS,
+          quests: [],
+          achievements: [],
           ownedItems: {},
           isDark: false,
           ai: { ...PRESET_AI_CONFIG },
@@ -350,34 +343,21 @@ export const useStore = create<StoreState>()(
       syncUsage: (study, ent) => {
         const studyMs = study.reduce((sum, x) => sum + x.totalMs, 0)
         const entMs = ent.reduce((sum, x) => sum + x.totalMs, 0)
-        // 累计娱乐时长到总量（高考扣分用），只增不减
         const prevEnt = get().todayEntMs
-        const entDelta = Math.max(0, entMs - prevEnt) // 新增的娱乐时长
+        const entDelta = Math.max(0, entMs - prevEnt)
         set({
           todayStudyMs: studyMs,
           todayEntMs: entMs,
           totalEntMs: get().totalEntMs + entDelta
         })
-        // 根据 studyMs 推进"单词风暴""深度阅读"任务
-        const wordQuest = get().quests.find(q => q.id === 'q2')
-        if (wordQuest && !wordQuest.completed) {
-          const progress = Math.min(wordQuest.total, Math.floor(studyMs / 60_000 / 2))  // 2 分钟 = 1 个单词
-          set(s => ({
-            quests: s.quests.map(qx => qx.id === 'q2' ? { ...qx, progress } : qx)
-          }))
-          if (progress >= wordQuest.total) get().completeQuest('q2')
-        }
       },
       dailySettle: () => {
         const today = todayStr()
         const s = get()
         if (s.lastSyncDay === today) return
-        // 跨日：达成目标 +连胜，未达成 -1
         const dailyGoalMs = s.dailyGoalMin * 60_000
         if (s.todayStudyMs >= dailyGoalMs) {
           set({ streak: s.streak + 1, lastSyncDay: today, hpLocked: false })
-          if (s.streak + 1 >= 7) get().unlockAchievement('a2')
-          if (s.streak + 1 >= 30) get().unlockAchievement('a3')
         } else {
           set({ streak: 0, lastSyncDay: today, hpLocked: false })
         }
@@ -386,15 +366,27 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'cyber-survival-store',
-      version: 2,  // 版本升级触发 merge，让老用户也获得预置百炼配置
+      version: 3,  // 版本升级：清除旧预置数据
       storage: createJSONStorage(() => localStorage),
-      // 合并策略：如果 localStorage 中的 ai.apiKey 为空，用预置配置兜底
+      // 迁移：旧版本用户清除预置的成就/任务/积分
+      migrate: (persisted: any, version: number) => {
+        if (version < 3 && persisted) {
+          // 清除旧版本的预置数据
+          persisted.quests = []
+          persisted.achievements = []
+          persisted.points = 0
+          persisted.hp = 100
+          persisted.streak = 0
+          persisted.totalFocusMs = 0
+          persisted.pointHistory = []
+        }
+        return persisted
+      },
       merge: (persisted, current) => {
         const p = (persisted || {}) as any
         const c = current as any
         const defaultAI = c.ai || { ...PRESET_AI_CONFIG }
         const persistedAI = p.ai || {}
-        // 核心：如果之前没存过 apiKey，或者 apiKey 为空，使用预置百炼配置
         const ai = persistedAI.apiKey?.trim()
           ? { ...defaultAI, ...persistedAI }
           : { ...PRESET_AI_CONFIG }
@@ -402,7 +394,6 @@ export const useStore = create<StoreState>()(
           ...c,
           ...p,
           ai,
-          // 同理：modelList 为空时用预置列表
           modelList: (p.modelList && p.modelList.length > 0) ? p.modelList : c.modelList
         }
       }
@@ -414,16 +405,11 @@ export const useStore = create<StoreState>()(
 export function hpFromStudy(studyMs: number, goalMs: number): number {
   if (goalMs <= 0) return 0
   const ratio = studyMs / goalMs
-  // 达成 100% → HP 100, 50% → HP 60, 0% → HP 30
   return Math.round(Math.min(100, 30 + ratio * 70))
 }
 
 // ═══════════════════════════════════════════════════════════
 // 高考估分计算
-// 规则：
-//   基础分 + 总学习时长加分 - 总娱乐时长扣分 + 已完成任务数加分
-//   每小时学习 +5 分，每小时娱乐 -3 分，每完成任务 +3 分
-//   最低不低于 200，最高不超过 750
 // ═══════════════════════════════════════════════════════════
 export function calcGaokaoScore(state: {
   gaokaoBaseScore: number
@@ -436,9 +422,9 @@ export function calcGaokaoScore(state: {
   const completedQuests = state.quests.filter(q => q.completed).length
 
   const score = state.gaokaoBaseScore
-    + studyHours * 5      // 每小时学习 +5
-    - entHours * 3        // 每小时娱乐 -3
-    + completedQuests * 3 // 每完成任务 +3
+    + studyHours * 5
+    - entHours * 3
+    + completedQuests * 3
 
   return Math.round(Math.max(200, Math.min(750, score)))
 }

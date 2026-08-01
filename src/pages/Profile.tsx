@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useStore, daysUntilGaokao } from '@/stores/useStore'
 import { useGaoKaoStore } from '@/stores/gaoKaoStore'
-import GaokaoProgress from '@/components/GaokaoProgress'
 
 interface ProfileProps {
-  onNavigate?: (page: 'achievements' | 'settings' | 'chat' | 'archive') => void
+  onNavigate?: (page: 'achievements' | 'settings' | 'chat') => void
 }
 
 export default function Profile({ onNavigate }: ProfileProps) {
@@ -226,15 +225,7 @@ export default function Profile({ onNavigate }: ProfileProps) {
         </div>
       )}
 
-      {/* 高考进度精简版 */}
-      <GaokaoProgress variant="compact" />
-
       {/* 列表 */}
-      <ListRow
-        title="高考档案馆"
-        desc="详细科目分析"
-        onClick={() => onNavigate?.('archive')}
-      />
       <ListRow
         title="成就殿堂"
         desc="成就与里程碑"

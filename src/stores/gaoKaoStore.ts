@@ -37,14 +37,6 @@ export interface WeeklyGoal {
   completedHours: number
 }
 
-export interface Milestone {
-  id: string
-  title: string
-  desc: string
-  ts: number
-  type: 'streak' | 'exam' | 'errorClear' | 'scoreUp' | 'custom'
-}
-
 export interface GaoKaoProfile {
   // 基础信息
   nickname: string
@@ -62,7 +54,6 @@ export interface GaoKaoProfile {
   studyStreak: number
   lastStudyDate: string
   generatedPlan: WeeklyPlanTask[]
-  milestones: Milestone[]
 
   // 版本控制
   dbVersion: number
@@ -97,7 +88,6 @@ const DEFAULT_PROFILE: GaoKaoProfile = {
   studyStreak: 0,
   lastStudyDate: '',
   generatedPlan: [],
-  milestones: [],
   dbVersion: 1,
 }
 
@@ -117,7 +107,6 @@ interface GaoKaoState {
   resolveErrorQuestion: (id: string) => void
   generateWeeklyPlan: () => void
   togglePlanTask: (id: string) => void
-  addMilestone: (m: Omit<Milestone, 'id' | 'ts'>) => void
   syncToIndexedDB: () => Promise<void>
   loadFromIndexedDB: () => Promise<void>
   resetProfile: () => void
@@ -244,26 +233,12 @@ export const useGaoKaoStore = create<GaoKaoState>()(
           }
         })),
 
-      addMilestone: (m) =>
-        set((s) => ({
-          profile: {
-            ...s.profile,
-            milestones: [
-              { ...m, id: `ms-${Date.now().toString(36)}`, ts: Date.now() },
-              ...s.profile.milestones
-            ].slice(0, 100)
-          }
-        })),
-
       syncToIndexedDB: async () => {
         try {
           const { profile } = get()
           await dbPut(STORES.gaokaoProfile, { id: 'main', ...profile })
           if (profile.errorQuestions.length > 0) {
             await dbBulkPut(STORES.errorQuestions, profile.errorQuestions)
-          }
-          if (profile.milestones.length > 0) {
-            await dbBulkPut(STORES.milestones, profile.milestones)
           }
         } catch (e) {
           console.warn('[gaoKaoStore] syncToIndexedDB failed:', e)

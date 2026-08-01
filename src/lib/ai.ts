@@ -1,5 +1,4 @@
 import { useStore, type AIConfig, type ChatMessage, calcGaokaoScore, daysUntilGaokao } from '@/stores/useStore'
-import { useGaoKaoStore } from '@/stores/gaoKaoStore'
 import { fetchUsageStats, hasUsageAccess, openUsageAccessSettings, fmtMs } from '@/lib/usageStats'
 
 /**
@@ -7,23 +6,26 @@ import { fetchUsageStats, hasUsageAccess, openUsageAccessSettings, fmtMs } from 
  * - 硬编码「监督智能体」System Prompt
  * - 滑动窗口：System Prompt + 最近 20 条历史对话（10 轮）
  * - 流式输出（stream: true）+ 打字机效果
- * - 工具调用：AI 可加任务/加成就/调积分/设 HP/完成 quests
+ * - 工具调用：AI 可加任务/加成就/调积分/设HP/完成任务/查阅手机使用
  * API Key 仅存本地 localStorage
  */
 
 // ═══════════════════════════════════════════════════════════
 // 硬编码 System Prompt — 永远放在 messages[0]
 // ═══════════════════════════════════════════════════════════
-const SYSTEM_PROMPT = `你是用户的个人成长监督者。
+const SYSTEM_PROMPT = `你是用户的个人成长监督者（监管者）。
 
-规则：
-- 回复简短直接，不超过3句话。不要用emoji、不要用markdown标题、不要分段落长篇大论。
+核心规则：
+- 回复简短直接，不超过3句话。不要用emoji、不要用markdown标题。
 - 语气果断，像一个严厉但关心的教练。
-- 用户汇报完成事项时，根据难度给积分奖励（调add_points）或成就（调add_achievement）。
-- 用户拖延时，直接警告并引导回正轨。
-- 涉及加任务、加成就、调积分、设HP、完成任务、更新成就进度时，必须调用对应工具，不要只口头答应。
-- 调用工具后用一句话确认即可，不要重复描述工具做了什么。
-- 不擅自调积分，除非是奖励或惩罚场景。`
+- 当用户说"扣我积分"、"奖励我"、"加积分"时，必须调用 add_points 工具，不要只口头答应。
+- 当用户说"加个任务"、"我想做XXX"时，必须调用 add_quest 工具。
+- 当用户说"加个成就"、"我想挑战XXX"时，必须调用 add_achievement 工具。
+- 当用户说"设HP"、"扣HP"时，必须调用 set_hp 工具。
+- 当用户说"完成任务"时，必须调用 complete_quest 工具。
+- 当用户说"看看手机使用"、"我是不是在偷懒"时，必须调用 check_phone_usage 工具。
+- 调用工具后用一句话确认执行结果即可。
+- 涉及任何状态修改（积分、HP、任务、成就），都必须调用对应工具执行，绝对不能只口头说"已扣除"而不调工具。`
 
 // ═══════════════════════════════════════════════════════════
 // 工具定义（OpenAI 兼容 function calling）
@@ -32,8 +34,37 @@ const TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'add_points',
+      description: '增加或扣除积分。用户要求奖励或惩罚时必须调用此工具。amount为正数表示增加，为负数表示扣除。例如"扣我50积分"则amount=-50，"奖励我100积分"则amount=100。',
+      parameters: {
+        type: 'object',
+        properties: {
+          amount: { type: 'number', description: '积分数。正数=增加，负数=扣除。例如 -50 表示扣50积分' },
+          reason: { type: 'string', description: '原因，10字内' }
+        },
+        required: ['amount']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'set_hp',
+      description: '设置精神力HP值（0-100）。用户要求修改HP时必须调用此工具。低于30为惩罚，70+为奖励。',
+      parameters: {
+        type: 'object',
+        properties: {
+          value: { type: 'number', description: 'HP值 0-100' }
+        },
+        required: ['value']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
       name: 'add_quest',
-      description: '添加新任务。用户说"加个任务"或"我想做XXX"时调用。',
+      description: '添加新任务。用户说"加个任务"或"我想做XXX"时必须调用此工具。',
       parameters: {
         type: 'object',
         properties: {
@@ -49,8 +80,22 @@ const TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'complete_quest',
+      description: '标记任务为已完成。用户口头确认完成某任务时必须调用此工具。需要提供任务ID。',
+      parameters: {
+        type: 'object',
+        properties: {
+          quest_id: { type: 'string', description: '任务ID' }
+        },
+        required: ['quest_id']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
       name: 'add_achievement',
-      description: '添加新成就到成就殿堂。用户说"加个成就"或"我想挑战XXX"时调用。',
+      description: '添加新成就到成就殿堂。用户说"加个成就"或"我想挑战XXX"时必须调用此工具。',
       parameters: {
         type: 'object',
         properties: {
@@ -94,92 +139,6 @@ const TOOLS = [
   {
     type: 'function',
     function: {
-      name: 'add_points',
-      description: '加积分（可为负数表示扣除）。奖励或惩罚时调用。',
-      parameters: {
-        type: 'object',
-        properties: {
-          amount: { type: 'number', description: '积分数，可为负数' },
-          reason: { type: 'string', description: '原因，10字内' }
-        },
-        required: ['amount']
-      }
-    }
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'set_hp',
-      description: '设置精神力HP（0-100）。低于30为惩罚，70+为奖励。',
-      parameters: {
-        type: 'object',
-        properties: {
-          value: { type: 'number', description: 'HP值 0-100' }
-        },
-        required: ['value']
-      }
-    }
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'complete_quest',
-      description: '标记任务为已完成。用户口头确认完成时调用。',
-      parameters: {
-        type: 'object',
-        properties: {
-          quest_id: { type: 'string', description: '任务ID' }
-        },
-        required: ['quest_id']
-      }
-    }
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'add_error_question',
-      description: '记录错题到高考档案馆。用户说"这道题错了"或"又做错了一道XXX题"时调用。',
-      parameters: {
-        type: 'object',
-        properties: {
-          subject: { type: 'string', description: '科目，如 数学/物理/英语' },
-          tag: { type: 'string', description: '知识点标签，如 函数图像/力学' },
-          desc: { type: 'string', description: '错题描述，10-30字' }
-        },
-        required: ['subject', 'tag', 'desc']
-      }
-    }
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'generate_plan',
-      description: '基于薄弱科目和错题标签自动生成本周复习计划。用户说"帮我制定复习计划"或"这周怎么安排"时调用。',
-      parameters: {
-        type: 'object',
-        properties: {},
-        required: []
-      }
-    }
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'update_subject_score',
-      description: '更新某科目当前分数。用户说"我数学考了XX分"或"模考成绩出来了"时调用。',
-      parameters: {
-        type: 'object',
-        properties: {
-          subject: { type: 'string', description: '科目名称' },
-          score: { type: 'number', description: '新的分数' }
-        },
-        required: ['subject', 'score']
-      }
-    }
-  },
-  {
-    type: 'function',
-    function: {
       name: 'check_phone_usage',
       description: '查阅用户今天的手机使用状况，包括学习App和娱乐App的使用时长。当你想了解用户是否在偷懒、是否在刷娱乐App时调用。用户说"看看我今天的表现"、"我是不是在偷懒"、"查查我的手机使用"时也调用。',
       parameters: {
@@ -210,6 +169,26 @@ async function executeTool(name: string, args: any): Promise<string> {
   const s = useStore.getState()
   try {
     switch (name) {
+      case 'add_points': {
+        const before = s.points
+        const amt = Number(args.amount || 0)
+        if (isNaN(amt)) {
+          return JSON.stringify({ ok: false, error: 'amount不是有效数字' })
+        }
+        s.addPoints(amt)
+        s.addPointRecord(amt >= 0 ? 'earn' : 'spend', amt, String(args.reason || (amt >= 0 ? 'AI 奖励' : 'AI 惩罚')))
+        const after = useStore.getState().points
+        return JSON.stringify({ ok: true, before, after, msg: `积分从${before}变为${after}（${amt >= 0 ? '+' : ''}${amt}）` })
+      }
+      case 'set_hp': {
+        const val = Math.max(0, Math.min(100, Math.round(Number(args.value))))
+        if (isNaN(val)) {
+          return JSON.stringify({ ok: false, error: 'value不是有效数字' })
+        }
+        s.setHp(val)
+        useStore.setState({ hpLocked: true })
+        return JSON.stringify({ ok: true, hp: useStore.getState().hp, msg: `HP已设为${useStore.getState().hp}` })
+      }
       case 'add_quest': {
         const id = s.addCustomQuest({
           title: String(args.title || '未命名任务'),
@@ -217,7 +196,15 @@ async function executeTool(name: string, args: any): Promise<string> {
           reward: Number(args.reward || 100),
           category: (['daily', 'weekly', 'main'].includes(args.category) ? args.category : 'daily') as any
         })
-        return JSON.stringify({ ok: true, quest_id: id, msg: `任务已添加到 ${args.category} 列表` })
+        return JSON.stringify({ ok: true, quest_id: id, msg: `任务「${args.title}」已添加` })
+      }
+      case 'complete_quest': {
+        const q = s.quests.find(x => x.id === args.quest_id)
+        if (!q || q.completed) {
+          return JSON.stringify({ ok: false, error: '任务不存在或已完成' })
+        }
+        s.completeQuest(String(args.quest_id))
+        return JSON.stringify({ ok: true, msg: `任务「${q.title}」已完成，奖励${q.reward}积分` })
       }
       case 'add_achievement': {
         const id = s.addCustomAchievement({
@@ -225,7 +212,7 @@ async function executeTool(name: string, args: any): Promise<string> {
           desc: String(args.desc || ''),
           total: Number(args.total || 1)
         })
-        return JSON.stringify({ ok: true, achievement_id: id, msg: '成就已添加到殿堂' })
+        return JSON.stringify({ ok: true, achievement_id: id, msg: `成就「${args.name}」已添加到殿堂` })
       }
       case 'update_achievement': {
         const a = s.achievements.find(x => x.id === args.achievement_id)
@@ -242,57 +229,7 @@ async function executeTool(name: string, args: any): Promise<string> {
         s.unlockAchievement(String(args.achievement_id))
         return JSON.stringify({ ok: true, achievement_id: args.achievement_id, msg: `成就已解锁：${a.name}` })
       }
-      case 'add_points': {
-        const before = s.points
-        const amt = Number(args.amount || 0)
-        s.addPoints(amt)
-        s.addPointRecord(amt >= 0 ? 'earn' : 'spend', amt, String(args.reason || (amt >= 0 ? 'AI 奖励' : 'AI 惩罚')))
-        return JSON.stringify({ ok: true, before, after: useStore.getState().points })
-      }
-      case 'set_hp': {
-        s.setHp(Number(args.value))
-        useStore.setState({ hpLocked: true })
-        return JSON.stringify({ ok: true, hp: useStore.getState().hp })
-      }
-      case 'complete_quest': {
-        const q = s.quests.find(x => x.id === args.quest_id)
-        if (!q || q.completed) {
-          return JSON.stringify({ ok: false, error: '任务不存在或已完成' })
-        }
-        s.completeQuest(String(args.quest_id))
-        return JSON.stringify({ ok: true, msg: '任务标记完成', reward: q.reward })
-      }
-      case 'add_error_question': {
-        const gkStore = useGaoKaoStore.getState()
-        gkStore.addErrorQuestion({
-          subject: String(args.subject || '未知'),
-          tag: String(args.tag || '未分类'),
-          desc: String(args.desc || '')
-        })
-        return JSON.stringify({ ok: true, msg: '错题已记录到档案馆' })
-      }
-      case 'generate_plan': {
-        const gkStore = useGaoKaoStore.getState()
-        gkStore.generateWeeklyPlan()
-        const plan = useGaoKaoStore.getState().profile.generatedPlan
-        return JSON.stringify({ ok: true, msg: `已生成${plan.length}项复习计划`, planCount: plan.length })
-      }
-      case 'update_subject_score': {
-        const gkStore = useGaoKaoStore.getState()
-        const profile = gkStore.profile
-        const sub = profile.subjects.find(s => s.name === args.subject)
-        if (!sub) return JSON.stringify({ ok: false, error: `科目 ${args.subject} 不存在` })
-        const score = Math.max(0, Math.min(sub.fullScore, Number(args.score)))
-        gkStore.updateSubject(String(args.subject), { currentScore: score })
-        // 重算总分
-        const newSubjects = profile.subjects.map(s =>
-          s.name === args.subject ? { ...s, currentScore: score } : s
-        )
-        gkStore.updateProfile({ currentTotalScore: newSubjects.reduce((sum, s) => sum + s.currentScore, 0) })
-        return JSON.stringify({ ok: true, subject: args.subject, newScore: score })
-      }
       case 'check_phone_usage': {
-        // 先检查权限
         const granted = await hasUsageAccess()
         if (!granted) {
           return JSON.stringify({
@@ -302,7 +239,6 @@ async function executeTool(name: string, args: any): Promise<string> {
             msg: '用户尚未授予使用情况访问权限，请调用 request_usage_permission 引导用户去设置。'
           })
         }
-        // 拉取今天的使用数据
         const now = Date.now()
         const start = new Date()
         start.setHours(0, 0, 0, 0)
@@ -315,7 +251,6 @@ async function executeTool(name: string, args: any): Promise<string> {
         const entTop = ent.sort((a, b) => b.totalMs - a.totalMs).slice(0, 3)
           .map(x => `${x.label}:${fmtMs(x.totalMs)}`).join(', ')
 
-        // 同步到 store
         useStore.getState().syncUsage(study, ent)
 
         return JSON.stringify({
@@ -366,14 +301,12 @@ export async function chatWithAI(
   }
 
   // ── 滑动窗口：System Prompt（index 0）+ 最近 20 条历史对话（10 轮）──
-  // 注意：Chat.tsx 在调用 chatWithAI 前已 pushChat 用户消息到 store，
-  // 所以 state.chat 的最后一条就是当前用户消息，无需重复添加。
   const history: ChatMessage[] = state.chat.slice(-20)
   const messages: any[] = [
     { role: 'system', content: buildContext(state) },
     ...history.map(m => ({ role: m.role, content: m.text }))
   ]
-  // 兜底：如果调用方未预先 pushChat（history 末尾不是当前用户消息），则补上
+  // 兜底：如果调用方未预先 pushChat，则补上
   const last = history[history.length - 1]
   if (!last || last.role !== 'user' || last.text !== userMessage) {
     messages.push({ role: 'user', content: userMessage })
@@ -408,6 +341,7 @@ export async function chatWithAI(
         })
       }
       // 第二轮：流式生成最终文字回复（不带 tools，避免再次触发）
+      // 注意：第二轮重新开始流式，清空之前的流式内容
       const r2 = await callAPIStream(ai, messages, false, onChunk)
       if (r2.content) return r2.content
       return '已执行操作。'
@@ -415,7 +349,7 @@ export async function chatWithAI(
 
     return r1.content || '（空回复）'
   } catch (e: any) {
-    // 如果带工具的请求失败，尝试不带工具重试（仍用流式）
+    // 如果带工具的请求失败，尝试不带工具重试
     if (e.message && (e.message.includes('tool') || e.message.includes('function') || e.message.includes('400'))) {
       try {
         const r = await callAPIStream(ai, messages, false, onChunk)
@@ -431,21 +365,11 @@ export async function chatWithAI(
 
 // ═══════════════════════════════════════════════════════════
 // URL 拼接工具：兼容两种 endpoint 格式
-//   1. DeepSeek 风格：https://api.deepseek.com（不带 /v1）
-//   2. 百炼风格：https://dashscope.aliyuncs.com/compatible-mode/v1（自带 /v1）
 // ═══════════════════════════════════════════════════════════
 function buildChatUrl(endpoint: string): string {
   const base = endpoint.replace(/\/+$/, '')
-  // 如果已以 /v1 或 /v2 等结尾，直接追加 /chat/completions
   if (/\/v\d+$/.test(base)) return base + '/chat/completions'
-  // 否则追加 /v1/chat/completions（DeepSeek 风格）
   return base + '/v1/chat/completions'
-}
-
-function buildModelsUrl(endpoint: string): string {
-  const base = endpoint.replace(/\/+$/, '')
-  if (/\/v\d+$/.test(base)) return base + '/models'
-  return base + '/v1/models'
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -476,7 +400,6 @@ async function callAPIStream(
     body.tool_choice = 'auto'
   }
 
-  // 60秒超时，防止请求永久挂起导致发送按钮卡死
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 60_000)
 
@@ -498,10 +421,9 @@ async function callAPIStream(
     throw new Error(`请求失败 (${res.status})：${detail || errText.slice(0, 200)}`)
   }
 
-  // 连接成功，清除超时定时器（流式读取不受 60s 限制）
   clearTimeout(timer)
 
-  // 如果不支持流式（res.body 为空），回退到非流式 JSON 解析
+  // 如果不支持流式，回退到非流式 JSON 解析
   if (!res.body || typeof res.body.getReader !== 'function') {
     const data = await res.json()
     const choice = data.choices?.[0]
@@ -526,15 +448,14 @@ async function callAPIStream(
 
     buffer += decoder.decode(value, { stream: true })
 
-    // 按换行分割，处理完整的行
     const lines = buffer.split('\n')
-    buffer = lines.pop() || '' // 保留最后一条不完整的行
+    buffer = lines.pop() || ''
 
     for (const line of lines) {
       const trimmed = line.trim()
       if (!trimmed || !trimmed.startsWith('data: ')) continue
 
-      const data = trimmed.slice(6) // 去掉 "data: "
+      const data = trimmed.slice(6)
       if (data === '[DONE]') continue
 
       try {
@@ -542,13 +463,11 @@ async function callAPIStream(
         const delta = json.choices?.[0]?.delta
         if (!delta) continue
 
-        // 文字内容
         if (delta.content) {
           content += delta.content
           onChunk?.(delta.content)
         }
 
-        // 工具调用（流式中分片到达，需按 index 累积）
         if (delta.tool_calls) {
           for (const tc of delta.tool_calls) {
             const idx = tc.index ?? 0
@@ -565,7 +484,7 @@ async function callAPIStream(
           }
         }
       } catch {
-        // 忽略 JSON 解析错误（可能是不完整的 chunk）
+        // 忽略 JSON 解析错误
       }
     }
   }
@@ -599,7 +518,6 @@ function buildContext(state: any): string {
     .map((a: any) => `  - ${a.id} 「${a.name}」进度 ${a.progress}/${a.total}`)
     .join('\n') || '  (无)'
 
-  // 从 localStorage（store）读取用户自定义的系统提示词，兜底用硬编码默认值
   const sysPrompt = state.systemPrompt || SYSTEM_PROMPT
 
   // 高考进度
@@ -612,21 +530,6 @@ function buildContext(state: any): string {
   })
   const gaokaoGap = state.gaokaoTargetScore - gaokaoScore
 
-  // 高考档案数据（来自 gaoKaoStore）
-  const gkProfile = useGaoKaoStore.getState().profile
-  const subjectList = gkProfile.subjects
-    .map(s => `${s.name}:${s.currentScore}/${s.targetScore}(满分${s.fullScore})`)
-    .join(' ')
-  const unresolvedErrors = gkProfile.errorQuestions.filter(q => !q.resolved)
-  const tagSummary = unresolvedErrors
-    .slice(0, 10)
-    .map(q => `${q.subject}-${q.tag}`)
-    .join(', ')
-  const planSummary = gkProfile.generatedPlan
-    .slice(0, 5)
-    .map(t => `${t.completed ? '✓' : '○'} ${t.subject}:${t.content}(${t.estimatedMinutes}min)`)
-    .join('\n  ')
-
   return `${sysPrompt}
 
 【当前状态】
@@ -634,28 +537,14 @@ function buildContext(state: any): string {
 学习:${studyMin}min/${dailyGoalMin}min(${ratio}%) 娱乐:${entMin}min 总专注:${Math.floor(state.totalFocusMs / 3600_000)}h
 时间:${new Date().toLocaleString('zh-CN', { hour12: false })} ${isLate ? '[深夜]' : ''}
 
-【手机使用监测】
-你可以随时调用 check_phone_usage 工具查阅用户今天的手机使用详情（学习App和娱乐App的时长排行）。
-如果返回权限不足，调用 request_usage_permission 引导用户去系统设置开启权限。
-当前已同步的学习时长:${studyMin}分钟 娱乐时长:${entMin}分钟（此数据可能不是实时的，如需最新数据请调check_phone_usage）
-
-【高考档案】
+【高考进度】
 距高考:${gaokaoDays}天 日期:${state.gaokaoDate}
 估分:${gaokaoScore} 目标:${state.gaokaoTargetScore} ${gaokaoGap > 0 ? `还差${gaokaoGap}分` : '已达标'}
-考生:${gkProfile.nickname} 目标院校:${gkProfile.targetUniversity}
-当前总分:${gkProfile.currentTotalScore} 目标总分:${gkProfile.targetTotalScore}
-各科分数: ${subjectList}
-薄弱科目: ${gkProfile.weakSubjects.join(', ') || '无'}
-未解决错题: ${unresolvedErrors.length}条 ${tagSummary ? '标签:' + tagSummary : ''}
-本周计划完成: ${gkProfile.generatedPlan.filter(t => t.completed).length}/${gkProfile.generatedPlan.length}
-${planSummary ? '计划明细:\n  ' + planSummary : ''}
 
-【提分建议规则】
-- 优先针对薄弱科目和错题标签给出提分性价比最高的建议
-- 用户汇报模考成绩时，调update_subject_score更新科目分数
-- 用户说做错题时，调add_error_question记录
-- 用户要复习计划时，调generate_plan自动生成
-- 据此督促用户，语气严厉但鼓励
+【手机使用监测】
+你可以随时调用 check_phone_usage 工具查阅用户今天的手机使用详情。
+如果返回权限不足，调用 request_usage_permission 引导用户去系统设置开启权限。
+当前已同步的学习时长:${studyMin}分钟 娱乐时长:${entMin}分钟（此数据可能不是实时的，如需最新数据请调check_phone_usage）
 
 【未完成任务】(complete_quest用ID)
 ${questList}
@@ -665,7 +554,7 @@ ${achList}`
 }
 
 // ═══════════════════════════════════════════════════════════
-// 测试连接 — 发送最小请求验证 API Key + Endpoint + Model
+// 测试连接
 // ═══════════════════════════════════════════════════════════
 export async function testConnection(cfg: {
   apiKey: string
