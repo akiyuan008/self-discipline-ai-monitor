@@ -14,9 +14,8 @@ const ICONS: Record<string, string> = {
   chat: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z'
 }
 
-// 新顺序：[quests, dungeon, home(中间大黑圆), shop, profile]
-// 中间大黑圆是 home，第二个位置是 dungeon
-const ORDER: PageId[] = ['quests', 'dungeon', 'home', 'shop', 'profile']
+// 新顺序：[quests, chat(监管者), home(中间大黑圆), shop, profile]
+const ORDER: PageId[] = ['quests', 'chat', 'home', 'shop', 'profile']
 const CENTER: PageId = 'home'
 
 export default function Dock({ current, onChange }: DockProps) {

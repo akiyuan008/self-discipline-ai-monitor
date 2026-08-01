@@ -19,7 +19,6 @@ export default function App() {
   const isDark = useStore(s => s.isDark)
   const [current, setCurrent] = useState<PageId>('home')
 
-  // 深色模式
   useEffect(() => {
     document.body.classList.toggle('dark', isDark)
   }, [isDark])
@@ -29,17 +28,20 @@ export default function App() {
     if (!onboarded) return
     const s = useStore.getState()
     s.dailySettle()
-    // 拉取今天 0 点到现在
-    const now = Date.now()
-    const start = new Date()
-    start.setHours(0, 0, 0, 0)
-    fetchUsageStats(start.getTime(), now).then(({ study, ent }) => {
+    // 启动时同步使用情况
+    fetchUsageStats(Date.now() - 24 * 3600_000, Date.now()).then(({ study, ent }) => {
       s.syncUsage(study, ent)
-      // 根据学习时长自动更新 HP
-      const goalMs = s.dailyGoalMin * 60_000
-      const newHp = hpFromStudy(s.todayStudyMs, goalMs)
-      if (newHp > 0) s.setHp(newHp)
+      s.setHp(hpFromStudy(s.todayStudyMs, s.dailyGoalMin * 60_000))
     })
+    // 每 5 分钟同步一次
+    const id = window.setInterval(() => {
+      const st = useStore.getState()
+      fetchUsageStats(Date.now() - 24 * 3600_000, Date.now()).then(({ study, ent }) => {
+        st.syncUsage(study, ent)
+        st.setHp(hpFromStudy(st.todayStudyMs, st.dailyGoalMin * 60_000))
+      })
+    }, 5 * 60_000)
+    return () => window.clearInterval(id)
   }, [onboarded])
 
   if (!onboarded) {
@@ -51,7 +53,7 @@ export default function App() {
     )
   }
 
-  // 全屏页
+  // 全屏页：深渊/设置/成就/聊天
   if (current === 'dungeon') {
     return (
       <>
@@ -89,7 +91,7 @@ export default function App() {
   const M = current === 'home'
     ? (props: any) => <Home {...props} onNavigate={(p: PageId) => setCurrent(p)} />
     : current === 'profile'
-      ? (props: any) => <Profile {...props} onNavigate={(p: 'achievements' | 'settings' | 'chat') => setCurrent(p)} />
+      ? (props: any) => <Profile {...props} onNavigate={(p: 'achievements' | 'settings') => setCurrent(p)} />
       : current === 'quests'
         ? Quests
         : current === 'shop'

@@ -79,6 +79,8 @@ interface StoreState {
   completeQuest: (id: string) => void
   buyItem: (id: string) => boolean
   unlockAchievement: (id: string) => void
+  addCustomQuest: (q: { title: string; desc: string; reward: number; category: 'daily' | 'weekly' | 'main' }) => string
+  addCustomAchievement: (a: { name: string; desc: string; total: number }) => string
   init: (tag: string, goal: number, ai?: AIConfig) => void
   reset: () => void
   setDungeon: (sec: number, active: boolean) => void
@@ -163,6 +165,43 @@ export const useStore = create<StoreState>()(
         }))
         // 解锁成就奖励积分
         set(s => ({ points: s.points + 200 }))
+      },
+      addCustomQuest: ({ title, desc, reward, category }) => {
+        const id = `q-ai-${Date.now().toString(36)}`
+        set(s => ({
+          quests: [
+            ...s.quests,
+            {
+              id, title, desc,
+              reward: Math.max(10, Math.min(2000, Math.round(reward))),
+              rewardType: 'EXP',
+              category,
+              accent: 'info',
+              progress: 0,
+              total: 1,
+              completed: false
+            }
+          ]
+        }))
+        return id
+      },
+      addCustomAchievement: ({ name, desc, total }) => {
+        const id = `a-ai-${Date.now().toString(36)}`
+        set(s => ({
+          achievements: [
+            ...s.achievements,
+            {
+              id, name, desc,
+              progress: 0,
+              total: Math.max(1, Math.min(999, Math.round(total))),
+              unlocked: false,
+              iconColor: '#FFFFFF',
+              iconBg: '#1a1a1a',
+              iconPath: 'M5 13l4 4L19 7'
+            }
+          ]
+        }))
+        return id
       },
       init: (tag, goal, ai) =>
         set({
