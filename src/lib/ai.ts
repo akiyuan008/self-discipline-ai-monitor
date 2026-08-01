@@ -1,4 +1,4 @@
-import { useStore, type AIConfig, type ChatMessage } from '@/stores/useStore'
+import { useStore, type AIConfig, type ChatMessage, calcGaokaoScore, daysUntilGaokao } from '@/stores/useStore'
 
 /**
  * 前端直连用户配置的 OpenAI 兼容 API
@@ -455,12 +455,28 @@ function buildContext(state: any): string {
   // 从 localStorage（store）读取用户自定义的系统提示词，兜底用硬编码默认值
   const sysPrompt = state.systemPrompt || SYSTEM_PROMPT
 
+  // 高考进度
+  const gaokaoDays = daysUntilGaokao(state.gaokaoDate)
+  const gaokaoScore = calcGaokaoScore({
+    gaokaoBaseScore: state.gaokaoBaseScore,
+    totalFocusMs: state.totalFocusMs,
+    totalEntMs: state.totalEntMs,
+    quests: state.quests
+  })
+  const gaokaoGap = state.gaokaoTargetScore - gaokaoScore
+
   return `${sysPrompt}
 
 【当前状态】
 代号:${state.playerTag} HP:${state.hp}/100 积分:${state.points} 连胜:${state.streak}天
 学习:${studyMin}min/${dailyGoalMin}min(${ratio}%) 娱乐:${entMin}min 总专注:${Math.floor(state.totalFocusMs / 3600_000)}h
 时间:${new Date().toLocaleString('zh-CN', { hour12: false })} ${isLate ? '[深夜]' : ''}
+
+【高考目标】
+距高考:${gaokaoDays}天 日期:${state.gaokaoDate}
+目标分:${state.gaokaoTargetScore} 当前估分:${gaokaoScore} ${gaokaoGap > 0 ? `还差${gaokaoGap}分` : '已达标'}
+累计学习:${Math.floor(state.totalFocusMs / 3600_000)}h 累计娱乐:${Math.floor(state.totalEntMs / 3600_000)}h
+提示:用户学习/完成任务→估分上升，娱乐→估分下降。据此督促用户。
 
 【未完成任务】(complete_quest用ID)
 ${questList}

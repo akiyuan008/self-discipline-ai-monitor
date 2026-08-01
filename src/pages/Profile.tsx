@@ -1,4 +1,5 @@
 import { useStore } from '@/stores/useStore'
+import GaokaoProgress from '@/components/GaokaoProgress'
 
 interface ProfileProps {
   onNavigate?: (page: 'achievements' | 'settings' | 'chat') => void
@@ -23,6 +24,9 @@ export default function Profile({ onNavigate }: ProfileProps) {
       <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 16 }}>
         个人中心
       </h1>
+
+      {/* 高考进度精简版 */}
+      <GaokaoProgress variant="compact" />
 
       {/* 玩家卡 */}
       <div className="card" style={{

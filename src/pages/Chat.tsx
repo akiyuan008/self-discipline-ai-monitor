@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { chatWithAI } from '@/lib/ai'
+import GaokaoProgress from '@/components/GaokaoProgress'
 
 interface Props {
   onBack: () => void
@@ -10,9 +11,9 @@ interface Props {
 
 const QUICK_PROMPTS = [
   '帮我加个 25 分钟背单词的日常任务',
-  '今天太累了，给我加个成就「一周摸鱼终结者」',
   '我刚偷偷刷了 30 分钟抖音，扣我 50 积分',
-  '看看我今天的进度'
+  '看看我离高考目标还差多少',
+  '今天完成了数学卷子，奖励我'
 ]
 
 export default function Chat({ onBack, onNavigateSettings }: Props) {
@@ -215,6 +216,8 @@ export default function Chat({ onBack, onNavigateSettings }: Props) {
             </button>
           </div>
         )}
+        {/* 高考进度精简版 — 仅在已配置时显示 */}
+        {configured && <GaokaoProgress variant="compact" />}
         {messages.map(m => <Bubble key={m.id} role={m.role} text={m.text} />)}
         {/* 流式输出中：已有文字 → 显示打字机气泡；无文字 → 显示三点等待动画 */}
         {sending && streamingText && (

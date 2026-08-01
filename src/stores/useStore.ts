@@ -68,7 +68,13 @@ interface StoreState {
   totalFocusMs: number
   todayStudyMs: number       // 今日学习累计
   todayEntMs: number         // 今日娱乐累计
+  totalEntMs: number         // 累计娱乐时长（高考分数扣分用）
   lastSyncDay: string        // 跨日结算用 yyyy-mm-dd
+
+  // 高考目标
+  gaokaoDate: string         // 高考日期 yyyy-mm-dd
+  gaokaoTargetScore: number  // 目标分数
+  gaokaoBaseScore: number    // 基础估分（起步分）
 
   // 任务/成就/商品
   quests: Quest[]
@@ -117,6 +123,8 @@ interface StoreState {
   setDungeon: (sec: number, active: boolean) => void
   setDungeonDuration: (min: number) => void
   setDailyGoal: (min: number) => void
+  setGaokaoDate: (d: string) => void
+  setGaokaoTargetScore: (n: number) => void
   pushChat: (msg: Omit<ChatMessage, 'id' | 'ts'>) => void
   clearChat: () => void
   syncUsage: (study: UsageStat[], ent: UsageStat[]) => void
@@ -160,7 +168,11 @@ export const useStore = create<StoreState>()(
       totalFocusMs: 45 * 3600_000,
       todayStudyMs: 0,
       todayEntMs: 0,
+      totalEntMs: 0,
       lastSyncDay: todayStr(),
+      gaokaoDate: '2027-06-07',
+      gaokaoTargetScore: 680,
+      gaokaoBaseScore: 400,
       quests: QUESTS,
       achievements: ACHIEVEMENTS,
       ownedItems: {},
@@ -306,7 +318,11 @@ export const useStore = create<StoreState>()(
           totalFocusMs: 45 * 3600_000,
           todayStudyMs: 0,
           todayEntMs: 0,
+          totalEntMs: 0,
           lastSyncDay: todayStr(),
+          gaokaoDate: '2027-06-07',
+          gaokaoTargetScore: 680,
+          gaokaoBaseScore: 400,
           quests: QUESTS,
           achievements: ACHIEVEMENTS,
           ownedItems: {},
@@ -323,6 +339,8 @@ export const useStore = create<StoreState>()(
       setDungeon: (sec, active) => set({ dungeonRemainingSec: sec, dungeonActive: active }),
       setDungeonDuration: (min) => set({ dungeonDurationMin: min }),
       setDailyGoal: (min) => set({ dailyGoalMin: min }),
+      setGaokaoDate: (d) => set({ gaokaoDate: d }),
+      setGaokaoTargetScore: (n) => set({ gaokaoTargetScore: Math.max(0, Math.round(n)) }),
       pushChat: (msg) =>
         set(s => ({
           chat: [...s.chat, { ...msg, id: crypto.randomUUID(), ts: Date.now() }]
@@ -331,7 +349,14 @@ export const useStore = create<StoreState>()(
       syncUsage: (study, ent) => {
         const studyMs = study.reduce((sum, x) => sum + x.totalMs, 0)
         const entMs = ent.reduce((sum, x) => sum + x.totalMs, 0)
-        set({ todayStudyMs: studyMs, todayEntMs: entMs })
+        // 累计娱乐时长到总量（高考扣分用），只增不减
+        const prevEnt = get().todayEntMs
+        const entDelta = Math.max(0, entMs - prevEnt) // 新增的娱乐时长
+        set({
+          todayStudyMs: studyMs,
+          todayEntMs: entMs,
+          totalEntMs: get().totalEntMs + entDelta
+        })
         // 根据 studyMs 推进"单词风暴""深度阅读"任务
         const wordQuest = get().quests.find(q => q.id === 'q2')
         if (wordQuest && !wordQuest.completed) {
@@ -390,4 +415,38 @@ export function hpFromStudy(studyMs: number, goalMs: number): number {
   const ratio = studyMs / goalMs
   // 达成 100% → HP 100, 50% → HP 60, 0% → HP 30
   return Math.round(Math.min(100, 30 + ratio * 70))
+}
+
+// ═══════════════════════════════════════════════════════════
+// 高考估分计算
+// 规则：
+//   基础分 + 总学习时长加分 - 总娱乐时长扣分 + 已完成任务数加分
+//   每小时学习 +5 分，每小时娱乐 -3 分，每完成任务 +3 分
+//   最低不低于 200，最高不超过 750
+// ═══════════════════════════════════════════════════════════
+export function calcGaokaoScore(state: {
+  gaokaoBaseScore: number
+  totalFocusMs: number
+  totalEntMs: number
+  quests: Quest[]
+}): number {
+  const studyHours = state.totalFocusMs / 3_600_000
+  const entHours = state.totalEntMs / 3_600_000
+  const completedQuests = state.quests.filter(q => q.completed).length
+
+  const score = state.gaokaoBaseScore
+    + studyHours * 5      // 每小时学习 +5
+    - entHours * 3        // 每小时娱乐 -3
+    + completedQuests * 3 // 每完成任务 +3
+
+  return Math.round(Math.max(200, Math.min(750, score)))
+}
+
+// 距高考剩余天数
+export function daysUntilGaokao(gaokaoDate: string): number {
+  const target = new Date(gaokaoDate + 'T00:00:00')
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  const diff = target.getTime() - now.getTime()
+  return Math.max(0, Math.ceil(diff / 86400_000))
 }
