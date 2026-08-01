@@ -128,6 +128,25 @@ function todayStr(): string {
   return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
 }
 
+// ═══════════════════════════════════════════════════════════
+// 预置 API 配置 — 阿里云百炼（通义千问）
+// 文档：https://help.aliyun.com/zh/model-studio/compatibility-of-openai-with-dashscope
+// ═══════════════════════════════════════════════════════════
+export const PRESET_AI_CONFIG: AIConfig = {
+  apiKey: 'sk-ws-H.ELMIRHL.w9Oo.MEUCIQC5cbZG1Y-LQ32Q_8bkf2vgaoNVH3lJN6kfVgaOAQ555AIgUPNCX2J3odM5XSJwAobp3awAQlZeQ8CoeqlrGq2q4gs',
+  endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+  model: 'qwen-plus'
+}
+
+export const PRESET_MODEL_LIST = [
+  'qwen-plus',
+  'qwen-turbo',
+  'qwen-max',
+  'qwen3.7-max',
+  'qwen3.7-plus',
+  'qwen-long'
+]
+
 export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
@@ -146,10 +165,10 @@ export const useStore = create<StoreState>()(
       ownedItems: {},
       pointHistory: [],
       isDark: false,
-      ai: { apiKey: '', endpoint: '', model: 'deepseek-v4-flash' },
+      ai: { ...PRESET_AI_CONFIG },
       chat: [],
       systemPrompt: DEFAULT_SYSTEM_PROMPT,
-      modelList: ['deepseek-v4-flash', 'deepseek-v4-pro'],
+      modelList: [...PRESET_MODEL_LIST],
       hpLocked: false,
       dungeonRemainingSec: 0,
       dungeonActive: false,
@@ -258,7 +277,8 @@ export const useStore = create<StoreState>()(
           onboarded: true,
           playerTag: tag || 'PLAYER_01',
           dailyGoalMin: goal,
-          ai: ai ?? { apiKey: '', endpoint: '', model: 'deepseek-v4-flash' }
+          // 如果用户没填 API 配置，使用预置的百炼配置
+          ai: ai?.apiKey?.trim() ? ai : { ...PRESET_AI_CONFIG }
         }),
       reset: () =>
         set({
@@ -276,10 +296,10 @@ export const useStore = create<StoreState>()(
           achievements: ACHIEVEMENTS,
           ownedItems: {},
           isDark: false,
-          ai: { apiKey: '', endpoint: '', model: 'deepseek-v4-flash' },
+          ai: { ...PRESET_AI_CONFIG },
           chat: [],
           systemPrompt: DEFAULT_SYSTEM_PROMPT,
-          modelList: ['deepseek-v4-flash', 'deepseek-v4-pro'],
+          modelList: [...PRESET_MODEL_LIST],
           hpLocked: false,
           dungeonRemainingSec: 0,
           dungeonActive: false,
@@ -325,15 +345,24 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'cyber-survival-store',
+      version: 2,  // 版本升级触发 merge，让老用户也获得预置百炼配置
       storage: createJSONStorage(() => localStorage),
-      // 深度合并 ai 字段，防止 rehydration 时覆盖已保存的配置
+      // 合并策略：如果 localStorage 中的 ai.apiKey 为空，用预置配置兜底
       merge: (persisted, current) => {
         const p = (persisted || {}) as any
         const c = current as any
+        const defaultAI = c.ai || { ...PRESET_AI_CONFIG }
+        const persistedAI = p.ai || {}
+        // 核心：如果之前没存过 apiKey，或者 apiKey 为空，使用预置百炼配置
+        const ai = persistedAI.apiKey?.trim()
+          ? { ...defaultAI, ...persistedAI }
+          : { ...PRESET_AI_CONFIG }
         return {
           ...c,
           ...p,
-          ai: { ...c.ai, ...(p.ai || {}) }
+          ai,
+          // 同理：modelList 为空时用预置列表
+          modelList: (p.modelList && p.modelList.length > 0) ? p.modelList : c.modelList
         }
       }
     }

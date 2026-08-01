@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useStore } from '@/stores/useStore'
+import { useStore, PRESET_AI_CONFIG } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import type { AIConfig } from '@/stores/useStore'
 
@@ -8,7 +8,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0)
   const [tag, setTag] = useState('PLAYER_01')
   const [goal, setGoal] = useState(120)
-  const [ai, setAI] = useState<AIConfig>({ apiKey: '', endpoint: '', model: 'deepseek-v4-flash' })
+  const [ai, setAI] = useState<AIConfig>({ ...PRESET_AI_CONFIG })
 
   function finish() {
     init(tag.trim() || 'PLAYER_01', goal, ai)
@@ -162,11 +162,11 @@ export default function Onboarding() {
             }}
           />
 
-          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Endpoint</label>
+          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Base URL</label>
           <input
             value={ai.endpoint}
             onChange={(e) => setAI({ ...ai, endpoint: e.target.value })}
-            placeholder="https://api.deepseek.com"
+            placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1"
             style={{
               width: '100%',
               padding: '14px 16px',
@@ -185,7 +185,7 @@ export default function Onboarding() {
           <input
             value={ai.model}
             onChange={(e) => setAI({ ...ai, model: e.target.value })}
-            placeholder="deepseek-v4-flash"
+            placeholder="qwen-plus"
             style={{
               width: '100%',
               padding: '14px 16px',
@@ -200,19 +200,16 @@ export default function Onboarding() {
             }}
           />
 
-          {/* 常见 endpoint 参考 */}
+          {/* 提示：已预置百炼配置 */}
           <div style={{
             padding: '10px 12px',
-            background: 'var(--bg-alt)',
+            background: 'rgba(22, 163, 74, 0.08)',
             borderRadius: 8,
-            fontSize: 11, color: 'var(--muted)',
+            fontSize: 11, color: 'var(--success)',
             lineHeight: 1.8,
             marginBottom: 16
           }}>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>常见参考：</div>
-            <div>DeepSeek：api.deepseek.com / deepseek-v4-flash</div>
-            <div>智谱：open.bigmodel.cn/api/paas/v4 / glm-4-plus</div>
-            <div>千问：dashscope.aliyuncs.com/compatible-mode/v1 / qwen-plus</div>
+            ✓ 已预置阿里云百炼（通义千问）配置，可直接进入。
           </div>
 
           <div style={{ flex: 1 }} />

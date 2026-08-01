@@ -248,6 +248,25 @@ export async function chatWithAI(
 }
 
 // ═══════════════════════════════════════════════════════════
+// URL 拼接工具：兼容两种 endpoint 格式
+//   1. DeepSeek 风格：https://api.deepseek.com（不带 /v1）
+//   2. 百炼风格：https://dashscope.aliyuncs.com/compatible-mode/v1（自带 /v1）
+// ═══════════════════════════════════════════════════════════
+function buildChatUrl(endpoint: string): string {
+  const base = endpoint.replace(/\/+$/, '')
+  // 如果已以 /v1 或 /v2 等结尾，直接追加 /chat/completions
+  if (/\/v\d+$/.test(base)) return base + '/chat/completions'
+  // 否则追加 /v1/chat/completions（DeepSeek 风格）
+  return base + '/v1/chat/completions'
+}
+
+function buildModelsUrl(endpoint: string): string {
+  const base = endpoint.replace(/\/+$/, '')
+  if (/\/v\d+$/.test(base)) return base + '/models'
+  return base + '/v1/models'
+}
+
+// ═══════════════════════════════════════════════════════════
 // 流式 API 调用（SSE 解析）
 // ═══════════════════════════════════════════════════════════
 
@@ -262,9 +281,9 @@ async function callAPIStream(
   withTools: boolean,
   onChunk?: (text: string) => void
 ): Promise<StreamResult> {
-  const url = ai.endpoint.replace(/\/$/, '') + '/chat/completions'
+  const url = buildChatUrl(ai.endpoint)
   const body: any = {
-    model: ai.model || 'deepseek-v4-flash',
+    model: ai.model || 'qwen-plus',
     messages,
     temperature: 0.7,
     max_tokens: 1024,
@@ -415,7 +434,7 @@ export async function testConnection(cfg: {
   if (!cfg.endpoint?.trim()) return { ok: false, msg: '请先填入 Endpoint（如 https://api.deepseek.com）' }
   if (!cfg.model?.trim()) return { ok: false, msg: '请先填入模型名称（如 deepseek-v4-flash）' }
 
-  const url = cfg.endpoint.replace(/\/$/, '') + '/chat/completions'
+  const url = buildChatUrl(cfg.endpoint)
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 15000)
 

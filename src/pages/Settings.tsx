@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useStore } from '@/stores/useStore'
+import { useStore, PRESET_AI_CONFIG } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { testConnection } from '@/lib/ai'
 
@@ -24,9 +24,9 @@ export default function Settings({ onBack }: Props) {
   const setModelList = useStore(s => s.setModelList)
 
   // local state — 仅挂载时从 store 读取，不使用 useEffect 反向同步
-  const [apiKey, setApiKey] = useState(ai.apiKey)
-  const [endpoint, setEndpoint] = useState(ai.endpoint || 'https://api.deepseek.com')
-  const [model, setModel] = useState(ai.model || 'deepseek-v4-flash')
+  const [apiKey, setApiKey] = useState(ai.apiKey || PRESET_AI_CONFIG.apiKey)
+  const [endpoint, setEndpoint] = useState(ai.endpoint || PRESET_AI_CONFIG.endpoint)
+  const [model, setModel] = useState(ai.model || PRESET_AI_CONFIG.model)
   const [systemPrompt, setSystemPromptLocal] = useState(storedSystemPrompt)
   const [testing, setTesting] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle')
   const [testMsg, setTestMsg] = useState('')
@@ -70,7 +70,9 @@ export default function Settings({ onBack }: Props) {
     }
 
     setFetchingModels(true)
-    const url = baseUrl + '/v1/models'
+    // 智能拼接 models URL：endpoint 以 /v1 结尾则直接追加 /models，否则追加 /v1/models
+    const base = endpoint.trim().replace(/\/+$/, '')
+    const url = /\/v\d+$/.test(base) ? base + '/models' : base + '/v1/models'
 
     try {
       const controller = new AbortController()
@@ -211,7 +213,7 @@ export default function Settings({ onBack }: Props) {
             {/* Base URL */}
             <Field
               label="Base URL"
-              placeholder="https://api.deepseek.com"
+              placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1"
               value={endpoint}
               onChange={setEndpoint}
               mono
@@ -280,12 +282,12 @@ export default function Settings({ onBack }: Props) {
               lineHeight: 1.8
             }}>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>常见 Endpoint 参考：</div>
+              <div>百炼（千问）：https://dashscope.aliyuncs.com/compatible-mode/v1</div>
               <div>DeepSeek：https://api.deepseek.com</div>
               <div>智谱：https://open.bigmodel.cn/api/paas/v4</div>
-              <div>千问：https://dashscope.aliyuncs.com/compatible-mode/v1</div>
               <div>Kimi：https://api.moonshot.cn/v1</div>
               <div style={{ marginTop: 6, fontSize: 10, color: 'var(--muted)' }}>
-                DeepSeek 模型：deepseek-v4-flash / deepseek-v4-pro
+                百炼模型：qwen-plus / qwen-turbo / qwen-max / qwen3.7-max
               </div>
             </div>
 
