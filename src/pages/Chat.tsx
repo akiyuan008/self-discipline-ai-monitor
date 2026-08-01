@@ -266,11 +266,11 @@ export default function Chat({ onNavigateSettings }: Props) {
     }
 
     setSending(true)
-    pushChat({ role: 'user', text })
     streamingRef.current = ''
     setStreamingText('')
 
     try {
+      pushChat({ role: 'user', text })
       const reply = await chatWithAI(
         text,
         (chunk) => {

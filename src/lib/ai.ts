@@ -355,7 +355,6 @@ export async function chatWithAI(
       messages.push({
         role: 'tool',
         tool_call_id: call.id,
-        name: fnName,
         content: result
       })
     }
@@ -422,7 +421,7 @@ async function callAPI(
   }
 
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 60_000)
+  let timer = setTimeout(() => controller.abort(), 60_000)
 
   const res = await fetch(url, {
     method: 'POST',
@@ -483,7 +482,7 @@ async function callAPIStream(
   }
 
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 60_000)
+  let timer = setTimeout(() => controller.abort(), 60_000)
 
   const res = await fetch(url, {
     method: 'POST',
@@ -503,10 +502,9 @@ async function callAPIStream(
     throw new Error(`请求失败 (${res.status})：${detail || errText.slice(0, 200)}`)
   }
 
-  clearTimeout(timer)
-
   // 如果不支持流式，回退到非流式 JSON 解析
   if (!res.body || typeof res.body.getReader !== 'function') {
+    clearTimeout(timer)
     const data = await res.json()
     const choice = data.choices?.[0]
     const content = choice?.message?.content?.trim() || ''
@@ -518,13 +516,20 @@ async function callAPIStream(
   }
 
   // ── SSE 流式解析 ──
+  // timer 保持活跃：每次收到数据就重置超时，如果 reader.read() 卡住则触发 abort
   const reader = res.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
   let content = ''
   const toolCalls: any[] = []
 
+  const refreshTimer = () => {
+    clearTimeout(timer)
+    timer = setTimeout(() => controller.abort(), 30_000)
+  }
+
   while (true) {
+    refreshTimer()
     const { done, value } = await reader.read()
     if (done) break
 
@@ -570,6 +575,8 @@ async function callAPIStream(
       }
     }
   }
+
+  clearTimeout(timer)
 
   return {
     content: content.trim(),

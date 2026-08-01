@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useStore, hpFromStudy } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { fetchUsageStats, hasUsageAccess, fmtMs, isLateNight } from '@/lib/usageStats'
+import GaokaoProgress from '@/components/GaokaoProgress'
 import type { PageId } from '@/stores/useStore'
 
 interface Props {
@@ -127,6 +128,9 @@ export default function Home({ onNavigate }: Props) {
           </button>
         </div>
       )}
+
+      {/* 高考倒计时进度 */}
+      <GaokaoProgress variant="full" />
 
       {/* 精神力环 */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 24, marginBottom: 24 }}>

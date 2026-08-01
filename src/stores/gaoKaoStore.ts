@@ -37,6 +37,14 @@ export interface WeeklyGoal {
   completedHours: number
 }
 
+export interface Milestone {
+  id: string
+  title: string
+  desc: string
+  ts: number
+  type: 'streak' | 'exam' | 'errorClear' | 'scoreUp' | 'custom'
+}
+
 export interface GaoKaoProfile {
   // 基础信息
   nickname: string
@@ -54,6 +62,7 @@ export interface GaoKaoProfile {
   studyStreak: number
   lastStudyDate: string
   generatedPlan: WeeklyPlanTask[]
+  milestones: Milestone[]
 
   // 版本控制
   dbVersion: number
@@ -63,20 +72,32 @@ export interface GaoKaoProfile {
 // 默认数据
 // ═══════════════════════════════════════════════════════════
 
-const DEFAULT_SUBJECTS: SubjectScore[] = []
+const DEFAULT_SUBJECTS: SubjectScore[] = [
+  { name: '语文', currentScore: 95, targetScore: 120, fullScore: 150 },
+  { name: '数学', currentScore: 80, targetScore: 130, fullScore: 150 },
+  { name: '英语', currentScore: 90, targetScore: 125, fullScore: 150 },
+  { name: '物理', currentScore: 60, targetScore: 85, fullScore: 100 },
+  { name: '化学', currentScore: 65, targetScore: 85, fullScore: 100 },
+  { name: '生物', currentScore: 70, targetScore: 85, fullScore: 100 },
+]
 
 const DEFAULT_PROFILE: GaoKaoProfile = {
-  nickname: '',
-  targetUniversity: '',
-  targetTotalScore: 0,
-  currentTotalScore: 0,
-  subjects: [],
-  weakSubjects: [],
+  nickname: '考生',
+  targetUniversity: '目标大学',
+  targetTotalScore: 680,
+  currentTotalScore: 460,
+  subjects: DEFAULT_SUBJECTS,
+  weakSubjects: ['数学-函数', '物理-力学'],
   errorQuestions: [],
-  weeklyGoals: [],
+  weeklyGoals: [
+    { subject: '数学', targetHours: 10, completedHours: 0 },
+    { subject: '物理', targetHours: 8, completedHours: 0 },
+    { subject: '英语', targetHours: 6, completedHours: 0 },
+  ],
   studyStreak: 0,
   lastStudyDate: '',
   generatedPlan: [],
+  milestones: [],
   dbVersion: 1,
 }
 
@@ -96,6 +117,7 @@ interface GaoKaoState {
   resolveErrorQuestion: (id: string) => void
   generateWeeklyPlan: () => void
   togglePlanTask: (id: string) => void
+  addMilestone: (m: Omit<Milestone, 'id' | 'ts'>) => void
   syncToIndexedDB: () => Promise<void>
   loadFromIndexedDB: () => Promise<void>
   resetProfile: () => void
@@ -222,12 +244,26 @@ export const useGaoKaoStore = create<GaoKaoState>()(
           }
         })),
 
+      addMilestone: (m) =>
+        set((s) => ({
+          profile: {
+            ...s.profile,
+            milestones: [
+              { ...m, id: `ms-${Date.now().toString(36)}`, ts: Date.now() },
+              ...s.profile.milestones
+            ].slice(0, 100)
+          }
+        })),
+
       syncToIndexedDB: async () => {
         try {
           const { profile } = get()
           await dbPut(STORES.gaokaoProfile, { id: 'main', ...profile })
           if (profile.errorQuestions.length > 0) {
             await dbBulkPut(STORES.errorQuestions, profile.errorQuestions)
+          }
+          if (profile.milestones.length > 0) {
+            await dbBulkPut(STORES.milestones, profile.milestones)
           }
         } catch (e) {
           console.warn('[gaoKaoStore] syncToIndexedDB failed:', e)
