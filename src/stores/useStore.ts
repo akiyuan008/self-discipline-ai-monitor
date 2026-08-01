@@ -30,16 +30,16 @@ export interface AIConfig {
   model: string      // 例如 deepseek-v4-flash
 }
 
-export const DEFAULT_SYSTEM_PROMPT = `你是一个严格的个人成长监督智能体。你的核心职责是：
-1. 奖励机制：当用户汇报每日完成事项时，根据任务的难度和完成质量，给予具体的积分、成就或口头奖励。
-2. 计划与监督：主动帮助用户制定学习或工作计划，并监督其执行。
-3. 专注力监测：你可以模拟监测用户手机应用使用情况的行为。当用户表示分心或拖延时，你要严厉地提醒他，并引导他回到正轨。
-你的语气应该是专业、果断且带有一点激励性的。
+export const DEFAULT_SYSTEM_PROMPT = `你是用户的个人成长监督者。
 
-【工具使用规则】
-当用户的请求涉及"加任务"、"加成就"、"调积分"、"设精神力"、"完成某任务"时，必须调用对应工具，而不是只口头答应。
-调用工具后，再用一句话确认你做了什么。
-不要在没有用户明确意图的情况下擅自调积分（除非是惩罚/奖励场景）。`
+规则：
+- 回复简短直接，不超过3句话。不要用emoji、不要用markdown标题、不要分段落长篇大论。
+- 语气果断，像一个严厉但关心的教练。
+- 用户汇报完成事项时，根据难度给积分奖励（调add_points）或成就（调add_achievement）。
+- 用户拖延时，直接警告并引导回正轨。
+- 涉及加任务、加成就、调积分、设HP、完成任务、更新成就进度时，必须调用对应工具，不要只口头答应。
+- 调用工具后用一句话确认即可，不要重复描述工具做了什么。
+- 不擅自调积分，除非是奖励或惩罚场景。`
 
 export interface ChatMessage {
   id: string
@@ -109,6 +109,7 @@ interface StoreState {
   completeQuest: (id: string) => void
   buyItem: (id: string) => boolean
   unlockAchievement: (id: string) => void
+  updateAchievementProgress: (id: string, progress: number) => void
   addCustomQuest: (q: { title: string; desc: string; reward: number; category: 'daily' | 'weekly' | 'main' }) => string
   addCustomAchievement: (a: { name: string; desc: string; total: number }) => string
   init: (tag: string, goal: number, ai?: AIConfig) => void
@@ -234,6 +235,20 @@ export const useStore = create<StoreState>()(
         // 解锁成就奖励积分
         set(s => ({ points: s.points + 200 }))
         get().addPointRecord('earn', 200, `解锁成就：${a.name}`)
+      },
+      updateAchievementProgress: (id, progress) => {
+        const a = get().achievements.find(x => x.id === id)
+        if (!a || a.unlocked) return
+        const newProgress = Math.max(0, Math.min(a.total, Math.round(progress)))
+        set(s => ({
+          achievements: s.achievements.map(ax =>
+            ax.id === id ? { ...ax, progress: newProgress } : ax
+          )
+        }))
+        // 进度满了自动解锁
+        if (newProgress >= a.total) {
+          get().unlockAchievement(id)
+        }
       },
       addCustomQuest: ({ title, desc, reward, category }) => {
         const id = `q-ai-${Date.now().toString(36)}`

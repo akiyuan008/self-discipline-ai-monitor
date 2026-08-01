@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '@/stores/useStore'
 import { ACHIEVEMENT_TABS } from '@/data/achievements'
-import { showToast } from '@/components/Toast'
 
 interface Props {
   onBack: () => void
@@ -30,26 +29,28 @@ export default function Achievements({ onBack }: Props) {
       <div style={{ padding: '16px 20px 32px' }}>
         <Header onBack={onBack} title="成就殿堂" subtitle="ACHIEVEMENTS" />
 
-        {/* AI 审核 */}
+        {/* AI 管理提示 */}
         <div className="card" style={{
-          padding: '14px 16px', borderRadius: 12, marginBottom: 12,
-          display: 'flex', alignItems: 'center', gap: 12
+          padding: '12px 16px', borderRadius: 12, marginBottom: 12,
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'var(--bg-alt)'
         }}>
           <div style={{
-            width: 36, height: 36, borderRadius: '50%',
-            background: 'var(--success)', color: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
+            width: 32, height: 32, borderRadius: '50%',
+            background: 'var(--card-bg)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0
           }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 13l4 4L19 7" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
+              <path d="M9 12l2 2 4-4" />
             </svg>
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>AI 监管者</div>
-            <div style={{ fontSize: 11, color: 'var(--muted)' }}>已审核你的本周数据</div>
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--success)', fontFamily: 'DM Mono, monospace' }}>
-            VERIFIED
+            <div style={{ fontSize: 12, fontWeight: 500 }}>AI 动态管理</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
+              与监管者对话时，AI 会根据你的表现添加和更新成就
+            </div>
           </div>
         </div>
 
@@ -123,22 +124,6 @@ export default function Achievements({ onBack }: Props) {
             </div>
           ))}
         </div>
-
-        {/* 调试 */}
-        <button
-          onClick={() => {
-            useStore.getState().unlockAchievement('a1')
-            showToast('已解锁成就：初出茅庐')
-          }}
-          style={{
-            width: '100%', marginTop: 16,
-            padding: '10px', borderRadius: 8,
-            background: 'var(--bg-alt)', border: 'none',
-            color: 'var(--muted)', fontSize: 11
-          }}
-        >
-          [DEBUG] 模拟解锁
-        </button>
       </div>
     </div>
   )

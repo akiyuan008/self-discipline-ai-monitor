@@ -12,16 +12,16 @@ import { useStore, type AIConfig, type ChatMessage } from '@/stores/useStore'
 // ═══════════════════════════════════════════════════════════
 // 硬编码 System Prompt — 永远放在 messages[0]
 // ═══════════════════════════════════════════════════════════
-const SYSTEM_PROMPT = `你是一个严格的个人成长监督智能体。你的核心职责是：
-1. 奖励机制：当用户汇报每日完成事项时，根据任务的难度和完成质量，给予具体的积分、成就或口头奖励。
-2. 计划与监督：主动帮助用户制定学习或工作计划，并监督其执行。
-3. 专注力监测：你可以模拟监测用户手机应用使用情况的行为。当用户表示分心或拖延时，你要严厉地提醒他，并引导他回到正轨。
-你的语气应该是专业、果断且带有一点激励性的。
+const SYSTEM_PROMPT = `你是用户的个人成长监督者。
 
-【工具使用规则】
-当用户的请求涉及"加任务"、"加成就"、"调积分"、"设精神力"、"完成某任务"时，必须调用对应工具，而不是只口头答应。
-调用工具后，再用一句话确认你做了什么。
-不要在没有用户明确意图的情况下擅自调积分（除非是惩罚/奖励场景）。`
+规则：
+- 回复简短直接，不超过3句话。不要用emoji、不要用markdown标题、不要分段落长篇大论。
+- 语气果断，像一个严厉但关心的教练。
+- 用户汇报完成事项时，根据难度给积分奖励（调add_points）或成就（调add_achievement）。
+- 用户拖延时，直接警告并引导回正轨。
+- 涉及加任务、加成就、调积分、设HP、完成任务、更新成就进度时，必须调用对应工具，不要只口头答应。
+- 调用工具后用一句话确认即可，不要重复描述工具做了什么。
+- 不擅自调积分，除非是奖励或惩罚场景。`
 
 // ═══════════════════════════════════════════════════════════
 // 工具定义（OpenAI 兼容 function calling）
@@ -31,13 +31,13 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'add_quest',
-      description: '给用户添加一个新任务到任务中心。当用户说"帮我加个任务"或"我想做XXX"时调用。',
+      description: '添加新任务。用户说"加个任务"或"我想做XXX"时调用。',
       parameters: {
         type: 'object',
         properties: {
-          title: { type: 'string', description: '任务标题，6-12 字' },
-          desc: { type: 'string', description: '任务描述，10-30 字' },
-          reward: { type: 'number', description: '完成奖励积分数，建议 50-500' },
+          title: { type: 'string', description: '任务标题，6-12字' },
+          desc: { type: 'string', description: '任务描述，10-30字' },
+          reward: { type: 'number', description: '完成奖励积分，建议50-500' },
           category: { type: 'string', enum: ['daily', 'weekly', 'main'], description: 'daily=日常，weekly=周常，main=主线' }
         },
         required: ['title', 'desc', 'reward', 'category']
@@ -48,13 +48,13 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'add_achievement',
-      description: '给用户添加一个新成就到成就殿堂。当用户说"我想挑战XXX"或"加个成就"时调用。',
+      description: '添加新成就到成就殿堂。用户说"加个成就"或"我想挑战XXX"时调用。',
       parameters: {
         type: 'object',
         properties: {
-          name: { type: 'string', description: '成就名，4-10 字' },
-          desc: { type: 'string', description: '成就描述，10-30 字' },
-          total: { type: 'number', description: '达成所需进度总数，1-999' }
+          name: { type: 'string', description: '成就名，4-10字' },
+          desc: { type: 'string', description: '成就描述，10-30字' },
+          total: { type: 'number', description: '达成所需总数，1-999' }
         },
         required: ['name', 'desc', 'total']
       }
@@ -63,13 +63,42 @@ const TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'update_achievement',
+      description: '更新某个成就的进度。用户完成了某项挑战的一部分时调用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          achievement_id: { type: 'string', description: '成就ID' },
+          progress: { type: 'number', description: '新的进度值' }
+        },
+        required: ['achievement_id', 'progress']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'unlock_achievement',
+      description: '直接解锁某个成就。用户达成条件时调用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          achievement_id: { type: 'string', description: '成就ID' }
+        },
+        required: ['achievement_id']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
       name: 'add_points',
-      description: '给用户加积分（可为负数表示扣除，例如作为惩罚）。',
+      description: '加积分（可为负数表示扣除）。奖励或惩罚时调用。',
       parameters: {
         type: 'object',
         properties: {
           amount: { type: 'number', description: '积分数，可为负数' },
-          reason: { type: 'string', description: '原因，10 字内' }
+          reason: { type: 'string', description: '原因，10字内' }
         },
         required: ['amount']
       }
@@ -79,11 +108,11 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'set_hp',
-      description: '设置用户的精神力 HP（0-100）。值低于 30 表示惩罚，70+ 表示奖励。',
+      description: '设置精神力HP（0-100）。低于30为惩罚，70+为奖励。',
       parameters: {
         type: 'object',
         properties: {
-          value: { type: 'number', description: 'HP 值 0-100' }
+          value: { type: 'number', description: 'HP值 0-100' }
         },
         required: ['value']
       }
@@ -93,11 +122,11 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'complete_quest',
-      description: '直接标记某个任务为已完成（用户已口头确认完成时调用）。',
+      description: '标记任务为已完成。用户口头确认完成时调用。',
       parameters: {
         type: 'object',
         properties: {
-          quest_id: { type: 'string', description: '任务 ID' }
+          quest_id: { type: 'string', description: '任务ID' }
         },
         required: ['quest_id']
       }
@@ -128,6 +157,21 @@ function executeTool(name: string, args: any): string {
           total: Number(args.total || 1)
         })
         return JSON.stringify({ ok: true, achievement_id: id, msg: '成就已添加到殿堂' })
+      }
+      case 'update_achievement': {
+        const a = s.achievements.find(x => x.id === args.achievement_id)
+        if (!a) return JSON.stringify({ ok: false, error: '成就不存在' })
+        if (a.unlocked) return JSON.stringify({ ok: false, error: '成就已解锁' })
+        s.updateAchievementProgress(String(args.achievement_id), Number(args.progress || 0))
+        const updated = useStore.getState().achievements.find(x => x.id === args.achievement_id)
+        return JSON.stringify({ ok: true, achievement_id: args.achievement_id, progress: updated?.progress, unlocked: updated?.unlocked })
+      }
+      case 'unlock_achievement': {
+        const a = s.achievements.find(x => x.id === args.achievement_id)
+        if (!a) return JSON.stringify({ ok: false, error: '成就不存在' })
+        if (a.unlocked) return JSON.stringify({ ok: false, error: '成就已解锁' })
+        s.unlockAchievement(String(args.achievement_id))
+        return JSON.stringify({ ok: true, achievement_id: args.achievement_id, msg: `成就已解锁：${a.name}` })
       }
       case 'add_points': {
         const before = s.points
@@ -402,24 +446,27 @@ function buildContext(state: any): string {
     .map((q: any) => `  - ${q.id} 「${q.title}」(${q.progress}/${q.total})`)
     .join('\n') || '  (无)'
 
+  const achList = state.achievements
+    .filter((a: any) => !a.unlocked)
+    .slice(0, 8)
+    .map((a: any) => `  - ${a.id} 「${a.name}」进度 ${a.progress}/${a.total}`)
+    .join('\n') || '  (无)'
+
   // 从 localStorage（store）读取用户自定义的系统提示词，兜底用硬编码默认值
   const sysPrompt = state.systemPrompt || SYSTEM_PROMPT
 
   return `${sysPrompt}
 
-【当前用户情况】
-- 玩家代号：${state.playerTag}
-- 精神力 HP：${state.hp}/100
-- 积分：${state.points}
-- 今日学习时长：${studyMin} 分钟（目标 ${dailyGoalMin} 分钟，达成 ${ratio}%）
-- 今日娱乐时长：${entMin} 分钟
-- 连胜天数：${state.streak}
-- 总专注时长：${Math.floor(state.totalFocusMs / 3600_000)} 小时
-- 当前时间：${new Date().toLocaleString('zh-CN', { hour12: false })}
-- 深夜：${isLate ? '是' : '否'}
+【当前状态】
+代号:${state.playerTag} HP:${state.hp}/100 积分:${state.points} 连胜:${state.streak}天
+学习:${studyMin}min/${dailyGoalMin}min(${ratio}%) 娱乐:${entMin}min 总专注:${Math.floor(state.totalFocusMs / 3600_000)}h
+时间:${new Date().toLocaleString('zh-CN', { hour12: false })} ${isLate ? '[深夜]' : ''}
 
-【用户未完成的任务】（调用 complete_quest 时用对应 ID）
-${questList}`
+【未完成任务】(complete_quest用ID)
+${questList}
+
+【进行中成就】(update_achievement/unlock_achievement用ID)
+${achList}`
 }
 
 // ═══════════════════════════════════════════════════════════
