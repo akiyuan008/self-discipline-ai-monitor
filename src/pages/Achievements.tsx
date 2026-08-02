@@ -29,31 +29,6 @@ export default function Achievements({ onBack }: Props) {
       <div style={{ padding: '16px 20px 32px' }}>
         <Header onBack={onBack} title="成就殿堂" subtitle="ACHIEVEMENTS" />
 
-        {/* AI 管理提示 */}
-        <div className="card" style={{
-          padding: '12px 16px', borderRadius: 12, marginBottom: 12,
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: 'var(--bg-alt)'
-        }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: '50%',
-            background: 'var(--card-bg)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
-              <path d="M9 12l2 2 4-4" />
-            </svg>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, fontWeight: 500 }}>AI 动态管理</div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
-              与监管者对话时，AI 会根据你的表现添加和更新成就
-            </div>
-          </div>
-        </div>
-
         {/* tabs */}
         <div style={{
           display: 'flex', gap: 6, padding: 4,

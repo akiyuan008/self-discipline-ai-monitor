@@ -4,7 +4,7 @@ import { useGaoKaoStore } from '@/stores/gaoKaoStore'
 import GaokaoProgress from '@/components/GaokaoProgress'
 
 interface ProfileProps {
-  onNavigate?: (page: 'achievements' | 'settings' | 'chat') => void
+  onNavigate?: (page: 'achievements' | 'settings') => void
 }
 
 export default function Profile({ onNavigate }: ProfileProps) {

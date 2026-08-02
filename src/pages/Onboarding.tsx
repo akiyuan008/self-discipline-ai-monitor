@@ -1,17 +1,15 @@
 import { useState } from 'react'
-import { useStore, PRESET_AI_CONFIG } from '@/stores/useStore'
+import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
-import type { AIConfig } from '@/stores/useStore'
 
 export default function Onboarding() {
   const init = useStore(s => s.init)
   const [step, setStep] = useState(0)
   const [tag, setTag] = useState('PLAYER_01')
   const [goal, setGoal] = useState(120)
-  const [ai, setAI] = useState<AIConfig>({ ...PRESET_AI_CONFIG })
 
   function finish() {
-    init(tag.trim() || 'PLAYER_01', goal, ai)
+    init(tag.trim() || 'PLAYER_01', goal)
     showToast(`欢迎，${tag || 'PLAYER_01'}`)
   }
 
@@ -42,7 +40,7 @@ export default function Onboarding() {
             Cyber Survival
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 40 }}>
-            在这个赛博自律世界里，你的精神力即是 HP，深渊挑战是学习时段，AI 监管者会守护你的进度曲线。
+            在这个赛博自律世界里，你的精神力即是 HP，深渊挑战是学习时段，系统会守护你的进度曲线。
           </p>
 
           <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>玩家代号</label>
@@ -136,81 +134,11 @@ export default function Onboarding() {
             INITIALIZATION // 03
           </div>
           <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: -0.5, marginBottom: 12 }}>
-            接入 AI 监管者
+            准备进入赛博世界
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 24 }}>
-            填入兼容 OpenAI 协议的大模型 API。监管者会在你低谷时主动开口、能调任务/积分/成就。
+            现在就开始你的自律之旅，系统会为你记录学习与娱乐状态。
           </p>
-
-          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>API Key</label>
-          <input
-            value={ai.apiKey}
-            onChange={(e) => setAI({ ...ai, apiKey: e.target.value })}
-            placeholder="sk-xxx"
-            type="password"
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              borderRadius: 12,
-              background: 'var(--card-bg)',
-              border: '1px solid var(--border)',
-              color: 'var(--fg)',
-              fontSize: 14,
-              fontFamily: 'DM Mono, monospace',
-              outline: 'none',
-              marginBottom: 16
-            }}
-          />
-
-          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Base URL</label>
-          <input
-            value={ai.endpoint}
-            onChange={(e) => setAI({ ...ai, endpoint: e.target.value })}
-            placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1"
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              borderRadius: 12,
-              background: 'var(--card-bg)',
-              border: '1px solid var(--border)',
-              color: 'var(--fg)',
-              fontSize: 13,
-              fontFamily: 'DM Mono, monospace',
-              outline: 'none',
-              marginBottom: 16
-            }}
-          />
-
-          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Model</label>
-          <input
-            value={ai.model}
-            onChange={(e) => setAI({ ...ai, model: e.target.value })}
-            placeholder="qwen-plus"
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              borderRadius: 12,
-              background: 'var(--card-bg)',
-              border: '1px solid var(--border)',
-              color: 'var(--fg)',
-              fontSize: 13,
-              fontFamily: 'DM Mono, monospace',
-              outline: 'none',
-              marginBottom: 16
-            }}
-          />
-
-          {/* 提示：已预置百炼配置 */}
-          <div style={{
-            padding: '10px 12px',
-            background: 'rgba(22, 163, 74, 0.08)',
-            borderRadius: 8,
-            fontSize: 11, color: 'var(--success)',
-            lineHeight: 1.8,
-            marginBottom: 16
-          }}>
-            ✓ 已预置阿里云百炼（通义千问）配置，可直接进入。
-          </div>
 
           <div style={{ flex: 1 }} />
 

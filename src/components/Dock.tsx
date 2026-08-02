@@ -11,12 +11,11 @@ const ICONS: Record<string, string> = {
   quests: 'M9 11l3 3L22 4M2 13l3 3 5-5',
   dungeon: 'M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83',
   shop: 'M3 9h18l-2 11H5L3 9zM8 9V5a4 4 0 0 1 8 0v4',
-  profile: 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2',
-  chat: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z'
+  profile: 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2'
 }
 
-// 新顺序：[quests, chat(监管者), home(中间大黑圆), shop, profile]
-const ORDER: PageId[] = ['quests', 'chat', 'home', 'shop', 'profile']
+// 新顺序：[quests, home(中间大黑圆), shop, profile]
+const ORDER: PageId[] = ['quests', 'home', 'shop', 'profile']
 const CENTER: PageId = 'home'
 
 export default function Dock({ current, onChange, keyboardHeight = 0 }: DockProps) {

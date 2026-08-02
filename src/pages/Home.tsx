@@ -74,20 +74,6 @@ export default function Home({ onNavigate }: Props) {
             你已存活 <span style={{ color: 'var(--fg)' }}>{streak}</span> 天
           </div>
         </div>
-        <button
-          onClick={() => onNavigate?.('chat')}
-          style={{
-            width: 40, height: 40, borderRadius: '50%',
-            background: 'var(--card-bg)', border: '1px solid var(--border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: 'var(--fg)'
-          }}
-          title="与监管者对话"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-          </svg>
-        </button>
       </div>
 
       {/* 深夜提醒 */}
@@ -97,7 +83,7 @@ export default function Home({ onNavigate }: Props) {
           background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)'
         }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: '#F59E0B' }}>
-            深夜了，监管者注意到你还在熬夜
+            深夜了，继续保持专注会更稳
           </div>
           <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
             熬夜会扣 HP，明日状态会变差
@@ -115,7 +101,7 @@ export default function Home({ onNavigate }: Props) {
             缺少使用情况访问权限
           </div>
           <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, marginBottom: 10 }}>
-            监管者需要此权限拉取真实学习/娱乐时长
+            需要此权限来拉取真实学习/娱乐时长
           </div>
           <button
             onClick={async () => {

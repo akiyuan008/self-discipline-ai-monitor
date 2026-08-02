@@ -10,7 +10,6 @@ export type PageId =
   | 'quests'
   | 'shop'
   | 'profile'
-  | 'chat'
   | 'achievements'
   | 'settings'
   | 'pointsDetail'
@@ -21,33 +20,6 @@ export interface PointRecord {
   type: 'earn' | 'spend'
   amount: number
   reason: string
-  ts: number
-}
-
-export interface AIConfig {
-  apiKey: string
-  endpoint: string   // 例如 https://api.deepseek.com
-  model: string      // 例如 deepseek-v4-flash
-}
-
-export const DEFAULT_SYSTEM_PROMPT = `你是用户的个人成长监督者（监管者）。
-
-核心规则：
-- 回复简短直接，不超过3句话。不要用emoji、不要用markdown标题。
-- 语气果断，像一个严厉但关心的教练。
-- 当用户说"扣我积分"、"奖励我"、"加积分"时，必须调用 add_points 工具，不要只口头答应。
-- 当用户说"加个任务"、"我想做XXX"时，必须调用 add_quest 工具。
-- 当用户说"加个成就"、"我想挑战XXX"时，必须调用 add_achievement 工具。
-- 当用户说"设HP"、"扣HP"时，必须调用 set_hp 工具。
-- 当用户说"完成任务"时，必须调用 complete_quest 工具。
-- 当用户说"看看手机使用"、"我是不是在偷懒"时，必须调用 check_phone_usage 工具。
-- 调用工具后用一句话确认执行结果即可。
-- 涉及任何状态修改（积分、HP、任务、成就），都必须调用对应工具执行，绝对不能只口头说"已扣除"而不调工具。`
-
-export interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant' | 'system'
-  text: string
   ts: number
 }
 
@@ -90,12 +62,6 @@ interface StoreState {
   // 深色模式
   isDark: boolean
 
-  // AI
-  ai: AIConfig
-  chat: ChatMessage[]
-  systemPrompt: string          // 系统提示词（存 localStorage）
-  modelList: string[]           // 从 API 拉取的模型列表
-
   // HP 锁：AI 手动设置 HP 后锁定，避免被定时同步覆盖
   hpLocked: boolean
 
@@ -112,24 +78,20 @@ interface StoreState {
   addStreak: (n: number) => void
   addFocusMs: (n: number) => void
   toggleDark: () => void
-  setAI: (c: Partial<AIConfig>) => void
-  setSystemPrompt: (s: string) => void
-  setModelList: (m: string[]) => void
   completeQuest: (id: string) => void
+  updateQuestProgress: (id: string, progress: number) => void
   buyItem: (id: string) => boolean
   unlockAchievement: (id: string) => void
   updateAchievementProgress: (id: string, progress: number) => void
   addCustomQuest: (q: { title: string; desc: string; reward: number; category: 'daily' | 'weekly' | 'main' }) => string
   addCustomAchievement: (a: { name: string; desc: string; total: number }) => string
-  init: (tag: string, goal: number, ai?: AIConfig) => void
+  init: (tag: string, goal: number) => void
   reset: () => void
   setDungeon: (sec: number, active: boolean) => void
   setDungeonDuration: (min: number) => void
   setDailyGoal: (min: number) => void
   setGaokaoDate: (d: string) => void
   setGaokaoTargetScore: (n: number) => void
-  pushChat: (msg: Omit<ChatMessage, 'id' | 'ts'>) => void
-  clearChat: () => void
   syncUsage: (study: UsageStat[], ent: UsageStat[]) => void
   dailySettle: () => void
   addPointRecord: (type: 'earn' | 'spend', amount: number, reason: string) => void
@@ -147,24 +109,6 @@ function genId(): string {
   }
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
-
-// ═══════════════════════════════════════════════════════════
-// 预置 API 配置 — 阿里云百炼（通义千问）
-// ═══════════════════════════════════════════════════════════
-export const PRESET_AI_CONFIG: AIConfig = {
-  apiKey: 'sk-ws-H.ELMIRHL.w9Oo.MEUCIQC5cbZG1Y-LQ32Q_8bkf2vgaoNVH3lJN6kfVgaOAQ555AIgUPNCX2J3odM5XSJwAobp3awAQlZeQ8CoeqlrGq2q4gs',
-  endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-  model: 'qwen-plus'
-}
-
-export const PRESET_MODEL_LIST = [
-  'qwen-plus',
-  'qwen-turbo',
-  'qwen-max',
-  'qwen3.7-max',
-  'qwen3.7-plus',
-  'qwen-long'
-]
 
 export const useStore = create<StoreState>()(
   persist(
@@ -188,10 +132,6 @@ export const useStore = create<StoreState>()(
       ownedItems: {},
       pointHistory: [],
       isDark: false,
-      ai: { ...PRESET_AI_CONFIG },
-      chat: [],
-      systemPrompt: DEFAULT_SYSTEM_PROMPT,
-      modelList: [...PRESET_MODEL_LIST],
       hpLocked: false,
       dungeonRemainingSec: 0,
       dungeonActive: false,
@@ -215,9 +155,6 @@ export const useStore = create<StoreState>()(
       addStreak: (n) => set(s => ({ streak: Math.max(0, s.streak + n) })),
       addFocusMs: (n) => set(s => ({ totalFocusMs: s.totalFocusMs + n, todayStudyMs: s.todayStudyMs + n })),
       toggleDark: () => set(s => ({ isDark: !s.isDark })),
-      setAI: (c) => set(s => ({ ai: { ...s.ai, ...c } })),
-      setSystemPrompt: (s) => set({ systemPrompt: s }),
-      setModelList: (m) => set({ modelList: m }),
       completeQuest: (id) => {
         const q = get().quests.find(x => x.id === id)
         if (!q || q.completed) return
@@ -227,6 +164,17 @@ export const useStore = create<StoreState>()(
           points: s.points + reward
         }))
         if (reward > 0) get().addPointRecord('earn', reward, `完成任务：${q.title}`)
+      },
+      updateQuestProgress: (id, progress) => {
+        const q = get().quests.find(x => x.id === id)
+        if (!q) return
+        const newProgress = Math.max(0, Math.min(q.total, Math.round(progress)))
+        set(s => ({
+          quests: s.quests.map(qx => qx.id === id ? { ...qx, progress: newProgress, completed: newProgress >= qx.total } : qx)
+        }))
+        if (newProgress >= q.total) {
+          get().completeQuest(id)
+        }
       },
       buyItem: (id) => {
         const item = SHOP_ITEMS.find(i => i.id === id)
@@ -302,12 +250,11 @@ export const useStore = create<StoreState>()(
         }))
         return id
       },
-      init: (tag, goal, ai) =>
+      init: (tag, goal) =>
         set({
           onboarded: true,
           playerTag: tag || 'PLAYER_01',
-          dailyGoalMin: goal,
-          ai: ai?.apiKey?.trim() ? ai : { ...PRESET_AI_CONFIG }
+          dailyGoalMin: goal
         }),
       reset: () =>
         set({
@@ -329,10 +276,6 @@ export const useStore = create<StoreState>()(
           achievements: [],
           ownedItems: {},
           isDark: false,
-          ai: { ...PRESET_AI_CONFIG },
-          chat: [],
-          systemPrompt: DEFAULT_SYSTEM_PROMPT,
-          modelList: [...PRESET_MODEL_LIST],
           hpLocked: false,
           dungeonRemainingSec: 0,
           dungeonActive: false,
@@ -343,11 +286,6 @@ export const useStore = create<StoreState>()(
       setDailyGoal: (min) => set({ dailyGoalMin: min }),
       setGaokaoDate: (d) => set({ gaokaoDate: d }),
       setGaokaoTargetScore: (n) => set({ gaokaoTargetScore: Math.max(0, Math.round(n)) }),
-      pushChat: (msg) =>
-        set(s => ({
-          chat: [...s.chat, { ...msg, id: genId(), ts: Date.now() }]
-        })),
-      clearChat: () => set({ chat: [] }),
       syncUsage: (study, ent) => {
         const studyMs = study.reduce((sum, x) => sum + x.totalMs, 0)
         const entMs = ent.reduce((sum, x) => sum + x.totalMs, 0)
@@ -390,21 +328,10 @@ export const useStore = create<StoreState>()(
         }
         return persisted
       },
-      merge: (persisted, current) => {
-        const p = (persisted || {}) as any
-        const c = current as any
-        const defaultAI = c.ai || { ...PRESET_AI_CONFIG }
-        const persistedAI = p.ai || {}
-        const ai = persistedAI.apiKey?.trim()
-          ? { ...defaultAI, ...persistedAI }
-          : { ...PRESET_AI_CONFIG }
-        return {
-          ...c,
-          ...p,
-          ai,
-          modelList: (p.modelList && p.modelList.length > 0) ? p.modelList : c.modelList
-        }
-      }
+      merge: (persisted, current) => ({
+        ...current,
+        ...(persisted || {})
+      })
     }
   )
 )
