@@ -10,13 +10,15 @@ import Profile from '@/pages/Profile'
 import Achievements from '@/pages/Achievements'
 import Settings from '@/pages/Settings'
 import PointsDetail from '@/pages/PointsDetail'
+import AIChat from '@/pages/AIChat'
+import Stats from '@/pages/Stats'
 import Dock from '@/components/Dock'
 import Toast from '@/components/Toast'
 import { fetchUsageStats } from '@/lib/usageStats'
 import type { PageId } from '@/stores/useStore'
 
 // Dock 栏可见的主页面
-const DOCK_PAGES: PageId[] = ['home', 'quests', 'shop', 'profile']
+const DOCK_PAGES: PageId[] = ['home', 'aichat', 'quests', 'shop', 'profile']
 
 // 全屏子页面 → 返回目标页
 const BACK_MAP: Partial<Record<PageId, PageId>> = {
@@ -24,6 +26,8 @@ const BACK_MAP: Partial<Record<PageId, PageId>> = {
   achievements: 'profile',
   settings: 'profile',
   pointsDetail: 'home',
+  stats: 'home',
+  aichat: 'home',
 }
 
 export default function App() {
@@ -193,6 +197,8 @@ export default function App() {
     switch (current as PageId) {
       case 'home':
         return <Home onNavigate={(p: PageId) => setCurrent(p)} />
+      case 'aichat':
+        return <AIChat onNavigate={(p: PageId) => setCurrent(p)} />
       case 'quests':
         return <Quests onNavigate={(p: PageId) => setCurrent(p)} />
       case 'shop':
