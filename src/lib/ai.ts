@@ -438,6 +438,9 @@ async function callAPI(
       const errText = await res.text()
       let detail = ''
       try { detail = JSON.parse(errText)?.error?.message || '' } catch { /* ignore */ }
+      if (import.meta.env?.DEV) {
+        console.error('[AI] API Error:', res.status, errText.slice(0, 500))
+      }
       throw new Error(`请求失败 (${res.status})：${detail || errText.slice(0, 200)}`)
     }
 
@@ -501,6 +504,9 @@ async function callAPIStream(
       const errText = await res.text()
       let detail = ''
       try { detail = JSON.parse(errText)?.error?.message || '' } catch { /* ignore */ }
+      if (import.meta.env?.DEV) {
+        console.error('[AI] API Error:', res.status, errText.slice(0, 500))
+      }
       throw new Error(`请求失败 (${res.status})：${detail || errText.slice(0, 200)}`)
     }
 
