@@ -10,6 +10,7 @@ const DB_VERSION = 1
 const STORES = {
   gaokaoProfile: 'gaokao-profile',   // 高考档案
   errorQuestions: 'error-questions', // 错题记录
+  chatHistory: 'chat-history',       // 聊天历史（备份）
   milestones: 'milestones'           // 备考里程碑
 } as const
 
@@ -34,6 +35,9 @@ export function openDB(): Promise<IDBDatabase> {
         store.createIndex('subject', 'subject', { unique: false })
         store.createIndex('tag', 'tag', { unique: false })
         store.createIndex('ts', 'ts', { unique: false })
+      }
+      if (!db.objectStoreNames.contains(STORES.chatHistory)) {
+        db.createObjectStore(STORES.chatHistory, { keyPath: 'id' })
       }
       if (!db.objectStoreNames.contains(STORES.milestones)) {
         const store = db.createObjectStore(STORES.milestones, { keyPath: 'id' })

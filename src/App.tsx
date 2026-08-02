@@ -7,18 +7,17 @@ import Dungeon from '@/pages/Dungeon'
 import Quests from '@/pages/Quests'
 import Shop from '@/pages/Shop'
 import Profile from '@/pages/Profile'
+import Chat from '@/pages/Chat'
 import Achievements from '@/pages/Achievements'
 import Settings from '@/pages/Settings'
 import PointsDetail from '@/pages/PointsDetail'
-import AIChat from '@/pages/AIChat'
-import Stats from '@/pages/Stats'
 import Dock from '@/components/Dock'
 import Toast from '@/components/Toast'
 import { fetchUsageStats } from '@/lib/usageStats'
 import type { PageId } from '@/stores/useStore'
 
 // Dock 栏可见的主页面
-const DOCK_PAGES: PageId[] = ['home', 'aichat', 'quests', 'shop', 'profile']
+const DOCK_PAGES: PageId[] = ['home', 'quests', 'chat', 'shop', 'profile']
 
 // 全屏子页面 → 返回目标页
 const BACK_MAP: Partial<Record<PageId, PageId>> = {
@@ -26,8 +25,6 @@ const BACK_MAP: Partial<Record<PageId, PageId>> = {
   achievements: 'profile',
   settings: 'profile',
   pointsDetail: 'home',
-  stats: 'home',
-  aichat: 'home',
 }
 
 export default function App() {
@@ -39,7 +36,7 @@ export default function App() {
   const currentRef = useRef(current)
   currentRef.current = current
 
-  // 监听软键盘高度（visualViewport），动态调整底部留白
+  // 监听软键盘高度（visualViewport），动态调整 Chat 页面底部留白
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   useEffect(() => {
     const vv = window.visualViewport
@@ -63,17 +60,6 @@ export default function App() {
   useEffect(() => {
     document.body.classList.toggle('dark', isDark)
   }, [isDark])
-
-  useEffect(() => {
-    const handler = (event: Event) => {
-      const next = (event as CustomEvent<PageId>).detail
-      if (typeof next === 'string') {
-        setCurrent(next as PageId)
-      }
-    }
-    window.addEventListener('app:navigate', handler as EventListener)
-    return () => window.removeEventListener('app:navigate', handler as EventListener)
-  }, [])
 
   // ═══ Android 返回键 / 全面屏手势返回 ═══
   useEffect(() => {
@@ -160,7 +146,7 @@ export default function App() {
   if (current === 'dungeon') {
     return (
       <>
-        <Dungeon onNavigate={(p) => setCurrent(p)} />
+        <Dungeon onExit={() => setCurrent('home')} />
         <Toast />
       </>
     )
@@ -168,7 +154,7 @@ export default function App() {
   if (current === 'achievements') {
     return (
       <>
-        <Achievements onNavigate={(p) => setCurrent(p)} />
+        <Achievements onBack={() => setCurrent('profile')} />
         <Toast />
       </>
     )
@@ -176,7 +162,7 @@ export default function App() {
   if (current === 'settings') {
     return (
       <>
-        <Settings onNavigate={(p) => setCurrent(p)} />
+        <Settings onBack={() => setCurrent('profile')} />
         <Toast />
       </>
     )
@@ -184,39 +170,45 @@ export default function App() {
   if (current === 'pointsDetail') {
     return (
       <>
-        <PointsDetail onNavigate={(p) => setCurrent(p)} />
+        <PointsDetail onBack={() => setCurrent('home')} />
         <Toast />
       </>
     )
   }
 
-  // 带 Dock 的主页面
+  // 带 Dock 的主页面（包括 Chat）
   const showDock = DOCK_PAGES.includes(current)
 
   const renderPage = () => {
-    switch (current as PageId) {
+    switch (current) {
       case 'home':
         return <Home onNavigate={(p: PageId) => setCurrent(p)} />
-      case 'aichat':
-        return <AIChat onNavigate={(p: PageId) => setCurrent(p)} />
       case 'quests':
         return <Quests onNavigate={(p: PageId) => setCurrent(p)} />
+      case 'chat':
+        return <Chat onNavigateSettings={() => setCurrent('settings')} />
       case 'shop':
         return <Shop onNavigate={(p: PageId) => setCurrent(p)} />
       case 'profile':
-        return <Profile onNavigate={(p: PageId) => setCurrent(p)} />
+        return <Profile onNavigate={(p: 'achievements' | 'settings' | 'chat') => setCurrent(p)} />
       default:
         return <Home onNavigate={(p: PageId) => setCurrent(p)} />
     }
   }
 
+  // Chat 页面需要全高布局，Dock 浮在上层
+  const isChat = current === 'chat'
+
+  // Chat 页面底部留白：至少 80px 防 Dock 遮挡，键盘弹起时按实际键盘高度动态增加
+  const chatPaddingBottom = isChat ? Math.max(80, keyboardHeight + 16) : undefined
+
   return (
-    <div className="min-h-full relative">
-      <div className="animate-in" key={current}>
+    <div className="min-h-full relative" style={{ height: isChat ? '100vh' : undefined }}>
+      <div className={isChat ? '' : 'animate-in'} key={current} style={isChat ? { height: '100%', paddingBottom: chatPaddingBottom } : undefined}>
         {renderPage()}
       </div>
       <Toast />
-      {showDock && <Dock current={current} onNavigate={(p) => setCurrent(p)} />}
+      {showDock && <Dock current={current} onChange={setCurrent} keyboardHeight={keyboardHeight} />}
     </div>
   )
 }

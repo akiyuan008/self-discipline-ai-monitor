@@ -1,13 +1,8 @@
 import { useState } from 'react'
-import { useStore } from '@/stores/useStore'
+import { useStore, type PageId } from '@/stores/useStore'
+import { CATEGORY_TABS } from '@/data/quests'
+import { showToast } from '@/components/Toast'
 import GaokaoProgress from '@/components/GaokaoProgress'
-import type { PageId } from '@/stores/useStore'
-
-const CATEGORY_TABS = [
-  { id: 'daily' as const, label: '日常任务' },
-  { id: 'weekly' as const, label: '周常挑战' },
-  { id: 'main' as const, label: '主线' }
-]
 
 const ACCENT_COLOR: Record<string, string> = {
   success: 'var(--success)',
@@ -15,45 +10,70 @@ const ACCENT_COLOR: Record<string, string> = {
   info: 'var(--info)'
 }
 
-interface QuestsProps {
-  onNavigate?: (page: PageId) => void
+interface Props {
+  onNavigate?: (p: PageId) => void
 }
 
-export default function Quests({ onNavigate }: QuestsProps) {
+export default function Quests({ onNavigate }: Props) {
+  const [tab, setTab] = useState<'daily' | 'weekly' | 'main'>('daily')
   const quests = useStore(s => s.quests)
-  const [activeTab, setActiveTab] = useState<'daily' | 'weekly' | 'main'>('daily')
+  const completeQuest = useStore(s => s.completeQuest)
+  const points = useStore(s => s.points)
 
-  const list = quests.filter(q => q.category === activeTab)
+  const list = quests.filter(q => q.category === tab)
 
   return (
-    <div className="view active safe-top safe-bottom" style={{ padding: '0 16px 100px', overflowY: 'auto' }}>
-      <header style={{ padding: '24px 0 16px' }}>
-        <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 1, fontWeight: 600 }}>
-          QUEST_CENTER
+    <div className="safe-top" style={{ padding: '24px 20px 140px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+            QUEST_CENTER
+          </div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 0 }}>
+            任务中心
+          </h1>
         </div>
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: '4px 0 0' }}>任务中心</h1>
-      </header>
-
-      {/* 高考进度精简版 */}
-      <div style={{ marginBottom: 20 }}>
-        <GaokaoProgress mode="compact" />
+        <button
+          onClick={() => onNavigate?.('pointsDetail')}
+          style={{
+            background: 'var(--card-bg)', border: '1px solid var(--border)',
+            borderRadius: 100, padding: '6px 14px',
+            display: 'flex', alignItems: 'center', gap: 4,
+            cursor: 'pointer', color: 'var(--fg)'
+          }}
+        >
+          <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'DM Mono, monospace' }}>{points}</span>
+          <span style={{ fontSize: 10, color: 'var(--muted)' }}>PTS ›</span>
+        </button>
       </div>
 
+      {/* 高考进度精简版 */}
+      <GaokaoProgress variant="compact" />
+
       {/* tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      <div style={{
+        display: 'flex',
+        gap: 6,
+        padding: 4,
+        background: 'var(--bg-alt)',
+        borderRadius: 100,
+        marginBottom: 16
+      }}>
         {CATEGORY_TABS.map(t => (
           <button
             key={t.id}
-            onClick={() => setActiveTab(t.id)}
+            onClick={() => setTab(t.id)}
             style={{
-              padding: '8px 16px',
+              flex: 1,
+              padding: '8px 12px',
               borderRadius: 100,
-              border: '1px solid var(--border)',
-              background: activeTab === t.id ? 'var(--fg)' : 'var(--card-bg)',
-              color: activeTab === t.id ? 'var(--bg)' : 'var(--fg)',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer'
+              background: tab === t.id ? 'var(--fg)' : 'transparent',
+              color: tab === t.id ? 'var(--bg)' : 'var(--muted)',
+              border: 'none',
+              fontSize: 12,
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 0.2s'
             }}
           >
             {t.label}
@@ -62,52 +82,77 @@ export default function Quests({ onNavigate }: QuestsProps) {
       </div>
 
       {/* task list */}
-      {list.length === 0 ? (
-        <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
-          <div style={{ fontSize: 14 }}>暂无{activeTab === 'daily' ? '日常' : activeTab === 'weekly' ? '周常' : '主线'}任务</div>
-          <div style={{ fontSize: 12, marginTop: 4 }}>与 AI 监管者对话添加任务</div>
-        </div>
-      ) : (
-        list.map(q => {
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {list.map(q => {
           const pct = Math.min(100, (q.progress / q.total) * 100)
-          const accent = ACCENT_COLOR[q.accent] || 'var(--info)'
+          const accent = ACCENT_COLOR[q.accent]
           return (
-            <div key={q.id} className="card" style={{ padding: 16, marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: 12,
-                  background: q.completed ? 'var(--success)' : accent,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#fff', fontSize: 16, fontWeight: 700, flexShrink: 0
-                }}>
-                  {q.completed ? '✓' : q.category[0].toUpperCase()}
-                </div>
+            <div
+              key={q.id}
+              className="card"
+              style={{
+                padding: 16,
+                borderRadius: 16,
+                borderLeft: `3px solid ${accent}`
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 15, fontWeight: 600 }}>{q.title}</div>
                   <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{q.desc}</div>
-                  <div style={{ fontSize: 12, color: accent, fontWeight: 600, marginTop: 4 }}>
-                    +{q.reward} {q.rewardType}
-                  </div>
                 </div>
+                <div style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: accent, marginLeft: 8, whiteSpace: 'nowrap' }}>
+                  +{q.reward} {q.rewardType}
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginTop: 12
+              }}>
                 <div style={{
-                  fontSize: 12, fontWeight: 600,
-                  color: q.completed ? 'var(--success)' : 'var(--muted)'
+                  flex: 1, height: 4,
+                  background: 'var(--bg-alt)',
+                  borderRadius: 100, overflow: 'hidden'
                 }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${pct}%`,
+                    background: q.completed ? 'var(--success)' : accent,
+                    borderRadius: 100
+                  }} />
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', minWidth: 36, textAlign: 'right' }}>
                   {q.completed ? '完成' : `${q.progress}/${q.total}`}
                 </div>
               </div>
+
               {!q.completed && q.progress < q.total && (
-                <div className="achieve-progress" style={{ marginTop: 10 }}>
-                  <div className="achieve-progress-bar" style={{ width: `${pct}%`, background: accent }} />
-                </div>
+                <button
+                  onClick={() => {
+                    completeQuest(q.id)
+                    showToast(`任务完成 +${q.reward}`)
+                  }}
+                  style={{
+                    marginTop: 10, width: '100%',
+                    padding: '8px',
+                    borderRadius: 8,
+                    background: 'var(--bg-alt)',
+                    border: 'none',
+                    color: 'var(--fg)',
+                    fontSize: 12,
+                    fontWeight: 500
+                  }}
+                >
+                  完成
+                </button>
               )}
             </div>
           )
-        })
-      )}
-
-      <div style={{ height: 24 }} />
+        })}
+      </div>
     </div>
   )
 }

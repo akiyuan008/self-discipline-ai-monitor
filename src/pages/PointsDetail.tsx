@@ -1,127 +1,206 @@
-import { useState } from 'react'
-import { useStore } from '@/stores/useStore'
-import type { PageId } from '@/stores/useStore'
+import { useState, useMemo } from 'react'
+import { useStore, type PointRecord } from '@/stores/useStore'
 
-interface PointsDetailProps {
-  onNavigate?: (page: PageId) => void
+interface Props {
+  onBack: () => void
 }
 
-export default function PointsDetail({ onNavigate }: PointsDetailProps) {
+function fmtTime(ts: number): string {
+  const d = new Date(ts)
+  const now = new Date()
+  const isToday = d.toDateString() === now.toDateString()
+  const hh = d.getHours().toString().padStart(2, '0')
+  const mm = d.getMinutes().toString().padStart(2, '0')
+  if (isToday) return `${hh}:${mm}`
+  const mo = (d.getMonth() + 1).toString().padStart(2, '0')
+  const dd = d.getDate().toString().padStart(2, '0')
+  return `${mo}/${dd} ${hh}:${mm}`
+}
+
+export default function PointsDetail({ onBack }: Props) {
   const points = useStore(s => s.points)
-  const pointHistory = useStore(s => s.pointHistory)
+  const history = useStore(s => s.pointHistory)
   const [filter, setFilter] = useState<'all' | 'earn' | 'spend'>('all')
 
-  const filtered = pointHistory.filter(r => filter === 'all' || r.type === filter)
-  const totalEarned = pointHistory.filter(r => r.type === 'earn').reduce((s, r) => s + r.amount, 0)
-  const totalSpent = pointHistory.filter(r => r.type === 'spend').reduce((s, r) => s + r.amount, 0)
+  const totalEarned = useMemo(
+    () => history.filter(r => r.type === 'earn').reduce((s, r) => s + r.amount, 0),
+    [history]
+  )
+  const totalSpent = useMemo(
+    () => history.filter(r => r.type === 'spend').reduce((s, r) => s + r.amount, 0),
+    [history]
+  )
 
-  const formatDate = (ts: number) => {
-    const d = new Date(ts)
-    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
-  }
+  const filtered = filter === 'all' ? history : history.filter(r => r.type === filter)
 
   return (
-    <div className="view active safe-top safe-bottom" style={{ padding: '0 16px 100px', overflowY: 'auto' }}>
-      {/* Header */}
-      <header style={{ padding: '24px 0 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button
-          onClick={() => onNavigate?.('home')}
-          style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--fg)' }}
-        >
-          ←
-        </button>
-        <div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 1, fontWeight: 600 }}>
-            POINTS_LOG
-          </div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>积分明细</div>
-        </div>
-      </header>
-
-      {/* 余额展示 */}
-      <div className="card" style={{ padding: 24, marginBottom: 16, textAlign: 'center' }}>
-        <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 1, fontWeight: 600, marginBottom: 8 }}>
-          CURRENT_BALANCE
-        </div>
-        <div style={{ fontSize: 40, fontWeight: 700 }}>
-          {points}
-        </div>
-        <div style={{ fontSize: 13, color: 'var(--muted)' }}>PTS</div>
-      </div>
-
-      {/* 收支摘要 */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-        <div className="card" style={{ flex: 1, padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>EARNED</div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--success)' }}>+{totalEarned}</div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>累计获得</div>
-        </div>
-        <div className="card" style={{ flex: 1, padding: 16, textAlign: 'center' }}>
-          <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>SPENT</div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--danger)' }}>-{totalSpent}</div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>累计消耗</div>
-        </div>
-      </div>
-
-      {/* 筛选 */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {([
-          { id: 'all' as const, label: '全部' },
-          { id: 'earn' as const, label: '获得' },
-          { id: 'spend' as const, label: '消耗' }
-        ]).map(t => (
+    <div
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'var(--bg)',
+        zIndex: 500,
+        overflow: 'auto'
+      }}
+      className="safe-top safe-bottom animate-in"
+    >
+      <div style={{ padding: '16px 20px 32px' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
           <button
-            key={t.id}
-            onClick={() => setFilter(t.id)}
+            onClick={onBack}
             style={{
-              padding: '8px 16px',
-              borderRadius: 100,
-              border: '1px solid var(--border)',
-              background: filter === t.id ? 'var(--fg)' : 'var(--card-bg)',
-              color: filter === t.id ? 'var(--bg)' : 'var(--fg)',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer'
+              width: 36, height: 36, borderRadius: '50%',
+              background: 'var(--card-bg)', border: '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: 'var(--fg)'
             }}
           >
-            {t.label}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
           </button>
-        ))}
-      </div>
-
-      {/* 记录列表 */}
-      {filtered.length === 0 ? (
-        <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>∅</div>
-          <div style={{ fontSize: 14 }}>暂无积分记录</div>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+              POINTS_LOG
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 700 }}>积分明细</div>
+          </div>
         </div>
-      ) : (
-        <div className="card" style={{ padding: '8px 16px' }}>
-          {filtered.map(r => (
-            <div
-              key={r.id}
+
+        {/* 余额展示 */}
+        <div className="card" style={{
+          padding: 24, borderRadius: 16, marginBottom: 16,
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginBottom: 8 }}>
+            CURRENT_BALANCE
+          </div>
+          <div style={{ fontSize: 48, fontWeight: 300, letterSpacing: -1, lineHeight: 1 }}>
+            {points}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>PTS</div>
+        </div>
+
+        {/* 收支摘要 */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <div className="card" style={{
+            flex: 1, padding: 14, borderRadius: 12,
+            display: 'flex', flexDirection: 'column', alignItems: 'center'
+          }}>
+            <div style={{ fontSize: 10, color: 'var(--success)', fontFamily: 'DM Mono, monospace', marginBottom: 4 }}>
+              EARNED
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--success)' }}>
+              +{totalEarned}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>累计获得</div>
+          </div>
+          <div className="card" style={{
+            flex: 1, padding: 14, borderRadius: 12,
+            display: 'flex', flexDirection: 'column', alignItems: 'center'
+          }}>
+            <div style={{ fontSize: 10, color: 'var(--danger)', fontFamily: 'DM Mono, monospace', marginBottom: 4 }}>
+              SPENT
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--danger)' }}>
+              -{totalSpent}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>累计消耗</div>
+          </div>
+        </div>
+
+        {/* 筛选 */}
+        <div style={{
+          display: 'flex', gap: 6, padding: 4,
+          background: 'var(--bg-alt)', borderRadius: 100,
+          marginBottom: 16
+        }}>
+          {([
+            { id: 'all', label: '全部' },
+            { id: 'earn', label: '获得' },
+            { id: 'spend', label: '消耗' }
+          ] as const).map(t => (
+            <button
+              key={t.id}
+              onClick={() => setFilter(t.id)}
               style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '12px 0',
-                borderBottom: '1px solid var(--border)'
+                flex: 1, padding: '8px 12px', borderRadius: 100,
+                background: filter === t.id ? 'var(--fg)' : 'transparent',
+                color: filter === t.id ? 'var(--bg)' : 'var(--muted)',
+                border: 'none', fontSize: 12, fontWeight: 500,
+                cursor: 'pointer', transition: 'all 0.2s'
               }}
             >
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{r.reason}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{formatDate(r.ts)}</div>
-              </div>
-              <div style={{
-                fontSize: 15, fontWeight: 700,
-                color: r.type === 'earn' ? 'var(--success)' : 'var(--danger)'
-              }}>
-                {r.type === 'earn' ? '+' : '-'}{r.amount}
-              </div>
-            </div>
+              {t.label}
+            </button>
           ))}
         </div>
-      )}
 
-      <div style={{ height: 24 }} />
+        {/* 记录列表 */}
+        {filtered.length === 0 ? (
+          <div className="card" style={{
+            padding: 40, borderRadius: 12, textAlign: 'center'
+          }}>
+            <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.3 }}>∅</div>
+            <div style={{ fontSize: 13, color: 'var(--muted)' }}>暂无积分记录</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {filtered.map(r => (
+              <RecordItem key={r.id} record={r} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function RecordItem({ record }: { record: PointRecord }) {
+  const isEarn = record.type === 'earn'
+  return (
+    <div className="card" style={{
+      padding: '12px 14px', borderRadius: 12,
+      display: 'flex', alignItems: 'center', gap: 12
+    }}>
+      {/* 图标 */}
+      <div style={{
+        width: 36, height: 36, borderRadius: 10,
+        background: isEarn ? 'rgba(22, 163, 74, 0.1)' : 'rgba(229, 77, 46, 0.1)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0
+      }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isEarn ? 'var(--success)' : 'var(--danger)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          {isEarn ? (
+            <path d="M12 5v14M5 12l7-7 7 7" />
+          ) : (
+            <path d="M12 19V5M5 12l7 7 7-7" />
+          )}
+        </svg>
+      </div>
+
+      {/* 信息 */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 13, fontWeight: 500,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+        }}>
+          {record.reason}
+        </div>
+        <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+          {fmtTime(record.ts)}
+        </div>
+      </div>
+
+      {/* 金额 */}
+      <div style={{
+        fontSize: 15, fontWeight: 700,
+        fontFamily: 'DM Mono, monospace',
+        color: isEarn ? 'var(--success)' : 'var(--danger)',
+        flexShrink: 0
+      }}>
+        {isEarn ? '+' : '-'}{record.amount}
+      </div>
     </div>
   )
 }

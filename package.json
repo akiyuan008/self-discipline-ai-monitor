@@ -1,7 +1,7 @@
 {
   "name": "self-discipline-app",
   "version": "1.0.0",
-  "description": "自律养成 Android App",
+  "description": "AI 监工自律养成 Android App",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,9 @@
     "cap:sync": "cap sync",
     "cap:add:android": "cap add android",
     "cap:open:android": "cap open android",
-    "cap:run:android": "cap run android"
+    "cap:run:android": "cap run android",
+    "server": "tsx server/index.ts",
+    "start": "concurrently \"npm run server\" \"vite preview --host 0.0.0.0 --port 4173\""
   },
   "dependencies": {
     "@capacitor/android": "^6.1.2",
@@ -24,6 +26,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.2",
+    "z-ai-web-dev-sdk": "^0.0.18",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
@@ -35,6 +38,7 @@
     "concurrently": "^10.0.4",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
+    "tsx": "^4.23.1",
     "typescript": "^5.6.3",
     "vite": "^5.4.8"
   }
