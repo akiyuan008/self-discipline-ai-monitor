@@ -140,6 +140,14 @@ function todayStr(): string {
   return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
 }
 
+// Bug 6 修复：crypto.randomUUID 在旧 WebView 中不支持，加 fallback
+function genId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 // ═══════════════════════════════════════════════════════════
 // 预置 API 配置 — 阿里云百炼（通义千问）
 // ═══════════════════════════════════════════════════════════
@@ -200,7 +208,7 @@ export const useStore = create<StoreState>()(
       addPointRecord: (type, amount, reason) =>
         set(s => ({
           pointHistory: [
-            { id: crypto.randomUUID(), type, amount: Math.abs(amount), reason, ts: Date.now() },
+            { id: genId(), type, amount: Math.abs(amount), reason, ts: Date.now() },
             ...s.pointHistory
           ].slice(0, 200)
         })),
@@ -337,7 +345,7 @@ export const useStore = create<StoreState>()(
       setGaokaoTargetScore: (n) => set({ gaokaoTargetScore: Math.max(0, Math.round(n)) }),
       pushChat: (msg) =>
         set(s => ({
-          chat: [...s.chat, { ...msg, id: crypto.randomUUID(), ts: Date.now() }]
+          chat: [...s.chat, { ...msg, id: genId(), ts: Date.now() }]
         })),
       clearChat: () => set({ chat: [] }),
       syncUsage: (study, ent) => {

@@ -16,12 +16,15 @@ const QUICK_PROMPTS = [
 ]
 
 // ═══ 状态栏（独立组件，hp/points变化只重渲染这里）═══
-const StatusBar = memo(function StatusBar() {
+interface StatusBarProps {
+  onClearChat?: () => void
+}
+
+const StatusBar = memo(function StatusBar({ onClearChat }: StatusBarProps) {
   const ai = useStore(s => s.ai)
   const hp = useStore(s => s.hp)
   const points = useStore(s => s.points)
   const messages = useStore(s => s.chat)
-  const clearChat = useStore(s => s.clearChat)
 
   return (
     <div style={{
@@ -61,7 +64,7 @@ const StatusBar = memo(function StatusBar() {
       </div>
       {messages.length > 0 && (
         <button
-          onClick={() => { clearChat(); showToast('已清空对话') }}
+          onClick={() => onClearChat?.()}
           style={{
             padding: '6px 10px', borderRadius: 100,
             background: 'var(--bg-alt)', border: 'none',
@@ -122,21 +125,35 @@ const TypingIndicator = memo(function TypingIndicator() {
   )
 })
 
-// ═══ 输入区域（独立组件，避免流式渲染干扰输入）═══
+// ═══ 输入区域（去掉 memo，修复 sending 闭包问题）═══
 interface InputBarProps {
   sending: boolean
   onSend: (text: string) => void
 }
 
-const InputBar = memo(function InputBar({ sending, onSend }: InputBarProps) {
+function InputBar({ sending, onSend }: InputBarProps) {
   const [input, setInput] = useState('')
 
-  function handleSend() {
+  const handleSend = useCallback(() => {
     const text = input.trim()
     if (!text || sending) return
     onSend(text)
     setInput('')
-  }
+  }, [input, sending, onSend])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+      handleSend()
+    }
+  }, [handleSend])
+
+  const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.style.borderColor = 'var(--fg)'
+  }, [])
+
+  const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.style.borderColor = 'var(--border)'
+  }, [])
 
   return (
     <div style={{
@@ -150,11 +167,7 @@ const InputBar = memo(function InputBar({ sending, onSend }: InputBarProps) {
       <input
         value={input}
         onChange={e => setInput(e.target.value)}
-        onKeyDown={e => {
-          if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
-            handleSend()
-          }
-        }}
+        onKeyDown={handleKeyDown}
         placeholder="告诉监管者…"
         style={{
           flex: 1, padding: '10px 14px', borderRadius: 100,
@@ -162,8 +175,8 @@ const InputBar = memo(function InputBar({ sending, onSend }: InputBarProps) {
           color: 'var(--fg)', fontSize: 14, outline: 'none',
           transition: 'border-color 0.2s'
         }}
-        onFocus={e => e.target.style.borderColor = 'var(--fg)'}
-        onBlur={e => (e.target as HTMLInputElement).style.borderColor = 'var(--border)'}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
       />
       <button
         onClick={handleSend}
@@ -179,7 +192,7 @@ const InputBar = memo(function InputBar({ sending, onSend }: InputBarProps) {
       >发送</button>
     </div>
   )
-})
+}
 
 // ═══ 主组件 ═══
 export default function Chat({ onNavigateSettings }: Props) {
@@ -194,6 +207,10 @@ export default function Chat({ onNavigateSettings }: Props) {
   const streamingRef = useRef('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const scrollRafRef = useRef<number>(0)
+
+  // Bug 3 修复：用 ref 跟踪最新 sending 状态，避免闭包锁死
+  const sendingRef = useRef(sending)
+  sendingRef.current = sending
 
   // 检查使用情况访问权限
   useEffect(() => {
@@ -246,6 +263,13 @@ export default function Chat({ onNavigateSettings }: Props) {
     scrollToBottom()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Bug 8 修复：清空聊天时重置 greetingDone
+  const handleClearChat = useCallback(() => {
+    clearChat()
+    greetingDone.current = false
+    showToast('已清空对话')
+  }, [clearChat])
+
   // 消息变化时滚动
   useEffect(() => {
     scrollToBottom()
@@ -256,9 +280,9 @@ export default function Chat({ onNavigateSettings }: Props) {
     if (streamingText) scrollToBottom()
   }, [streamingText, scrollToBottom])
 
-  // 发送消息
+  // 发送消息（Bug 3 修复：用 sendingRef 代替闭包 sending）
   const handleSend = useCallback(async (text: string) => {
-    if (sending) return
+    if (sendingRef.current) return
     if (!configured) {
       showToast('请先完成 API 配置')
       onNavigateSettings?.()
@@ -294,7 +318,7 @@ export default function Chat({ onNavigateSettings }: Props) {
       setStreamingText('')
       setSending(false)
     }
-  }, [sending, configured, pushChat, onNavigateSettings])
+  }, [configured, pushChat, onNavigateSettings])
 
   return (
     <div
@@ -307,7 +331,7 @@ export default function Chat({ onNavigateSettings }: Props) {
         background: 'var(--bg)'
       }}
     >
-      <StatusBar />
+      <StatusBar onClearChat={handleClearChat} />
 
       {/* 消息列表 */}
       <div ref={scrollRef} className="scrollbar-hide" style={{
