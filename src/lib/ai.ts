@@ -1,4 +1,5 @@
 import { useStore, type AIConfig, type ChatMessage } from '@/stores/useStore'
+import { useGaoKaoStore } from '@/stores/gaoKaoStore'
 import { fetchUsageStats, hasUsageAccess, openUsageAccessSettings, fmtMs } from '@/lib/usageStats'
 
 /**
@@ -150,6 +151,98 @@ const TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'update_subject_score',
+      description: '修改某个科目的当前成绩或目标成绩。用户说"我数学考了120分"、"把语文目标设为130"时调用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          subject: { type: 'string', description: '科目名称，如"数学"、"语文"、"英语"、"物理"、"化学"、"生物"' },
+          currentScore: { type: 'number', description: '当前成绩（可选）' },
+          targetScore: { type: 'number', description: '目标成绩（可选）' }
+        },
+        required: ['subject']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_candidate_info',
+      description: '修改高考档案基础信息。用户说"我目标大学是清华"、"把昵称改成XXX"、"目标分数改成650"时调用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          nickname: { type: 'string', description: '考生昵称（可选）' },
+          targetUniversity: { type: 'string', description: '目标大学（可选）' },
+          targetTotalScore: { type: 'number', description: '目标总分（可选）' },
+          currentTotalScore: { type: 'number', description: '当前总分（可选）' },
+          weakSubjects: { type: 'array', items: { type: 'string' }, description: '薄弱科目列表（可选），如["数学-函数", "物理-力学"]' }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_error_question',
+      description: '添加一条错题记录。用户说"我错了一道函数题"、"记录一道错题"时调用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          subject: { type: 'string', description: '科目，如"数学"' },
+          tag: { type: 'string', description: '知识点标签，如"函数图像"、"力学"' },
+          desc: { type: 'string', description: '错题描述' }
+        },
+        required: ['subject', 'tag', 'desc']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'resolve_error_question',
+      description: '标记一条错题已解决。用户说"那道函数题我会了"、"错题已解决"时调用。需要提供错题ID。',
+      parameters: {
+        type: 'object',
+        properties: {
+          question_id: { type: 'string', description: '错题ID' }
+        },
+        required: ['question_id']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_milestone',
+      description: '添加一个里程碑记录。用户说"我这次模考进步了"、"记录一个里程碑"时调用。',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: '里程碑标题，如"模考进步50分"' },
+          desc: { type: 'string', description: '描述' },
+          type: { type: 'string', enum: ['streak', 'exam', 'errorClear', 'scoreUp', 'custom'], description: '类型' }
+        },
+        required: ['title', 'desc', 'type']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'generate_weekly_plan',
+      description: '基于薄弱科目和错题生成本周学习计划。用户说"帮我生成周计划"、"制定本周学习计划"时调用。',
+      parameters: {
+        type: 'object',
+        properties: {},
+        required: []
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
       name: 'request_usage_permission',
       description: '引导用户去系统设置开启使用情况访问权限。当check_phone_usage返回权限不足时调用。',
       parameters: {
@@ -264,6 +357,63 @@ async function executeTool(name: string, args: any): Promise<string> {
       case 'request_usage_permission': {
         await openUsageAccessSettings()
         return JSON.stringify({ ok: true, msg: '已跳转到使用情况访问权限设置页面，请引导用户开启权限后返回。' })
+      }
+      case 'update_subject_score': {
+        const subjectName = String(args.subject || '')
+        const gks = useGaoKaoStore.getState()
+        const sub = gks.profile.subjects.find(s => s.name === subjectName)
+        if (!sub) return JSON.stringify({ ok: false, error: `科目「${subjectName}」不存在` })
+        const updates: any = {}
+        if (args.currentScore !== undefined) updates.currentScore = Math.max(0, Math.min(sub.fullScore, Math.round(Number(args.currentScore))))
+        if (args.targetScore !== undefined) updates.targetScore = Math.max(0, Math.min(sub.fullScore, Math.round(Number(args.targetScore))))
+        if (Object.keys(updates).length === 0) return JSON.stringify({ ok: false, error: '未提供要修改的成绩' })
+        gks.updateSubject(subjectName, updates)
+        const updated = useGaoKaoStore.getState().profile.subjects.find(s => s.name === subjectName)
+        return JSON.stringify({ ok: true, subject: subjectName, currentScore: updated?.currentScore, targetScore: updated?.targetScore, msg: `已更新 ${subjectName} 成绩` })
+      }
+      case 'update_candidate_info': {
+        const gks = useGaoKaoStore.getState()
+        const updates: any = {}
+        if (args.nickname !== undefined) updates.nickname = String(args.nickname)
+        if (args.targetUniversity !== undefined) updates.targetUniversity = String(args.targetUniversity)
+        if (args.targetTotalScore !== undefined) updates.targetTotalScore = Math.max(0, Math.round(Number(args.targetTotalScore)))
+        if (args.currentTotalScore !== undefined) updates.currentTotalScore = Math.max(0, Math.round(Number(args.currentTotalScore)))
+        if (args.weakSubjects !== undefined && Array.isArray(args.weakSubjects)) updates.weakSubjects = args.weakSubjects
+        if (Object.keys(updates).length === 0) return JSON.stringify({ ok: false, error: '未提供要修改的信息' })
+        gks.updateProfile(updates)
+        return JSON.stringify({ ok: true, msg: `已更新档案信息：${Object.keys(updates).join('、')}` })
+      }
+      case 'add_error_question': {
+        const gks = useGaoKaoStore.getState()
+        gks.addErrorQuestion({
+          subject: String(args.subject || ''),
+          tag: String(args.tag || ''),
+          desc: String(args.desc || '')
+        })
+        return JSON.stringify({ ok: true, msg: `已记录错题：${args.subject}-${args.tag}` })
+      }
+      case 'resolve_error_question': {
+        const gks = useGaoKaoStore.getState()
+        const q = gks.profile.errorQuestions.find(eq => eq.id === args.question_id)
+        if (!q) return JSON.stringify({ ok: false, error: '错题不存在' })
+        if (q.resolved) return JSON.stringify({ ok: false, error: '错题已标记为解决' })
+        gks.resolveErrorQuestion(String(args.question_id))
+        return JSON.stringify({ ok: true, msg: `错题已解决：${q.tag}` })
+      }
+      case 'add_milestone': {
+        const gks = useGaoKaoStore.getState()
+        gks.addMilestone({
+          title: String(args.title || ''),
+          desc: String(args.desc || ''),
+          type: String(args.type || 'custom') as any
+        })
+        return JSON.stringify({ ok: true, msg: `已添加里程碑：${args.title}` })
+      }
+      case 'generate_weekly_plan': {
+        const gks = useGaoKaoStore.getState()
+        gks.generateWeeklyPlan()
+        const plan = useGaoKaoStore.getState().profile.generatedPlan
+        return JSON.stringify({ ok: true, taskCount: plan.length, msg: `已生成本周学习计划，共 ${plan.length} 项任务` })
       }
       default:
         return JSON.stringify({ ok: false, error: `unknown tool: ${name}` })
@@ -616,8 +766,11 @@ function buildContext(state: any): string {
     .slice(0, 8)
     .map((a: any) => `  - ${a.id} 「${a.name}」进度 ${a.progress}/${a.total}`)
     .join('\n') || '  (无)'
-
-  const sysPrompt = state.systemPrompt || SYSTEM_PROMPT
+  const gks = useGaoKaoStore.getState()
+  const profile = gks.profile
+  const subjectList = profile.subjects.map((s: any) => `  - ${s.name}：${s.currentScore}/${s.targetScore}（满分${s.fullScore}）${s.currentScore < s.targetScore ? '⚠️' : '✅'}`).join('\n')
+  const errorList = profile.errorQuestions.slice(0, 5).map((q: any) => `  - [${q.resolved ? '✓' : '○'}] ${q.subject}·${q.tag}：${q.desc}`).join('\n') || '  （暂无）'
+  const planList = profile.generatedPlan.slice(0, 5).map((p: any) => `  - [${p.completed ? '✓' : '○'}] ${p.task}（${p.subject}·${p.tag}）`).join('\n') || '  （暂无）'
 
   return `${sysPrompt}
 
@@ -635,8 +788,18 @@ function buildContext(state: any): string {
 ${questList}
 
 【进行中成就】(update_achievement/unlock_achievement用ID)
-${achList}`
-}
+${achList}
+
+【高考档案】
+考生：${profile.nickname}，目标：${profile.targetUniversity}，目标总分：${profile.targetTotalScore}，当前总分：${profile.currentTotalScore}
+【各科成绩】(update_subject_score用科目名)
+${subjectList}
+【薄弱点】
+${profile.weakSubjects.length > 0 ? profile.weakSubjects.join('、') : '（暂无）'}
+【错题 TOP5】(resolve_error_question用ID)
+${errorList}
+【本周计划 TOP5】
+${planList}`}
 
 // ═══════════════════════════════════════════════════════════
 // 测试连接
