@@ -204,7 +204,7 @@ export default function App() {
       case 'shop':
         return <Shop onNavigate={(p: PageId) => setCurrent(p)} />
       case 'profile':
-        return <Profile onNavigate={(p: 'achievements' | 'settings') => setCurrent(p)} />
+        return <Profile onNavigate={(p: PageId) => setCurrent(p)} />
       default:
         return <Home onNavigate={(p: PageId) => setCurrent(p)} />
     }
@@ -216,7 +216,7 @@ export default function App() {
         {renderPage()}
       </div>
       <Toast />
-      {showDock && <Dock current={current} onNavigate={(p) => setCurrent(p)} keyboardHeight={keyboardHeight} />}
+      {showDock && <Dock current={current} onNavigate={(p) => setCurrent(p)} />}
     </div>
   )
 }
