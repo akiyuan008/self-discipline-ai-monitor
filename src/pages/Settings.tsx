@@ -638,6 +638,9 @@ export default function Settings({ onBack }: Props) {
                     await importBackup(file)
                   } catch (err: any) {
                     showToast(err?.message || '导入失败')
+                  } finally {
+                    // importBackup may call window.location.reload(), but
+                    // in environments where it doesn't, ensure we reset the flag.
                     setImporting(false)
                   }
                 }}

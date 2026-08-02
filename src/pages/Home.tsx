@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useStore, hpFromStudy } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
-import { fetchUsageStats, hasUsageAccess, fmtMs, isLateNight } from '@/lib/usageStats'
+import { fetchUsageStats, hasUsageAccess, fmtMs, isLateNight, openUsageAccessSettings } from '@/lib/usageStats'
 import GaokaoProgress from '@/components/GaokaoProgress'
 import type { PageId } from '@/stores/useStore'
 
@@ -27,25 +27,30 @@ export default function Home({ onNavigate }: Props) {
   const [lateAlert, setLateAlert] = useState(false)
 
   useEffect(() => {
-    hasUsageAccess().then(setHasAccess)
+    hasUsageAccess().then(setHasAccess).catch(() => setHasAccess(false))
     refresh()
     if (isLateNight()) setLateAlert(true)
   }, [])
 
   async function refresh() {
-    const now = Date.now()
-    const start = new Date()
-    start.setHours(0, 0, 0, 0)
-    const { study, ent } = await fetchUsageStats(start.getTime(), now)
-    useStore.getState().syncUsage(study, ent)
-    const top = [...ent].sort((a, b) => b.totalMs - a.totalMs).slice(0, 3)
-      .map(e => ({ label: e.label, ms: e.totalMs }))
-    setEntTop3(top)
-    const s = useStore.getState()
-    // 仅在 HP 未被 AI 锁定时才根据学习时长自动设置
-    if (!s.hpLocked) {
-      setHp(hpFromStudy(s.todayStudyMs, s.dailyGoalMin * 60_000))
-      useStore.setState({ hpLocked: false })
+    try {
+      const now = Date.now()
+      const start = new Date()
+      start.setHours(0, 0, 0, 0)
+      const { study, ent } = await fetchUsageStats(start.getTime(), now)
+      useStore.getState().syncUsage(study, ent)
+      const top = [...ent].sort((a, b) => b.totalMs - a.totalMs).slice(0, 3)
+        .map(e => ({ label: e.label, ms: e.totalMs }))
+      setEntTop3(top)
+      const s = useStore.getState()
+      // 仅在 HP 未被 AI 锁定时才根据学习时长自动设置
+      if (!s.hpLocked) {
+        setHp(hpFromStudy(s.todayStudyMs, s.dailyGoalMin * 60_000))
+        useStore.setState({ hpLocked: false })
+      }
+    } catch (err) {
+      console.warn('[Home] refresh failed', err)
+      showToast('使用情况刷新失败，请稍后重试')
     }
   }
 
@@ -114,7 +119,6 @@ export default function Home({ onNavigate }: Props) {
           </div>
           <button
             onClick={async () => {
-              const { openUsageAccessSettings } = await import('@/lib/usageStats')
               await openUsageAccessSettings()
               setTimeout(() => hasUsageAccess().then(setHasAccess), 2000)
             }}

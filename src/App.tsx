@@ -102,23 +102,33 @@ export default function App() {
     if (!onboarded) return
     const s = useStore.getState()
     s.dailySettle()
-    fetchUsageStats(Date.now() - 24 * 3600_000, Date.now()).then(({ study, ent }) => {
-      s.syncUsage(study, ent)
-      if (!useStore.getState().hpLocked) {
-        s.setHp(hpFromStudy(s.todayStudyMs, s.dailyGoalMin * 60_000))
-        useStore.setState({ hpLocked: false })
-      }
-    })
-    const id = window.setInterval(() => {
-      const st = useStore.getState()
-      st.dailySettle()
-      fetchUsageStats(Date.now() - 24 * 3600_000, Date.now()).then(({ study, ent }) => {
-        st.syncUsage(study, ent)
-        if (!useStore.getState().hpLocked) {
-          st.setHp(hpFromStudy(st.todayStudyMs, st.dailyGoalMin * 60_000))
+    fetchUsageStats(Date.now() - 24 * 3600_000, Date.now())
+      .then(({ study, ent }) => {
+        s.syncUsage(study, ent)
+        const current = useStore.getState()
+        if (!current.hpLocked) {
+          current.setHp(hpFromStudy(current.todayStudyMs, current.dailyGoalMin * 60_000))
           useStore.setState({ hpLocked: false })
         }
       })
+      .catch((err) => {
+        console.warn('[App] initial fetchUsageStats failed', err)
+      })
+    const id = window.setInterval(() => {
+      const st = useStore.getState()
+      st.dailySettle()
+      fetchUsageStats(Date.now() - 24 * 3600_000, Date.now())
+        .then(({ study, ent }) => {
+          st.syncUsage(study, ent)
+          const current = useStore.getState()
+          if (!current.hpLocked) {
+            current.setHp(hpFromStudy(current.todayStudyMs, current.dailyGoalMin * 60_000))
+            useStore.setState({ hpLocked: false })
+          }
+        })
+        .catch((err) => {
+          console.warn('[App] interval fetchUsageStats failed', err)
+        })
     }, 5 * 60_000)
     return () => window.clearInterval(id)
   }, [onboarded])

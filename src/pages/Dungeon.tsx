@@ -20,30 +20,52 @@ export default function Dungeon({ onExit }: Props) {
   const [remaining, setRemaining] = useState(totalSec)
   const [paused, setPaused] = useState(false)
   const timerRef = useRef<number | undefined>(undefined)
+  const handlersRef = useRef({
+    onExit,
+    addPoints,
+    addFocusMs,
+    completeQuest,
+    unlockAchievement,
+    setDungeon
+  })
+
+  // keep latest handlers in a ref to avoid re-creating interval when store selectors change
+  useEffect(() => {
+    handlersRef.current = { onExit, addPoints, addFocusMs, completeQuest, unlockAchievement, setDungeon }
+  }, [onExit, addPoints, addFocusMs, completeQuest, unlockAchievement, setDungeon])
 
   useEffect(() => {
-    setDungeon(totalSec, true)
+    // reset remaining when duration changes
+    setRemaining(totalSec)
+
+    // initialize dungeon state
+    handlersRef.current.setDungeon(totalSec, true)
+
+    // ensure previous timer cleared
+    if (timerRef.current) window.clearInterval(timerRef.current)
+
     const tick = () => {
       if (paused) return
       setRemaining(prev => {
-        const next = prev - 1
-        setDungeon(next, true)
+        const next = Math.max(0, prev - 1)
+        handlersRef.current.setDungeon(next, true)
         if (next <= 0) {
           window.clearInterval(timerRef.current)
           const reward = 100 + dungeonDurationMin * 20
-          addPoints(reward)
-          addFocusMs(dungeonDurationMin * 60_000)
-          completeQuest('q3')
-          unlockAchievement('a1')
+          handlersRef.current.addPoints(reward)
+          handlersRef.current.addFocusMs(dungeonDurationMin * 60_000)
+          handlersRef.current.completeQuest('q3')
+          handlersRef.current.unlockAchievement('a1')
           showToast(`胜利 +${reward} 积分`)
-          setTimeout(onExit, 800)
+          setTimeout(() => handlersRef.current.onExit(), 800)
         }
         return next
       })
     }
+
     timerRef.current = window.setInterval(tick, 1000)
     return () => window.clearInterval(timerRef.current)
-  }, [paused])
+  }, [paused, dungeonDurationMin])
 
   const mins = Math.floor(remaining / 60)
   const secs = remaining % 60

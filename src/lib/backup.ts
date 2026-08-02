@@ -160,11 +160,22 @@ function showTextBackup(json: string, filename: string): void {
     background: #111; color: #fff; font-size: 13px; font-weight: 600;
     cursor: pointer;
   `
-  copyBtn.onclick = () => {
-    textarea.select()
-    document.execCommand('copy')
-    copyBtn.textContent = '已复制 ✓'
-    setTimeout(() => { copyBtn.textContent = '复制全部' }, 2000)
+  copyBtn.onclick = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(json)
+      } else {
+        textarea.select()
+        if (!document.execCommand('copy')) {
+          throw new Error('复制失败')
+        }
+      }
+      copyBtn.textContent = '已复制 ✓'
+      setTimeout(() => { copyBtn.textContent = '复制全部' }, 2000)
+    } catch {
+      copyBtn.textContent = '复制失败，请手动复制'
+      textarea.focus()
+    }
   }
   btnRow.appendChild(copyBtn)
 

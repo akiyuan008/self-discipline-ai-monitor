@@ -18,7 +18,7 @@ export default function Toast() {
       window.clearTimeout(toastTimer)
       toastTimer = window.setTimeout(() => setVisible(false), 2000)
     }
-    return () => { externalSet = null }
+    return () => { externalSet = null; window.clearTimeout(toastTimer) }
   }, [])
 
   if (!visible) return null
