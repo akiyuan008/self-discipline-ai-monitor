@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useStore } from '@/stores/useStore'
-import { showToast } from '@/components/Toast'
 
 export default function Onboarding() {
   const init = useStore(s => s.init)
@@ -8,170 +7,122 @@ export default function Onboarding() {
   const [tag, setTag] = useState('PLAYER_01')
   const [goal, setGoal] = useState(120)
 
-  function finish() {
-    init(tag.trim() || 'PLAYER_01', goal)
-    showToast(`欢迎，${tag || 'PLAYER_01'}`)
+  const handleFinish = () => {
+    init(tag, goal)
   }
 
   return (
-    <div className="min-h-full flex flex-col" style={{ padding: 'max(48px, env(safe-area-inset-top)) 24px max(48px, env(safe-area-inset-bottom))' }}>
-      {/* 步骤指示 */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 32 }}>
-        {[0, 1, 2].map(i => (
-          <div
-            key={i}
-            style={{
-              flex: 1,
-              height: 2,
-              background: i <= step ? 'var(--fg)' : 'var(--border)'
-            }}
-          />
-        ))}
-      </div>
-
+    <div className="view active" style={{
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: '0 32px', minHeight: '100%',
+      background: 'var(--bg)'
+    }}>
       {step === 0 && (
-        <div className="flex-1 flex flex-col animate-in">
-          <div style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: 'var(--muted)', marginBottom: 8 }}>
+        <div style={{ width: '100%', maxWidth: 360, textAlign: 'center' }}>
+          <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 2, marginBottom: 24 }}>
             INITIALIZATION // 01
           </div>
-          <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: -0.5, marginBottom: 12 }}>
-            欢迎接入
-            <br />
-            Cyber Survival
+          <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 12, lineHeight: 1.3 }}>
+            欢迎接入<br />Cyber Survival
           </h1>
-          <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 40 }}>
+          <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 40 }}>
             在这个赛博自律世界里，你的精神力即是 HP，深渊挑战是学习时段，系统会守护你的进度曲线。
           </p>
 
-          <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>玩家代号</label>
-          <input
-            value={tag}
-            onChange={(e) => setTag(e.target.value)}
-            placeholder="PLAYER_01"
-            style={{
-              width: '100%',
-              padding: '14px 16px',
-              borderRadius: 12,
-              background: 'var(--card-bg)',
-              border: '1px solid var(--border)',
-              color: 'var(--fg)',
-              fontSize: 16,
-              fontFamily: 'DM Mono, monospace',
-              outline: 'none',
-              marginBottom: 24
-            }}
-          />
-
-          <div style={{ flex: 1 }} />
+          <div style={{ textAlign: 'left', marginBottom: 32 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: 'var(--muted)' }}>
+              玩家代号
+            </div>
+            <input
+              value={tag}
+              onChange={e => setTag(e.target.value)}
+              placeholder="PLAYER_01"
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                borderRadius: 12,
+                background: 'var(--card-bg)',
+                border: '1px solid var(--border)',
+                color: 'var(--fg)',
+                fontSize: 16,
+                fontFamily: 'DM Mono, monospace',
+                outline: 'none',
+                marginBottom: 24
+              }}
+            />
+          </div>
 
           <button
             onClick={() => setStep(1)}
-            style={{
-              width: '100%',
-              padding: '16px',
-              borderRadius: 100,
-              background: 'var(--fg)',
-              color: 'var(--bg)',
-              fontSize: 16,
-              fontWeight: 600,
-              border: 'none'
-            }}
+            className="btn-primary"
+            style={{ width: '100%', padding: 16, fontSize: 16 }}
           >
-            继续
+            下一步
           </button>
         </div>
       )}
 
       {step === 1 && (
-        <div className="flex-1 flex flex-col animate-in">
-          <div style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: 'var(--muted)', marginBottom: 8 }}>
+        <div style={{ width: '100%', maxWidth: 360, textAlign: 'center' }}>
+          <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 2, marginBottom: 24 }}>
             INITIALIZATION // 02
           </div>
-          <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: -0.5, marginBottom: 12 }}>
-            每日目标
-          </h1>
-          <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 32 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 12 }}>每日目标</h1>
+          <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 40 }}>
             系统会根据目标时长判断你的 HP 走势，未达 60% 视为「精神力流失」。
           </p>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
-            <span style={{ fontSize: 48, fontWeight: 300, color: 'var(--fg)' }}>{goal}</span>
-            <span style={{ fontSize: 14, color: 'var(--muted)' }}>分钟</span>
+          <div style={{ fontSize: 48, fontWeight: 200, marginBottom: 24 }}>
+            {goal}分钟
           </div>
           <input
-            type="range" min={30} max={480} step={30}
+            type="range"
+            min={30}
+            max={480}
+            step={30}
             value={goal}
-            onChange={(e) => setGoal(+e.target.value)}
-            style={{ width: '100%', accentColor: 'var(--fg)' }}
+            onChange={e => setGoal(+e.target.value)}
+            style={{ width: '100%', accentColor: 'var(--fg)', marginBottom: 16 }}
           />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--muted)', marginTop: 4 }}>
-            <span>30m</span><span>2h</span><span>4h</span><span>8h</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--muted)', marginBottom: 40 }}>
+            <span>30m</span>
+            <span>2h</span>
+            <span>4h</span>
+            <span>8h</span>
           </div>
-
-          <div style={{ flex: 1 }} />
 
           <button
             onClick={() => setStep(2)}
-            style={{
-              width: '100%',
-              padding: '16px',
-              borderRadius: 100,
-              background: 'var(--fg)',
-              color: 'var(--bg)',
-              fontSize: 16,
-              fontWeight: 600,
-              border: 'none'
-            }}
+            className="btn-primary"
+            style={{ width: '100%', padding: 16, fontSize: 16 }}
           >
-            继续
+            下一步
           </button>
         </div>
       )}
 
       {step === 2 && (
-        <div className="flex-1 flex flex-col animate-in">
-          <div style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: 'var(--muted)', marginBottom: 8 }}>
+        <div style={{ width: '100%', maxWidth: 360, textAlign: 'center' }}>
+          <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 2, marginBottom: 24 }}>
             INITIALIZATION // 03
           </div>
-          <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: -0.5, marginBottom: 12 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 12 }}>
             准备进入赛博世界
           </h1>
-          <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 24 }}>
+          <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 40 }}>
             现在就开始你的自律之旅，系统会为你记录学习与娱乐状态。
           </p>
 
-          <div style={{ flex: 1 }} />
+          <div style={{ fontSize: 64, marginBottom: 40 }}>🚀</div>
 
-          <div style={{ display: 'flex', gap: 12 }}>
-            <button
-              onClick={finish}
-              style={{
-                flex: 1, padding: '16px',
-                borderRadius: 100,
-                background: 'transparent',
-                color: 'var(--muted)',
-                fontSize: 14,
-                fontWeight: 600,
-                border: '1px solid var(--border)'
-              }}
-            >
-              跳过
-            </button>
-            <button
-              onClick={finish}
-              style={{
-                flex: 2, padding: '16px',
-                borderRadius: 100,
-                background: 'var(--fg)',
-                color: 'var(--bg)',
-                fontSize: 16,
-                fontWeight: 600,
-                border: 'none'
-              }}
-            >
-              进入赛博世界
-            </button>
-          </div>
+          <button
+            onClick={handleFinish}
+            className="btn-primary"
+            style={{ width: '100%', padding: 16, fontSize: 16 }}
+          >
+            开始自律
+          </button>
         </div>
       )}
     </div>
