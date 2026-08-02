@@ -2,9 +2,11 @@ import { useStore, calcGaokaoScore, daysUntilGaokao } from '@/stores/useStore'
 
 interface Props {
   variant?: 'full' | 'compact'
+  mode?: 'full' | 'compact'
 }
 
-export default function GaokaoProgress({ variant = 'full' }: Props) {
+export default function GaokaoProgress({ variant = 'full', mode }: Props) {
+  const actualMode = mode || variant
   const gaokaoDate = useStore(s => s.gaokaoDate)
   const gaokaoTargetScore = useStore(s => s.gaokaoTargetScore)
   const totalFocusMs = useStore(s => s.totalFocusMs)
@@ -29,7 +31,7 @@ export default function GaokaoProgress({ variant = 'full' }: Props) {
   const isWarning = currentScore >= gaokaoTargetScore * 0.6 && !isOnTrack
   const isDanger = !isOnTrack && !isWarning
 
-  if (variant === 'compact') {
+  if (actualMode === 'compact') {
     return (
       <div className="card" style={{
         padding: '10px 14px', borderRadius: 12,
