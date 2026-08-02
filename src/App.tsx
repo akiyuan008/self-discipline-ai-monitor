@@ -102,7 +102,7 @@ export default function App() {
     if (!onboarded) return
     const s = useStore.getState()
     s.dailySettle()
-    fetchUsageStats(Date.now() - 24 * 3600_000, Date.now())
+    fetchUsageStats((() => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); })(), Date.now())
       .then(({ study, ent }) => {
         s.syncUsage(study, ent)
         const current = useStore.getState()
@@ -117,7 +117,7 @@ export default function App() {
     const id = window.setInterval(() => {
       const st = useStore.getState()
       st.dailySettle()
-      fetchUsageStats(Date.now() - 24 * 3600_000, Date.now())
+      fetchUsageStats((() => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); })(), Date.now())
         .then(({ study, ent }) => {
           st.syncUsage(study, ent)
           const current = useStore.getState()
