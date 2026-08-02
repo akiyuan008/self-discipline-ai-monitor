@@ -30,6 +30,20 @@ export interface UsageStat {
   totalMs: number
 }
 
+// ═══════════════════════════════════════════════════════════
+// AI 相关类型（补全）
+// ═══════════════════════════════════════════════════════════
+export interface AIConfig {
+  apiKey: string
+  endpoint: string
+  model: string
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  text: string
+}
+
 interface StoreState {
   // 引导
   onboarded: boolean
@@ -41,15 +55,15 @@ interface StoreState {
   points: number
   streak: number
   totalFocusMs: number
-  todayStudyMs: number       // 今日学习累计
-  todayEntMs: number         // 今日娱乐累计
-  totalEntMs: number         // 累计娱乐时长（高考分数扣分用）
-  lastSyncDay: string        // 跨日结算用 yyyy-mm-dd
+  todayStudyMs: number
+  todayEntMs: number
+  totalEntMs: number
+  lastSyncDay: string
 
   // 高考目标
-  gaokaoDate: string         // 高考日期 yyyy-mm-dd
-  gaokaoTargetScore: number  // 目标分数
-  gaokaoBaseScore: number    // 基础估分（起步分）
+  gaokaoDate: string
+  gaokaoTargetScore: number
+  gaokaoBaseScore: number
 
   // 任务/成就/商品
   quests: Quest[]
@@ -62,13 +76,22 @@ interface StoreState {
   // 深色模式
   isDark: boolean
 
-  // HP 锁：AI 手动设置 HP 后锁定，避免被定时同步覆盖
+  // HP 锁
   hpLocked: boolean
 
   // 深渊状态
   dungeonRemainingSec: number
   dungeonActive: boolean
-  dungeonDurationMin: number // 选定的番茄钟时长（分钟）
+  dungeonDurationMin: number
+
+  // ═══ 新增：AI 监管者配置（补全）═══
+  ai: AIConfig
+  chat: ChatMessage[]
+  systemPrompt?: string
+
+  // ═══ 新增：游戏道具效果状态（补全）═══
+  shields: number        // 免罚卡剩余数量
+  doublerActive: boolean // 双倍卡是否激活
 
   // 操作
   setHp: (n: number) => void
@@ -95,6 +118,15 @@ interface StoreState {
   syncUsage: (study: UsageStat[], ent: UsageStat[]) => void
   dailySettle: () => void
   addPointRecord: (type: 'earn' | 'spend', amount: number, reason: string) => void
+
+  // ═══ 新增：AI 操作（补全）═══
+  setAIConfig: (cfg: Partial<AIConfig>) => void
+  pushChat: (msg: ChatMessage) => void
+  clearChat: () => void
+  setSystemPrompt: (prompt: string) => void
+  useShield: () => boolean
+  activateDoubler: () => void
+  consumeDoubler: () => void
 }
 
 function todayStr(): string {
@@ -102,7 +134,6 @@ function todayStr(): string {
   return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
 }
 
-// Bug 6 修复：crypto.randomUUID 在旧 WebView 中不支持，加 fallback
 function genId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
@@ -136,6 +167,15 @@ export const useStore = create<StoreState>()(
       dungeonRemainingSec: 0,
       dungeonActive: false,
       dungeonDurationMin: 25,
+
+      // ═══ 新增：AI 初始值（补全）═══
+      ai: { apiKey: '', endpoint: '', model: '' },
+      chat: [],
+      systemPrompt: undefined,
+
+      // ═══ 新增：道具效果初始值（补全）═══
+      shields: 0,
+      doublerActive: false,
 
       setHp: (n) => set(s => ({ hp: Math.max(0, Math.min(100, Math.round(n))), hpLocked: true })),
       hitHp: (n) => set(s => ({ hp: Math.max(0, s.hp - n) })),
@@ -183,8 +223,25 @@ export const useStore = create<StoreState>()(
         if (!get().spendPoints(item.cost)) return false
         get().addPointRecord('spend', item.cost, `购买：${item.name}`)
         set(s => ({ ownedItems: { ...s.ownedItems, [id]: (s.ownedItems[id] || 0) + 1 } }))
-        // 体力药水立即回血
-        if (item.effect === 'potion') get().setHp(get().hp + 30)
+
+        // ═══ 补全：道具实际效果 ═══
+        switch (item.effect) {
+          case 'potion':
+            get().setHp(get().hp + 30)
+            break
+          case 'shield':
+            set(s => ({ shields: s.shields + 1 }))
+            break
+          case 'doubler':
+            set({ doublerActive: true })
+            break
+          case 'reset':
+            get().setHp(80)
+            break
+          case 'skin':
+            // 皮肤仅标记拥有，UI 层读取 ownedItems 判断
+            break
+        }
         return true
       },
       unlockAchievement: (id) => {
@@ -195,7 +252,6 @@ export const useStore = create<StoreState>()(
             ax.id === id ? { ...ax, unlocked: true, progress: ax.total } : ax
           )
         }))
-        // 解锁成就奖励积分
         set(s => ({ points: s.points + 200 }))
         get().addPointRecord('earn', 200, `解锁成就：${a.name}`)
       },
@@ -208,7 +264,6 @@ export const useStore = create<StoreState>()(
             ax.id === id ? { ...ax, progress: newProgress } : ax
           )
         }))
-        // 进度满了自动解锁
         if (newProgress >= a.total) {
           get().unlockAchievement(id)
         }
@@ -227,7 +282,7 @@ export const useStore = create<StoreState>()(
               progress: 0,
               total: 1,
               completed: false
-            }
+            } as Quest
           ]
         }))
         return id
@@ -245,7 +300,7 @@ export const useStore = create<StoreState>()(
               iconColor: '#FFFFFF',
               iconBg: '#1a1a1a',
               iconPath: 'M5 13l4 4L19 7'
-            }
+            } as Achievement
           ]
         }))
         return id
@@ -279,7 +334,12 @@ export const useStore = create<StoreState>()(
           hpLocked: false,
           dungeonRemainingSec: 0,
           dungeonActive: false,
-          dungeonDurationMin: 25
+          dungeonDurationMin: 25,
+          ai: { apiKey: '', endpoint: '', model: '' },
+          chat: [],
+          systemPrompt: undefined,
+          shields: 0,
+          doublerActive: false
         }),
       setDungeon: (sec, active) => set({ dungeonRemainingSec: sec, dungeonActive: active }),
       setDungeonDuration: (min) => set({ dungeonDurationMin: min }),
@@ -302,22 +362,40 @@ export const useStore = create<StoreState>()(
         const s = get()
         if (s.lastSyncDay === today) return
         const dailyGoalMs = s.dailyGoalMin * 60_000
+
+        // ═══ 补全：免罚卡逻辑 ═══
         if (s.todayStudyMs >= dailyGoalMs) {
           set({ streak: s.streak + 1, lastSyncDay: today, hpLocked: false })
         } else {
-          set({ streak: 0, lastSyncDay: today, hpLocked: false })
+          if (s.shields > 0) {
+            set({ shields: s.shields - 1, lastSyncDay: today, hpLocked: false })
+            // 连胜保留，但 HP 还是按规则扣
+          } else {
+            set({ streak: 0, lastSyncDay: today, hpLocked: false })
+          }
         }
-        set({ todayStudyMs: 0, todayEntMs: 0 })
-      }
+        set({ todayStudyMs: 0, todayEntMs: 0, doublerActive: false })
+      },
+
+      // ═══ 新增：AI 操作实现（补全）═══
+      setAIConfig: (cfg) => set(s => ({ ai: { ...s.ai, ...cfg } })),
+      pushChat: (msg) => set(s => ({ chat: [...s.chat, msg].slice(-40) })),
+      clearChat: () => set({ chat: [] }),
+      setSystemPrompt: (prompt) => set({ systemPrompt: prompt }),
+      useShield: () => {
+        if (get().shields <= 0) return false
+        set(s => ({ shields: s.shields - 1 }))
+        return true
+      },
+      activateDoubler: () => set({ doublerActive: true }),
+      consumeDoubler: () => set({ doublerActive: false })
     }),
     {
       name: 'cyber-survival-store',
-      version: 3,  // 版本升级：清除旧预置数据
+      version: 4, // 升级到 v4：新增 AI 字段和道具状态
       storage: createJSONStorage(() => localStorage),
-      // 迁移：旧版本用户清除预置的成就/任务/积分
       migrate: (persisted: any, version: number) => {
         if (version < 3 && persisted) {
-          // 清除旧版本的预置数据
           persisted.quests = []
           persisted.achievements = []
           persisted.points = 0
@@ -325,6 +403,12 @@ export const useStore = create<StoreState>()(
           persisted.streak = 0
           persisted.totalFocusMs = 0
           persisted.pointHistory = []
+        }
+        if (version < 4 && persisted) {
+          persisted.ai = { apiKey: '', endpoint: '', model: '' }
+          persisted.chat = []
+          persisted.shields = 0
+          persisted.doublerActive = false
         }
         return persisted
       },
@@ -343,9 +427,6 @@ export function hpFromStudy(studyMs: number, goalMs: number): number {
   return Math.round(Math.min(100, 30 + ratio * 70))
 }
 
-// ═══════════════════════════════════════════════════════════
-// 高考估分计算
-// ═══════════════════════════════════════════════════════════
 export function calcGaokaoScore(state: {
   gaokaoBaseScore: number
   totalFocusMs: number
@@ -364,7 +445,6 @@ export function calcGaokaoScore(state: {
   return Math.round(Math.max(200, Math.min(750, score)))
 }
 
-// 距高考剩余天数
 export function daysUntilGaokao(gaokaoDate: string): number {
   const target = new Date(gaokaoDate + 'T00:00:00')
   const now = new Date()
