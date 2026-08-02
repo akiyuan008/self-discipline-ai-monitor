@@ -171,7 +171,7 @@ function InputBar({ sending, onSend }: InputBarProps) {
 
   return (
     <div style={{
-      padding: '8px 16px calc(90px + env(safe-area-inset-bottom))',
+      padding: '8px 16px 8px',
       borderTop: '1px solid var(--border)',
       background: 'var(--card-bg)',
       display: 'flex',
@@ -353,7 +353,7 @@ export default function Chat({ onNavigateSettings }: Props) {
   }, [configured, onNavigateSettings, pushChat])
 
   return (
-    <div className="safe-top" style={{
+    <div className="safe-top safe-bottom" style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
