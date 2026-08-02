@@ -1,107 +1,124 @@
-import type { PageId } from '@/stores/useStore'
+import { useStore, type PageId } from '@/stores/useStore'
 
 interface DockProps {
   current: PageId
-  onChange: (p: PageId) => void
-  keyboardHeight?: number
+  onNavigate: (page: PageId) => void
 }
 
-const ICONS: Record<string, string> = {
-  home: 'M3 12l9-9 9 9M5 10v10h14V10',
-  quests: 'M9 11l3 3L22 4M2 13l3 3 5-5',
-  dungeon: 'M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83',
-  shop: 'M3 9h18l-2 11H5L3 9zM8 9V5a4 4 0 0 1 8 0v4',
-  profile: 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2'
-}
+const TABS: { id: PageId; label: string; icon: (active: boolean) => JSX.Element }[] = [
+  {
+    id: 'home',
+    label: '首页',
+    icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? 'currentColor' : 'var(--muted)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <polyline points="9 22 9 12 15 12 15 22" />
+      </svg>
+    )
+  },
+  {
+    id: 'aichat',
+    label: '监督者',
+    icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? 'currentColor' : 'var(--muted)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="11" width="18" height="10" rx="2" />
+        <circle cx="12" cy="5" r="2" />
+        <path d="M12 7v4" />
+        <line x1="8" y1="16" x2="8" y2="16" />
+        <line x1="16" y1="16" x2="16" y2="16" />
+      </svg>
+    )
+  },
+  {
+    id: 'quests',
+    label: '任务',
+    icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? 'currentColor' : 'var(--muted)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+        <polyline points="10 9 9 9 8 9" />
+      </svg>
+    )
+  },
+  {
+    id: 'shop',
+    label: '商店',
+    icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? 'currentColor' : 'var(--muted)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9" cy="21" r="1" />
+        <circle cx="20" cy="21" r="1" />
+        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+      </svg>
+    )
+  },
+  {
+    id: 'profile',
+    label: '档案',
+    icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? 'currentColor' : 'var(--muted)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+        <circle cx="12" cy="7" r="4" />
+      </svg>
+    )
+  },
+]
 
-// 新顺序：[quests, home(中间大黑圆), shop, profile]
-const ORDER: PageId[] = ['quests', 'home', 'shop', 'profile']
-const CENTER: PageId = 'home'
-
-export default function Dock({ current, onChange, keyboardHeight = 0 }: DockProps) {
-  // 键盘弹起时把 Dock 抬高到键盘上方，避免遮挡输入框
-  const dockBottom = keyboardHeight > 0
-    ? `calc(${keyboardHeight}px + 8px)`
-    : 'max(20px, env(safe-area-inset-bottom))'
-
+export default function Dock({ current, onNavigate }: DockProps) {
   return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: dockBottom,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 100,
-        transition: 'bottom 0.2s ease-out'
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: 8,
-          borderRadius: 30,
-          background: 'var(--card-bg)',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-          border: '1px solid var(--border)'
-        }}
-      >
-        {ORDER.map((it) => {
-          const isCenter = it === CENTER
-          const active = current === it
-          if (isCenter) {
-            return (
-              <button
-                key={it}
-                onClick={() => onChange(it)}
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: '50%',
-                  background: 'var(--fg)',
-                  color: 'var(--bg)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: 'none',
-                  cursor: 'pointer',
-                  margin: '-16px 4px 0',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-                  transition: 'transform 0.2s'
-                }}
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d={ICONS[it]} />
-                </svg>
-              </button>
-            )
-          }
-          return (
-            <button
-              key={it}
-              onClick={() => onChange(it)}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: '50%',
-                background: active ? 'var(--fg)' : 'transparent',
-                color: active ? 'var(--bg)' : 'var(--muted)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d={ICONS[it]} />
-              </svg>
-            </button>
-          )
-        })}
-      </div>
-    </div>
+    <nav style={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      zIndex: 100,
+      display: 'flex',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+      padding: '8px 0 calc(8px + env(safe-area-inset-bottom))',
+      background: 'var(--card-bg)',
+      borderTop: '1px solid var(--border)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)'
+    }}>
+      {TABS.map(tab => {
+        const active = current === tab.id
+        return (
+          <button
+            key={tab.id}
+            onClick={() => onNavigate(tab.id)}
+            className="dock-btn"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 2,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px 12px',
+              color: active ? 'var(--fg)' : 'var(--muted)',
+              transition: 'color 0.2s'
+            }}
+          >
+            <div style={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: active ? 'var(--fg)' : 'transparent',
+              color: active ? 'var(--bg)' : 'inherit',
+              transition: 'all 0.2s'
+            }}>
+              {tab.icon(active)}
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 600 }}>{tab.label}</span>
+          </button>
+        )
+      })}
+    </nav>
   )
 }
