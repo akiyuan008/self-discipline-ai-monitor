@@ -314,14 +314,6 @@ export default function Chat({ onNavigateSettings }: Props) {
     showToast('已清空对话')
   }, [clearChat])
 
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages.length, scrollToBottom])
-
-  useEffect(() => {
-    if (streamingText) scrollToBottom()
-  }, [streamingText, scrollToBottom])
-
   const handleSend = useCallback(async (text: string) => {
     if (sendingRef.current) return
     if (!configured) {
