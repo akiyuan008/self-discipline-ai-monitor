@@ -134,12 +134,16 @@ interface InputBarProps {
 function InputBar({ sending, onSend }: InputBarProps) {
   const [input, setInput] = useState('')
 
+  // 用 ref 实时跟踪 sending，避免闭包问题
+  const sendingRef = useRef(sending)
+  sendingRef.current = sending
+
   const handleSend = useCallback(() => {
     const text = input.trim()
-    if (!text || sending) return
+    if (!text || sendingRef.current) return
     onSend(text)
     setInput('')
-  }, [input, sending, onSend])
+  }, [input, onSend])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.nativeEvent.isComposing) {

@@ -458,6 +458,8 @@ export default function Settings({ onBack }: Props) {
               <textarea
                 value={systemPrompt}
                 onChange={(e) => setSystemPromptLocal(e.target.value)}
+                onPaste={(e) => e.stopPropagation()}
+                onContextMenu={(e) => e.stopPropagation()}
                 rows={10}
                 placeholder="输入系统提示词…"
                 style={{
@@ -468,7 +470,10 @@ export default function Settings({ onBack }: Props) {
                   fontFamily: 'inherit',
                   outline: 'none',
                   resize: 'vertical',
-                  lineHeight: 1.6
+                  lineHeight: 1.6,
+                  touchAction: 'manipulation',
+                  WebkitUserSelect: 'text',
+                  userSelect: 'text'
                 }}
               />
               <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>
