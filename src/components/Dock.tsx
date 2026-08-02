@@ -3,6 +3,7 @@ import type { PageId } from '@/stores/useStore'
 interface DockProps {
   current: PageId
   onChange: (p: PageId) => void
+  keyboardHeight?: number
 }
 
 const ICONS: Record<string, string> = {
@@ -18,15 +19,21 @@ const ICONS: Record<string, string> = {
 const ORDER: PageId[] = ['quests', 'chat', 'home', 'shop', 'profile']
 const CENTER: PageId = 'home'
 
-export default function Dock({ current, onChange }: DockProps) {
+export default function Dock({ current, onChange, keyboardHeight = 0 }: DockProps) {
+  // 键盘弹起时把 Dock 抬高到键盘上方，避免遮挡输入框
+  const dockBottom = keyboardHeight > 0
+    ? `calc(${keyboardHeight}px + 8px)`
+    : 'max(20px, env(safe-area-inset-bottom))'
+
   return (
     <div
       style={{
         position: 'fixed',
-        bottom: 'max(20px, env(safe-area-inset-bottom))',
+        bottom: dockBottom,
         left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: 100
+        zIndex: 100,
+        transition: 'bottom 0.2s ease-out'
       }}
     >
       <div

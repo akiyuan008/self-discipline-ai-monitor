@@ -36,6 +36,27 @@ export default function App() {
   const currentRef = useRef(current)
   currentRef.current = current
 
+  // 监听软键盘高度（visualViewport），动态调整 Chat 页面底部留白
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+
+    const update = () => {
+      const h = Math.max(0, window.innerHeight - vv.height)
+      setKeyboardHeight(h)
+    }
+
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    update()
+
+    return () => {
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
+    }
+  }, [])
+
   useEffect(() => {
     document.body.classList.toggle('dark', isDark)
   }, [isDark])
@@ -168,13 +189,16 @@ export default function App() {
   // Chat 页面需要全高布局，Dock 浮在上层
   const isChat = current === 'chat'
 
+  // Chat 页面底部留白：至少 80px 防 Dock 遮挡，键盘弹起时按实际键盘高度动态增加
+  const chatPaddingBottom = isChat ? Math.max(80, keyboardHeight + 16) : undefined
+
   return (
     <div className="min-h-full relative" style={{ height: isChat ? '100vh' : undefined }}>
-      <div className={isChat ? '' : 'animate-in'} key={current} style={isChat ? { height: '100%', paddingBottom: '80px' } : undefined}>
+      <div className={isChat ? '' : 'animate-in'} key={current} style={isChat ? { height: '100%', paddingBottom: chatPaddingBottom } : undefined}>
         {renderPage()}
       </div>
       <Toast />
-      {showDock && <Dock current={current} onChange={setCurrent} />}
+      {showDock && <Dock current={current} onChange={setCurrent} keyboardHeight={keyboardHeight} />}
     </div>
   )
 }

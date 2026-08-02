@@ -174,6 +174,11 @@ function InputBar({ sending, onSend }: InputBarProps) {
         onChange={e => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="告诉监管者…"
+        inputMode="text"
+        enterKeyHint="send"
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck="false"
         style={{
           flex: 1, padding: '10px 14px', borderRadius: 100,
           background: 'var(--bg)', border: '1px solid var(--border)',
@@ -188,6 +193,11 @@ function InputBar({ sending, onSend }: InputBarProps) {
         disabled={sending}
         // ✅ 添加触摸事件，确保移动端响应
         onTouchStart={(e) => e.stopPropagation()}
+        onTouchEnd={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          handleSend()
+        }}
         style={{
           padding: '10px 20px', borderRadius: 100,
           background: 'var(--fg)', color: 'var(--bg)',
@@ -291,8 +301,8 @@ export default function Chat({ onNavigateSettings }: Props) {
     if (streamingText) scrollToBottom()
   }, [streamingText, scrollToBottom])
 
-  // 发送消息（Bug 3 修复：用 sendingRef 代替闭包 sending）
-  const handleSend = useCallback(async (text: string) => {
+  // 发送消息（Bug 3 修复：不用 useCallback，用 sendingRef 实时判断）
+  const handleSend = async (text: string) => {
     if (sendingRef.current) return
     if (!configured) {
       showToast('请先完成 API 配置')
@@ -329,7 +339,7 @@ export default function Chat({ onNavigateSettings }: Props) {
       setStreamingText('')
       setSending(false)
     }
-  }, [configured, pushChat, onNavigateSettings])
+  }
 
   return (
     <div
