@@ -135,6 +135,14 @@ interface InputBarProps {
   onSend: (text: string) => void
 }
 
+const QUICK_PROMPTS = [
+  '查看今日表现',
+  '奖励我50积分',
+  '扣我10积分',
+  '加个任务：复习数学',
+  '设HP为80',
+]
+
 function InputBar({ sending, onSend }: InputBarProps) {
   const [input, setInput] = useState('')
   const [isComposing, setIsComposing] = useState(false)
@@ -257,6 +265,15 @@ export default function Chat({ onNavigateSettings }: Props) {
   const sendingRef = useRef(sending)
   const greetingDone = useRef(false)
 
+  // 清理 RAF，防止内存泄漏
+  useEffect(() => {
+    return () => {
+      if (scrollRafRef.current) {
+        cancelAnimationFrame(scrollRafRef.current)
+      }
+    }
+  }, [])
+
   sendingRef.current = sending
 
   useEffect(() => {
@@ -295,13 +312,6 @@ export default function Chat({ onNavigateSettings }: Props) {
       pushChat({ role: 'assistant', text: greeting })
     }
 
-    if (configured && messages.length === 1) {
-      const last = messages[0]
-      if (last.role === 'assistant' && last.text.includes('还差一步')) {
-        clearChat()
-        greetingDone.current = false
-        return
-      }
     }
 
     scrollToBottom()
@@ -309,11 +319,7 @@ export default function Chat({ onNavigateSettings }: Props) {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages.length, scrollToBottom])
-
-  useEffect(() => {
-    if (streamingText) scrollToBottom()
-  }, [streamingText, scrollToBottom])
+  }, [messages.length, streamingText, scrollToBottom])
 
   const handleClearChat = useCallback(() => {
     clearChat()
