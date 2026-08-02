@@ -160,7 +160,7 @@ export default function App() {
   if (current === 'dungeon') {
     return (
       <>
-        <Dungeon onExit={() => setCurrent('home')} />
+        <Dungeon onNavigate={(p) => setCurrent(p)} />
         <Toast />
       </>
     )
@@ -168,7 +168,7 @@ export default function App() {
   if (current === 'achievements') {
     return (
       <>
-        <Achievements onBack={() => setCurrent('profile')} />
+        <Achievements onNavigate={(p) => setCurrent(p)} />
         <Toast />
       </>
     )
@@ -176,7 +176,7 @@ export default function App() {
   if (current === 'settings') {
     return (
       <>
-        <Settings onBack={() => setCurrent('profile')} />
+        <Settings onNavigate={(p) => setCurrent(p)} />
         <Toast />
       </>
     )
@@ -184,7 +184,7 @@ export default function App() {
   if (current === 'pointsDetail') {
     return (
       <>
-        <PointsDetail onBack={() => setCurrent('home')} />
+        <PointsDetail onNavigate={(p) => setCurrent(p)} />
         <Toast />
       </>
     )
@@ -216,7 +216,7 @@ export default function App() {
         {renderPage()}
       </div>
       <Toast />
-      {showDock && <Dock current={current} onChange={setCurrent} keyboardHeight={keyboardHeight} />}
+      {showDock && <Dock current={current} onNavigate={(p) => setCurrent(p)} keyboardHeight={keyboardHeight} />}
     </div>
   )
 }
