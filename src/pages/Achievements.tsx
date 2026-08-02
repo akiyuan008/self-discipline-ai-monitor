@@ -1,131 +1,121 @@
 import { useState } from 'react'
 import { useStore } from '@/stores/useStore'
-import { ACHIEVEMENT_TABS } from '@/data/achievements'
+import type { PageId } from '@/stores/useStore'
 
-interface Props {
-  onBack: () => void
+const ACHIEVEMENT_TABS = [
+  { id: 'all' as const, label: '全部' },
+  { id: 'unlocked' as const, label: '已解锁' },
+  { id: 'locked' as const, label: '进行中' }
+]
+
+interface AchievementsProps {
+  onNavigate?: (page: PageId) => void
 }
 
-export default function Achievements({ onBack }: Props) {
-  const [tab, setTab] = useState<'all' | 'unlocked' | 'locked'>('all')
+export default function Achievements({ onNavigate }: AchievementsProps) {
   const achievements = useStore(s => s.achievements)
+  const [activeTab, setActiveTab] = useState<'all' | 'unlocked' | 'locked'>('all')
 
   const list = achievements.filter(a => {
-    if (tab === 'unlocked') return a.unlocked
-    if (tab === 'locked') return !a.unlocked
+    if (activeTab === 'unlocked') return a.unlocked
+    if (activeTab === 'locked') return !a.unlocked
     return true
   })
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0,
-        background: 'var(--bg)',
-        zIndex: 500,
-        overflow: 'auto'
-      }}
-      className="safe-top safe-bottom animate-in"
-    >
-      <div style={{ padding: '16px 20px 32px' }}>
-        <Header onBack={onBack} title="成就殿堂" subtitle="ACHIEVEMENTS" />
+    <div className="view active safe-top safe-bottom" style={{ padding: '0 16px 100px', overflowY: 'auto' }}>
+      <Header onBack={() => onNavigate?.('profile')} title="成就殿堂" subtitle="ACHIEVEMENT_HALL" />
 
-        {/* tabs */}
-        <div style={{
-          display: 'flex', gap: 6, padding: 4,
-          background: 'var(--bg-alt)', borderRadius: 100, marginBottom: 16
-        }}>
-          {ACHIEVEMENT_TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              style={{
-                flex: 1, padding: '8px 12px',
-                borderRadius: 100,
-                background: tab === t.id ? 'var(--fg)' : 'transparent',
-                color: tab === t.id ? 'var(--bg)' : 'var(--muted)',
-                border: 'none', fontSize: 12, fontWeight: 500
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* 列表 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {list.map(a => (
-            <div
-              key={a.id}
-              className="card"
-              style={{
-                padding: 14, borderRadius: 12,
-                display: 'flex', gap: 12, alignItems: 'center',
-                opacity: a.unlocked ? 1 : 0.7
-              }}
-            >
-              <div style={{
-                width: 44, height: 44, borderRadius: 12,
-                background: a.iconBg, color: a.iconColor,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d={a.iconPath} />
-                </svg>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{a.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{a.desc}</div>
-                {!a.unlocked && (
-                  <div style={{
-                    height: 3, background: 'var(--bg-alt)',
-                    borderRadius: 100, marginTop: 8, overflow: 'hidden'
-                  }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${(a.progress / a.total) * 100}%`,
-                      background: 'var(--fg)', borderRadius: 100
-                    }} />
-                  </div>
-                )}
-              </div>
-              <div style={{
-                fontSize: 10, fontFamily: 'DM Mono, monospace',
-                color: a.unlocked ? 'var(--success)' : 'var(--muted)',
-                whiteSpace: 'nowrap'
-              }}>
-                {a.unlocked ? '已解锁' : `${a.progress}/${a.total}`}
-              </div>
-            </div>
-          ))}
+      {/* AI 管理提示 */}
+      <div className="card" style={{ padding: 16, marginBottom: 16, background: 'rgba(59,130,246,0.05)' }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--info)' }}>🤖 AI 动态管理</div>
+        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+          与监管者对话时，AI 会根据你的表现添加和更新成就
         </div>
       </div>
+
+      {/* tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {ACHIEVEMENT_TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 100,
+              border: '1px solid var(--border)',
+              background: activeTab === t.id ? 'var(--fg)' : 'var(--card-bg)',
+              color: activeTab === t.id ? 'var(--bg)' : 'var(--fg)',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* 列表 */}
+      {list.length === 0 ? (
+        <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🏆</div>
+          <div style={{ fontSize: 14 }}>暂无成就</div>
+          <div style={{ fontSize: 12, marginTop: 4 }}>与 AI 监管者对话添加成就挑战</div>
+        </div>
+      ) : (
+        list.map(a => (
+          <div key={a.id} className="card" style={{ padding: 16, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div className={`achieve-icon-box ${a.unlocked ? '' : 'locked'}`} style={{
+              background: a.unlocked ? a.iconBg : undefined,
+              border: a.unlocked ? 'none' : undefined
+            }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={a.unlocked ? a.iconColor : 'var(--muted)'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d={a.iconPath} />
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>{a.name}</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{a.desc}</div>
+              {!a.unlocked && (
+                <div className="achieve-progress" style={{ marginTop: 8 }}>
+                  <div className="achieve-progress-bar" style={{
+                    width: `${Math.min(100, (a.progress / a.total) * 100)}%`,
+                    background: 'var(--info)'
+                  }} />
+                </div>
+              )}
+            </div>
+            <div style={{
+              fontSize: 12, fontWeight: 600,
+              color: a.unlocked ? 'var(--success)' : 'var(--muted)'
+            }}>
+              {a.unlocked ? '已解锁' : `${a.progress}/${a.total}`}
+            </div>
+          </div>
+        ))
+      )}
+
+      <div style={{ height: 24 }} />
     </div>
   )
 }
 
 function Header({ onBack, title, subtitle }: { onBack: () => void; title: string; subtitle: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+    <header style={{ padding: '24px 0 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
       <button
         onClick={onBack}
-        style={{
-          width: 36, height: 36, borderRadius: '50%',
-          background: 'var(--card-bg)', border: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', color: 'var(--fg)'
-        }}
+        style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--fg)' }}
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
+        ←
       </button>
       <div>
-        <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+        <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: 1, fontWeight: 600 }}>
           {subtitle}
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700 }}>{title}</div>
+        <div style={{ fontSize: 20, fontWeight: 700 }}>{title}</div>
       </div>
-    </div>
+    </header>
   )
 }
