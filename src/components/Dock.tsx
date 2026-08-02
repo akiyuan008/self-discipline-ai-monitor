@@ -1,6 +1,7 @@
 import { useStore, type PageId } from '@/stores/useStore'
 
 interface DockProps {
+  keyboardHeight?: number
   current: PageId
   onNavigate: (page: PageId) => void
 }
