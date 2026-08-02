@@ -1,40 +1,30 @@
 /**
  * 数据备份导入导出工具
- * 导出：将 localStorage 中的所有应用数据打包为 JSON 文件
+ * 导出：将 localStorage 中的所有应用数据打包为 JSON
  * 导入：读取 JSON 文件，恢复数据到 localStorage，然后刷新页面
- *
- * Android WebView 兼容：
- * - 优先使用 Capacitor Filesystem API 写入 Downloads
- * - 其次尝试 Web Share API
- * - 最后回退到弹窗手动复制
  */
 
 import { Capacitor } from '@capacitor/core'
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
+import { Preferences } from '@capacitor/preferences'
 import { showToast } from '@/components/Toast'
 
 // 需要备份的 localStorage key 列表
 const BACKUP_KEYS = [
-  'cyber-survival-store', // 主 store
-  'gaokao-profile-store',   // 高考档案馆 store
+  'cyber-survival-store',
+  'gaokao-profile-store',
 ]
 
 interface BackupData {
   version: number
   exportTime: string
-  stores: Record<string, string> // key -> localStorage value (JSON string)
+  stores: Record<string, string>
 }
 
-/**
- * 收集所有需要备份的数据
- */
 function collectBackupData(): BackupData {
   const stores: Record<string, string> = {}
   for (const key of BACKUP_KEYS) {
     const val = localStorage.getItem(key)
-    if (val) {
-      stores[key] = val
-    }
+    if (val) stores[key] = val
   }
   return {
     version: 1,
@@ -44,8 +34,9 @@ function collectBackupData(): BackupData {
 }
 
 /**
- * 导出全部数据为备份文件
- * 返回导出方式，方便 UI 层做对应提示
+ * 导出备份
+ * Android: 优先用 Web Share API 分享文本，回退到弹窗复制
+ * 桌面: 用 Blob 下载
  */
 export async function exportBackup(): Promise<'download' | 'share' | 'text'> {
   const data = collectBackupData()
@@ -53,72 +44,51 @@ export async function exportBackup(): Promise<'download' | 'share' | 'text'> {
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
   const filename = `cyber-survival-backup-${dateStr}.json`
 
-  // ── 方案1：Capacitor Filesystem（Android 最可靠）──
-  if (Capacitor.isNativePlatform()) {
+  // 桌面浏览器：Blob 下载
+  if (!Capacitor.isNativePlatform()) {
     try {
-      await Filesystem.writeFile({
-        path: filename,
-        data: json,
-        directory: Directory.Documents,
-        encoding: Encoding.UTF8,
-        recursive: true
-      })
-      showToast(`备份已保存到 Documents/${filename}`)
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      showToast('备份已下载')
       return 'download'
-    } catch (e: any) {
-      console.warn('[Backup] Filesystem failed:', e)
-      // 继续尝试其他方案
+    } catch {
+      // 回退到弹窗
     }
   }
 
-  // ── 方案2：Blob + <a> 下载（桌面浏览器）──
-  const blob = new Blob([json], { type: 'application/json' })
-  try {
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    setTimeout(() => URL.revokeObjectURL(url), 1000)
-    showToast('备份文件已下载')
-    return 'download'
-  } catch {
-    // 继续尝试其他方案
-  }
-
-  // ── 方案3：Web Share API ──
+  // Android/iOS：Web Share API
   if (navigator.share) {
     try {
-      const file = new File([blob], filename, { type: 'application/json' })
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: '备份数据' })
-        showToast('已通过分享导出备份')
-        return 'share'
-      } else {
-        await navigator.share({ text: json, title: '备份数据' })
-        showToast('已通过分享导出备份')
-        return 'share'
-      }
+      await navigator.share({
+        title: filename,
+        text: json
+      })
+      showToast('备份已分享')
+      return 'share'
     } catch (e: any) {
       if (e?.name === 'AbortError') {
         showToast('分享已取消')
         return 'share'
       }
-      // 继续到方案4
+      // 回退到弹窗
     }
   }
 
-  // ── 方案4：弹窗展示 JSON 文本供手动复制 ──
+  // 最终回退：弹窗展示 JSON
   showTextBackup(json, filename)
-  showToast('请复制备份文本保存')
+  showToast('请复制备份文本')
   return 'text'
 }
 
 /**
- * 在页面上弹出一个文本框，展示备份内容供用户手动复制
- * 适配深色模式
+ * 弹窗展示备份文本，适配深色模式
  */
 function showTextBackup(json: string, filename: string): void {
   const existing = document.getElementById('__backup_modal')
@@ -146,12 +116,12 @@ function showTextBackup(json: string, filename: string): void {
   `
 
   const title = document.createElement('div')
-  title.textContent = `备份数据 — ${filename}`
+  title.textContent = `备份 — ${filename}`
   title.style.cssText = `font-size: 15px; font-weight: 700; color: ${isDark ? '#fff' : '#111'};`
   modal.appendChild(title)
 
   const subtitle = document.createElement('div')
-  subtitle.textContent = '长按下方文本框全选，然后复制保存到安全位置'
+  subtitle.textContent = '长按全选后复制，保存到备忘录或文件管理器'
   subtitle.style.cssText = `font-size: 12px; color: ${isDark ? 'rgba(255,255,255,0.5)' : '#666'};`
   modal.appendChild(subtitle)
 
@@ -188,7 +158,7 @@ function showTextBackup(json: string, filename: string): void {
         if (!document.execCommand('copy')) throw new Error('复制失败')
       }
       copyBtn.textContent = '已复制 ✓'
-      showToast('备份内容已复制到剪贴板')
+      showToast('已复制到剪贴板')
       setTimeout(() => { copyBtn.textContent = '复制全部' }, 2000)
     } catch {
       copyBtn.textContent = '复制失败，请手动复制'
@@ -214,7 +184,6 @@ function showTextBackup(json: string, filename: string): void {
   overlay.onclick = (e) => { if (e.target === overlay) overlay.remove() }
   document.body.appendChild(overlay)
 
-  // 自动选中全部文本
   setTimeout(() => {
     textarea.focus()
     textarea.select()
@@ -222,8 +191,7 @@ function showTextBackup(json: string, filename: string): void {
 }
 
 /**
- * 从备份文件导入数据
- * @param file 用户选择的 JSON 文件
+ * 从备份文件导入
  */
 export async function importBackup(file: File): Promise<void> {
   const text = await file.text()
@@ -231,35 +199,32 @@ export async function importBackup(file: File): Promise<void> {
 }
 
 /**
- * 从备份文本导入数据（用于粘贴导入场景）
+ * 从备份文本导入
  */
 export async function importBackupText(text: string): Promise<void> {
   let data: BackupData
-
   try {
     data = JSON.parse(text)
   } catch {
     throw new Error('文件格式错误：无法解析 JSON')
   }
 
-  if (!data || !data.stores || typeof data.stores !== 'object') {
+  if (!data?.stores || typeof data.stores !== 'object') {
     throw new Error('文件格式错误：缺少 stores 字段')
   }
 
-  let restoredCount = 0
+  let restored = 0
   for (const key of BACKUP_KEYS) {
     if (data.stores[key]) {
       localStorage.setItem(key, data.stores[key])
-      restoredCount++
+      restored++
     }
   }
 
-  if (restoredCount === 0) {
+  if (restored === 0) {
     throw new Error('备份文件中没有可恢复的数据')
   }
 
-  showToast(`已恢复 ${restoredCount} 项数据，页面即将刷新`)
-  setTimeout(() => {
-    window.location.reload()
-  }, 1500)
+  showToast(`已恢复 ${restored} 项数据，即将刷新`)
+  setTimeout(() => window.location.reload(), 1500)
 }
