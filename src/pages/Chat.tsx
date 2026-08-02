@@ -138,14 +138,18 @@ interface InputBarProps {
 function InputBar({ sending, onSend }: InputBarProps) {
   const [input, setInput] = useState('')
   const [isComposing, setIsComposing] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
   const sendingRef = useRef(sending)
   sendingRef.current = sending
 
   const handleSend = () => {
-    const text = input.trim()
+    // 优先从 DOM 读取最新值，解决中文输入法 composition 期间 state 不同步
+    const domValue = inputRef.current?.value ?? input
+    const text = domValue.trim()
     if (!text || sendingRef.current) return
     onSend(text)
     setInput('')
+    if (inputRef.current) inputRef.current.value = ''
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -158,7 +162,9 @@ function InputBar({ sending, onSend }: InputBarProps) {
   const handleCompositionStart = () => setIsComposing(true)
   const handleCompositionEnd = (e: CompositionEvent<HTMLInputElement>) => {
     setIsComposing(false)
-    setInput(e.currentTarget.value)
+    // 从 DOM 读取最终确认的值，避免 React 事件对象被重用导致值丢失
+    const finalValue = inputRef.current?.value ?? e.currentTarget.value
+    setInput(finalValue)
   }
 
   const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
@@ -181,6 +187,7 @@ function InputBar({ sending, onSend }: InputBarProps) {
       zIndex: 1
     }}>
       <input
+        ref={inputRef}
         value={input}
         onChange={e => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
