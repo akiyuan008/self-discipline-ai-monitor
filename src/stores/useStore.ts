@@ -6,6 +6,8 @@ import { type Achievement } from '@/data/achievements'
 
 export type PageId =
   | 'home'
+  | 'aichat'
+  | 'stats'
   | 'dungeon'
   | 'quests'
   | 'shop'
