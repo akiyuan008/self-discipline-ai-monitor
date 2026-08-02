@@ -99,6 +99,10 @@ interface StoreState {
   // HP 锁：AI 手动设置 HP 后锁定，避免被定时同步覆盖
   hpLocked: boolean
 
+  // 道具效果
+  shields: number        // 免罚卡剩余数量
+  doublerActive: boolean // 双倍卡是否激活
+
   // 深渊状态
   dungeonRemainingSec: number
   dungeonActive: boolean
@@ -152,7 +156,7 @@ function genId(): string {
 // 预置 API 配置 — 阿里云百炼（通义千问）
 // ═══════════════════════════════════════════════════════════
 export const PRESET_AI_CONFIG: AIConfig = {
-  apiKey: 'sk-ws-H.ELMIRHL.w9Oo.MEUCIQC5cbZG1Y-LQ32Q_8bkf2vgaoNVH3lJN6kfVgaOAQ555AIgUPNCX2J3odM5XSJwAobp3awAQlZeQ8CoeqlrGq2q4gs',
+  apiKey: '',
   endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
   model: 'qwen-plus'
 }
@@ -235,8 +239,14 @@ export const useStore = create<StoreState>()(
         if (!get().spendPoints(item.cost)) return false
         get().addPointRecord('spend', item.cost, `购买：${item.name}`)
         set(s => ({ ownedItems: { ...s.ownedItems, [id]: (s.ownedItems[id] || 0) + 1 } }))
-        // 体力药水立即回血
-        if (item.effect === 'potion') get().setHp(get().hp + 30)
+        // 道具效果
+        switch (item.effect) {
+          case 'potion': get().setHp(get().hp + 30); break
+          case 'shield': set(s => ({ shields: s.shields + 1 })); break
+          case 'doubler': set({ doublerActive: true }); break
+          case 'reset': get().setHp(80); break
+          case 'skin': break // 皮肤仅标记拥有
+        }
         return true
       },
       unlockAchievement: (id) => {
@@ -367,9 +377,14 @@ export const useStore = create<StoreState>()(
         if (s.todayStudyMs >= dailyGoalMs) {
           set({ streak: s.streak + 1, lastSyncDay: today, hpLocked: false })
         } else {
-          set({ streak: 0, lastSyncDay: today, hpLocked: false })
+          // 免罚卡：消耗一个 shield 保留连胜
+          if ((s.shields || 0) > 0) {
+            set({ shields: s.shields - 1, lastSyncDay: today, hpLocked: false })
+          } else {
+            set({ streak: 0, lastSyncDay: today, hpLocked: false })
+          }
         }
-        set({ todayStudyMs: 0, todayEntMs: 0 })
+        set({ todayStudyMs: 0, todayEntMs: 0, doublerActive: false })
       }
     }),
     {
