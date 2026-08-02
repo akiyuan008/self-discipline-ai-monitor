@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,7 +22,7 @@ jobs:
           node-version: '20'
 
       - name: 📦 Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: 🔨 Build web assets
         run: npm run build
@@ -38,7 +41,9 @@ jobs:
 
       - name: ➕ Add Capacitor Android platform
         run: |
-          npx cap add android
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
           npx cap sync android
 
       - name: 📋 Copy native plugin files into Android project
@@ -47,6 +52,7 @@ jobs:
           mkdir -p "$BASE/plugin"
           cp android_plugin/java/cn/selfdiscipline/app/MainActivity.kt "$BASE/"
           cp android_plugin/java/cn/selfdiscipline/app/plugin/*.kt "$BASE/plugin/"
+          echo "=== plugin files ==="
           ls -la "$BASE" "$BASE/plugin"
 
       - name: 📝 Overwrite AndroidManifest with full declarations
@@ -82,6 +88,17 @@ jobs:
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 30
           if-no-files-found: error
+
+      - name: 📦 Upload APK to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-${{ github.run_number }}
+          name: Android APK ${{ github.run_number }}
+          draft: false
+          prerelease: true
+          files: android/app/build/outputs/apk/debug/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 📊 Print build output info
         if: always()
