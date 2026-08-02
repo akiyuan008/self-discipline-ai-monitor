@@ -389,6 +389,8 @@ export async function chatWithAI(
 // ═══════════════════════════════════════════════════════════
 function buildChatUrl(endpoint: string): string {
   const base = endpoint.replace(/\/+$/, '')
+  // 如果用户填了完整 URL（含 /chat/completions），直接返回
+  if (base.endsWith('/chat/completions')) return base
   if (/\/v\d+$/.test(base)) return base + '/chat/completions'
   return base + '/v1/chat/completions'
 }
