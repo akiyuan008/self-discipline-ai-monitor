@@ -170,7 +170,7 @@ export default function App() {
 
   return (
     <div className="min-h-full relative" style={{ height: isChat ? '100vh' : undefined }}>
-      <div className={isChat ? '' : 'animate-in'} key={current} style={isChat ? { height: '100%' } : undefined}>
+      <div className={isChat ? '' : 'animate-in'} key={current} style={isChat ? { height: '100%', paddingBottom: '80px' } : undefined}>
         {renderPage()}
       </div>
       <Toast />

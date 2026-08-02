@@ -473,7 +473,8 @@ export default function Settings({ onBack }: Props) {
                   lineHeight: 1.6,
                   touchAction: 'manipulation',
                   WebkitUserSelect: 'text',
-                  userSelect: 'text'
+                  userSelect: 'text',
+                  WebkitTouchCallout: 'default'
                 }}
               />
               <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>

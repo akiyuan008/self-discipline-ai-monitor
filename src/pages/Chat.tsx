@@ -125,7 +125,7 @@ const TypingIndicator = memo(function TypingIndicator() {
   )
 })
 
-// ═══ 输入区域（去掉 memo，修复 sending 闭包问题）═══
+// ═══ 输入区域（修复 sending 闭包 + 移动端触摸）═══
 interface InputBarProps {
   sending: boolean
   onSend: (text: string) => void
@@ -134,30 +134,31 @@ interface InputBarProps {
 function InputBar({ sending, onSend }: InputBarProps) {
   const [input, setInput] = useState('')
 
-  // 用 ref 实时跟踪 sending，避免闭包问题
+  // ✅ 关键修复：用 ref 实时跟踪 sending，避免闭包陷阱
   const sendingRef = useRef(sending)
   sendingRef.current = sending
 
-  const handleSend = useCallback(() => {
+  // ✅ 不用 useCallback，避免闭包问题，每次渲染都是最新函数
+  const handleSend = () => {
     const text = input.trim()
-    if (!text || sendingRef.current) return
+    if (!text || sendingRef.current) return  // ← 用 ref 判断实时值
     onSend(text)
     setInput('')
-  }, [input, onSend])
+  }
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
       handleSend()
     }
-  }, [handleSend])
+  }
 
-  const handleFocus = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+  const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     e.target.style.borderColor = 'var(--fg)'
-  }, [])
+  }
 
-  const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     e.target.style.borderColor = 'var(--border)'
-  }, [])
+  }
 
   return (
     <div style={{
@@ -185,13 +186,19 @@ function InputBar({ sending, onSend }: InputBarProps) {
       <button
         onClick={handleSend}
         disabled={sending}
+        // ✅ 添加触摸事件，确保移动端响应
+        onTouchStart={(e) => e.stopPropagation()}
         style={{
           padding: '10px 20px', borderRadius: 100,
           background: 'var(--fg)', color: 'var(--bg)',
           border: 'none', fontSize: 13, fontWeight: 600,
           cursor: sending ? 'not-allowed' : 'pointer',
           opacity: sending ? 0.5 : 1,
-          transition: 'opacity 0.2s, transform 0.1s'
+          transition: 'opacity 0.2s, transform 0.1s',
+          // ✅ 确保触摸行为正确
+          touchAction: 'manipulation',
+          WebkitUserSelect: 'none',
+          userSelect: 'none'
         }}
       >发送</button>
     </div>
