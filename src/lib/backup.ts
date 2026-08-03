@@ -50,11 +50,11 @@ export async function exportBackup(): Promise<'filesystem' | 'download' | 'text'
       await Filesystem.writeFile({
         path: filename,
         data: json,
-        directory: Directory.Downloads,
+        directory: Directory.Documents,
         encoding: Encoding.UTF8,
         recursive: true
       })
-      showToast(`备份已保存到 下载/${filename}`)
+      showToast(`备份已保存到 Documents/${filename}`)
       return 'filesystem'
     } catch (e: any) {
       showToast('保存到下载目录失败：' + (e.message || '未知错误'))
