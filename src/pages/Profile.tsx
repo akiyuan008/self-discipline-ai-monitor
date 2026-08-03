@@ -158,6 +158,7 @@ export default function Profile({ onNavigate }: ProfileProps) {
                 <input
                   type="number"
                   defaultValue={sub.currentScore}
+                  onPaste={() => { /* defaultValue 不需要同步 */ }}
                   max={sub.fullScore}
                   min={0}
                   onBlur={(e) => {
