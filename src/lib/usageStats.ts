@@ -60,6 +60,14 @@ export async function openUsageAccessSettings(): Promise<void> {
   }
 }
 
+/**
+ * 请求使用情况权限（AI 工具调用）
+ * 直接打开设置页
+ */
+export async function requestUsagePermission(): Promise<void> {
+  if (Capacitor.getPlatform() !== 'android') return
+  await openUsageAccessSettings()
+}
 
 // Mock 数据：模拟今天的真实学习+娱乐情况
 function mockUsage(): { study: UsageStat[]; ent: UsageStat[] } {
