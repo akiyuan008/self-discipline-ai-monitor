@@ -11,7 +11,7 @@ export interface ShopItem {
   effect: 'potion' | 'shield' | 'skin' | 'reset' | 'doubler'
 }
 
-export const SHOP_ITEMS: ShopItem[] = [
+export const DEFAULT_SHOP_ITEMS: ShopItem[] = [
   {
     id: 'potion',
     name: '体力药水',
@@ -65,3 +65,6 @@ export const SHOP_ITEMS: ShopItem[] = [
     effect: 'skin'
   }
 ]
+
+// 兼容旧代码
+export const SHOP_ITEMS = DEFAULT_SHOP_ITEMS
