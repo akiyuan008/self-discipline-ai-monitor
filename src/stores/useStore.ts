@@ -197,6 +197,8 @@ export const useStore = create<StoreState>()(
       systemPrompt: DEFAULT_SYSTEM_PROMPT,
       modelList: [...PRESET_MODEL_LIST],
       hpLocked: false,
+      shields: 0,
+      doublerActive: false,
       dungeonRemainingSec: 0,
       dungeonActive: false,
       dungeonDurationMin: 25,
