@@ -287,7 +287,22 @@ export const useGaoKaoStore = create<GaoKaoState>()(
     }),
     {
       name: 'gaokao-profile-store',
+      version: 1,
       storage: createJSONStorage(() => localStorage),
+      migrate: (persisted: any, version: number) => {
+        if (version < 1 && persisted?.profile?.subjects) {
+          const scoreMap: Record<string, number> = {
+            '语文': 150, '数学': 150, '英语': 150,
+            '物理': 100, '化学': 100, '生物': 100,
+            '历史': 100, '政治': 100, '地理': 100
+          }
+          persisted.profile.subjects = persisted.profile.subjects.map((s: any) => ({
+            ...s,
+            fullScore: scoreMap[s.name] || s.fullScore || 100
+          }))
+        }
+        return persisted
+      },
     }
   )
 )
