@@ -54,9 +54,11 @@ export async function openUsageAccessSettings(): Promise<void> {
   try {
     const SelfDiscipline = (window as any).SelfDiscipline
     await SelfDiscipline?.openUsageAccessSettings?.()
-  } catch (e) {
+  } catch (e: any) {
     console.warn(e)
+    throw new Error(e?.message || '无法打开设置页面')
   }
+}
 }
 
 // Mock 数据：模拟今天的真实学习+娱乐情况
