@@ -1,48 +1,74 @@
 /**
  * 数据备份导入导出工具
- * 导出：将 localStorage 中的所有应用数据打包为 JSON
+ * 导出：遍历所有 localStorage 数据，打包为 JSON
  * 导入：读取 JSON 文件，恢复数据到 localStorage，然后刷新页面
  */
 
 import { Capacitor } from '@capacitor/core'
-import { Preferences } from '@capacitor/preferences'
 import { showToast } from '@/components/Toast'
-
-// 需要备份的 localStorage key 列表
-const BACKUP_KEYS = [
-  'cyber-survival-store',
-  'gaokao-profile-store',
-]
 
 interface BackupData {
   version: number
   exportTime: string
+  app: string
   stores: Record<string, string>
 }
 
 function collectBackupData(): BackupData {
   const stores: Record<string, string> = {}
-  for (const key of BACKUP_KEYS) {
-    const val = localStorage.getItem(key)
-    if (val) stores[key] = val
+  // 遍历所有 localStorage，全面备份
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i)
+    if (key) {
+      const val = localStorage.getItem(key)
+      if (val) stores[key] = val
+    }
   }
   return {
-    version: 1,
+    version: 2,
     exportTime: new Date().toISOString(),
+    app: 'cyber-survival',
     stores
   }
 }
 
 /**
+ * 尝试使用 Capacitor Filesystem 保存到 Documents 目录
+ */
+async function tryFilesystemSave(json: string, filename: string): Promise<boolean> {
+  try {
+    const fs = await import('@capacitor/filesystem')
+    const { Filesystem, Directory, Encoding } = fs
+    await Filesystem.writeFile({
+      path: filename,
+      data: json,
+      directory: Directory.Documents,
+      encoding: Encoding.UTF8,
+      recursive: true
+    })
+    showToast(`备份已保存到 Documents/${filename}`)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * 导出备份
- * Android: 优先用 Web Share API 分享文本，回退到弹窗复制
+ * Android: 优先用 Filesystem 保存到 Documents，回退到 Web Share / 弹窗复制
  * 桌面: 用 Blob 下载
  */
-export async function exportBackup(): Promise<'download' | 'share' | 'text'> {
+export async function exportBackup(): Promise<'filesystem' | 'download' | 'share' | 'text'> {
   const data = collectBackupData()
   const json = JSON.stringify(data, null, 2)
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
   const filename = `cyber-survival-backup-${dateStr}.json`
+
+  // Android/iOS：优先用 Filesystem 保存到 Documents 目录
+  if (Capacitor.isNativePlatform()) {
+    const ok = await tryFilesystemSave(json, filename)
+    if (ok) return 'filesystem'
+  }
 
   // 桌面浏览器：Blob 下载
   if (!Capacitor.isNativePlatform()) {
@@ -77,7 +103,6 @@ export async function exportBackup(): Promise<'download' | 'share' | 'text'> {
         showToast('分享已取消')
         return 'share'
       }
-      // 回退到弹窗
     }
   }
 
@@ -155,15 +180,11 @@ function showTextBackup(json: string, filename: string): void {
         await navigator.clipboard.writeText(json)
       } else {
         textarea.select()
-        if (!document.execCommand('copy')) throw new Error('复制失败')
+        document.execCommand('copy')
       }
-      copyBtn.textContent = '已复制 ✓'
       showToast('已复制到剪贴板')
-      setTimeout(() => { copyBtn.textContent = '复制全部' }, 2000)
     } catch {
-      copyBtn.textContent = '复制失败，请手动复制'
-      textarea.focus()
-      textarea.select()
+      showToast('复制失败，请手动长按复制')
     }
   }
   btnRow.appendChild(copyBtn)
@@ -171,10 +192,9 @@ function showTextBackup(json: string, filename: string): void {
   const closeBtn = document.createElement('button')
   closeBtn.textContent = '关闭'
   closeBtn.style.cssText = `
-    flex: 1; padding: 12px; border-radius: 100px;
-    background: transparent; color: ${isDark ? '#fff' : '#666'};
+    flex: 1; padding: 12px; border: none; border-radius: 100px;
+    background: var(--bg-alt, #f5f5f5); color: var(--fg, #111);
     font-size: 13px; font-weight: 600; cursor: pointer;
-    border: 1px solid ${isDark ? 'rgba(255,255,255,0.2)' : '#ddd'};
   `
   closeBtn.onclick = () => overlay.remove()
   btnRow.appendChild(closeBtn)
@@ -183,48 +203,33 @@ function showTextBackup(json: string, filename: string): void {
   overlay.appendChild(modal)
   overlay.onclick = (e) => { if (e.target === overlay) overlay.remove() }
   document.body.appendChild(overlay)
-
-  setTimeout(() => {
-    textarea.focus()
-    textarea.select()
-  }, 100)
 }
 
 /**
- * 从备份文件导入
+ * 导入备份
  */
 export async function importBackup(file: File): Promise<void> {
   const text = await file.text()
-  await importBackupText(text)
-}
-
-/**
- * 从备份文本导入
- */
-export async function importBackupText(text: string): Promise<void> {
   let data: BackupData
   try {
     data = JSON.parse(text)
   } catch {
-    throw new Error('文件格式错误：无法解析 JSON')
+    throw new Error('文件不是有效的 JSON')
   }
 
-  if (!data?.stores || typeof data.stores !== 'object') {
-    throw new Error('文件格式错误：缺少 stores 字段')
+  if (!data.stores || typeof data.stores !== 'object') {
+    throw new Error('备份文件格式不正确')
   }
 
-  let restored = 0
-  for (const key of BACKUP_KEYS) {
-    if (data.stores[key]) {
-      localStorage.setItem(key, data.stores[key])
-      restored++
+  // 恢复所有 localStorage 数据
+  for (const [key, val] of Object.entries(data.stores)) {
+    if (typeof val === 'string') {
+      localStorage.setItem(key, val)
     }
   }
 
-  if (restored === 0) {
-    throw new Error('备份文件中没有可恢复的数据')
-  }
-
-  showToast(`已恢复 ${restored} 项数据，即将刷新`)
-  setTimeout(() => window.location.reload(), 1500)
+  showToast('备份已恢复，正在重启…')
+  setTimeout(() => {
+    window.location.reload()
+  }, 800)
 }
