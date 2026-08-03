@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useStore, PRESET_AI_CONFIG } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { testConnection } from '@/lib/ai'
@@ -42,6 +42,13 @@ export default function Settings({ onBack }: Props) {
   const [modelSearch, setModelSearch] = useState('')
   const [importing, setImporting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  // 同步 store 的 ai 变化到本地 state（从其他页面返回或 rehydrate 时）
+  useEffect(() => {
+    setApiKey(ai.apiKey || '')
+    setEndpoint(ai.endpoint || '')
+    setModel(ai.model || '')
+  }, [ai.apiKey, ai.endpoint, ai.model])
+
 
   // 保存：先存 localStorage（通过 store persist），再异步测试
   // 测试失败只弹 Toast，绝对不清空表单
@@ -81,56 +88,84 @@ export default function Settings({ onBack }: Props) {
     }
 
     setFetchingModels(true)
-    // 智能拼接 models URL：endpoint 以 /v1 结尾则直接追加 /models，否则追加 /v1/models
     const base = endpoint.trim().replace(/\/+$/, '')
-    const url = /\/v\d+$/.test(base) ? base + '/models' : base + '/v1/models'
 
-    try {
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), 15000)
-
-      const res = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiKey.trim()}`,
-          'Content-Type': 'application/json'
-        },
-        signal: controller.signal
-      })
-      clearTimeout(timer)
-
-      if (!res.ok) {
-        let detail = ''
-        try { detail = (await res.json())?.error?.message || '' } catch { /* ignore */ }
-        showToast(`获取失败 (${res.status})：${detail || res.statusText}`)
-        return
-      }
-
-      const data = await res.json()
-      // OpenAI 格式: { data: [{ id: "model-name" }, ...] }
-      const ids: string[] = (data.data || data.models || [])
-        .map((m: any) => m.id || m.name)
-        .filter(Boolean)
-
-      if (ids.length === 0) {
-        showToast('返回的模型列表为空')
-        return
-      }
-
-      setModelList(ids)
-      // 如果当前选中的模型不在新列表中，自动切到第一个
-      if (!ids.includes(model)) {
-        setModel(ids[0])
-        setAI({ model: ids[0] })
-      }
-      showToast(`已获取 ${ids.length} 个模型`)
-    } catch (e: any) {
-      if (e.name === 'AbortError') showToast('请求超时（15s）')
-      else showToast('网络错误：' + e.message)
-    } finally {
-      setFetchingModels(false)
+    // 尝试多个端点格式：OpenAI /v1/models、Ollama /api/tags、直接 /models
+    const urls: string[] = []
+    if (/\/v\d+$/.test(base)) {
+      urls.push(base + '/models')
+    } else {
+      urls.push(base + '/v1/models')
+      urls.push(base + '/api/tags')
+      urls.push(base + '/models')
     }
+
+    let lastErr = ''
+    for (const url of urls) {
+      try {
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 10000)
+
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${apiKey.trim()}`,
+            'Content-Type': 'application/json'
+          },
+          signal: controller.signal
+        })
+        clearTimeout(timer)
+
+        if (!res.ok) {
+          let detail = ''
+          try { detail = (await res.json())?.error?.message || '' } catch { /* ignore */ }
+          lastErr = `${res.status}: ${detail || res.statusText}`
+          continue
+        }
+
+        const data = await res.json()
+        // 支持多种返回格式
+        let ids: string[] = []
+        if (Array.isArray(data.data)) {
+          // OpenAI 格式: { data: [{ id: "model-name" }, ...] }
+          ids = data.data.map((m: any) => m.id || m.name).filter(Boolean)
+        } else if (Array.isArray(data.models)) {
+          // 某些代理格式
+          ids = data.models.map((m: any) => m.id || m.name || m).filter(Boolean)
+        } else if (data.models && typeof data.models === 'object') {
+          // Ollama /api/tags 格式: { models: [{ name: "xxx" }, ...] }
+          ids = Object.values(data.models).map((m: any) => m.name || m.id || m.model || String(m)).filter(Boolean)
+        } else if (Array.isArray(data)) {
+          // 某些直接返回数组的端点
+          ids = data.map((m: any) => m.id || m.name || String(m)).filter(Boolean)
+        }
+
+        if (ids.length === 0) {
+          lastErr = '返回的模型列表为空'
+          continue
+        }
+
+        setModelList(ids)
+        if (!ids.includes(model)) {
+          setModel(ids[0])
+          setAI({ model: ids[0] })
+        }
+        showToast(`已获取 ${ids.length} 个模型`)
+        setFetchingModels(false)
+        return
+      } catch (e: any) {
+        if (e.name === 'AbortError') {
+          lastErr = '请求超时（10s）'
+        } else {
+          lastErr = e.message
+        }
+      }
+    }
+
+    setFetchingModels(false)
+    showToast(`获取模型列表失败，${lastErr}。你可以手动输入模型名。`)
   }
+
 
   return (
     <div
