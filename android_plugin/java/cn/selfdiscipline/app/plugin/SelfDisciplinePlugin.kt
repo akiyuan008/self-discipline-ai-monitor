@@ -1,13 +1,11 @@
 package cn.selfdiscipline.app.plugin
 
-import android.content.ActivityNotFoundException
 import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
-import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 import com.getcapacitor.JSArray
@@ -18,21 +16,15 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import java.util.Calendar
 
-/**
- * SelfDisciplinePlugin
- */
 @CapacitorPlugin(name = "SelfDiscipline")
 class SelfDisciplinePlugin : Plugin() {
 
   private val TAG = "SelfDiscipline"
 
-  // -------------------------------------------------------------------
-  // 使用情况权限
-  // -------------------------------------------------------------------
   @PluginMethod
   fun hasUsageAccess(call: PluginCall) {
     val granted = checkUsageStatsPermission()
-    Log.d(TAG, "hasUsageAccess called, granted=$granted")
+    Log.d(TAG, "hasUsageAccess: granted=$granted")
     val ret = JSObject()
     ret.put("granted", granted)
     call.resolve(ret)
@@ -48,21 +40,8 @@ class SelfDisciplinePlugin : Plugin() {
       return
     }
 
-    // 方案1：直接跳转到本应用的「使用情况访问权限」设置页
-    try {
-      val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-      // 不要加 NEW_TASK，从当前 Activity 启动
-      act.startActivity(intent)
-      Log.d(TAG, "Started ACTION_USAGE_ACCESS_SETTINGS")
-      call.resolve()
-      return
-    } catch (e: ActivityNotFoundException) {
-      Log.w(TAG, "ACTION_USAGE_ACCESS_SETTINGS not found", e)
-    } catch (e: Exception) {
-      Log.e(TAG, "Failed to start ACTION_USAGE_ACCESS_SETTINGS", e)
-    }
-
-    // 方案2：跳转到应用详情页
+    // 直接跳转到应用详情页（所有ROM都支持）
+    // 用户可以在详情页 -> 权限 -> 特殊权限 -> 使用情况访问权限 中手动开启
     try {
       val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
         data = Uri.parse("package:${act.packageName}")
@@ -71,14 +50,11 @@ class SelfDisciplinePlugin : Plugin() {
       Log.d(TAG, "Started APPLICATION_DETAILS_SETTINGS")
       call.resolve()
     } catch (e: Exception) {
-      Log.e(TAG, "Failed to start APPLICATION_DETAILS_SETTINGS", e)
+      Log.e(TAG, "Failed to open settings", e)
       call.reject("无法打开设置页面：${e.message}")
     }
   }
 
-  // -------------------------------------------------------------------
-  // 使用统计
-  // -------------------------------------------------------------------
   @PluginMethod
   fun getUsageStats(call: PluginCall) {
     val startTs = call.getLong("startTs") ?: run {
@@ -116,9 +92,6 @@ class SelfDisciplinePlugin : Plugin() {
     }
   }
 
-  // -------------------------------------------------------------------
-  // 锁屏
-  // -------------------------------------------------------------------
   @PluginMethod
   fun lockScreen(call: PluginCall) {
     val minutes = call.getInt("minutes") ?: 5
@@ -154,26 +127,30 @@ class SelfDisciplinePlugin : Plugin() {
     }
   }
 
-  // -------------------------------------------------------------------
-  // 权限检测：以实际能否查询到 UsageStats 为准
-  // -------------------------------------------------------------------
+  /**
+   * 权限检测：以能否成功查询 UsageStats 为准
+   */
   private fun checkUsageStatsPermission(): Boolean {
-    // 方法1：尝试直接查询 UsageStats（最可靠）
     try {
       val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
       val end = System.currentTimeMillis()
-      val start = end - 24 * 60 * 60 * 1000 // 查最近24小时
+      val start = end - 24 * 60 * 60 * 1000 // 最近24小时
       val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end)
-      if (stats != null) {
-        Log.d(TAG, "UsageStats query returned ${stats.size} items, permission granted")
-        return true
-      }
+      // 只要能查询成功（不抛异常），就说明有权限
+      // 返回null在某些ROM中表示无权限，返回空列表表示有权限但无数据
+      return stats != null
+    } catch (e: SecurityException) {
+      Log.d(TAG, "UsageStats SecurityException: ${e.message}")
+      return false
     } catch (e: Exception) {
       Log.d(TAG, "UsageStats query failed: ${e.message}")
+      // fallback: AppOpsManager
+      return checkAppOpsPermission()
     }
+  }
 
-    // 方法2：AppOpsManager（某些 ROM 可能不准确）
-    try {
+  private fun checkAppOpsPermission(): Boolean {
+    return try {
       val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
       val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         appOps.unsafeCheckOpNoThrow(
@@ -189,15 +166,9 @@ class SelfDisciplinePlugin : Plugin() {
           context.packageName
         )
       }
-      if (mode == AppOpsManager.MODE_ALLOWED) {
-        Log.d(TAG, "AppOpsManager returned MODE_ALLOWED")
-        return true
-      }
+      mode == AppOpsManager.MODE_ALLOWED
     } catch (e: Exception) {
-      Log.d(TAG, "AppOpsManager check failed: ${e.message}")
+      false
     }
-
-    Log.d(TAG, "UsageStats permission NOT granted")
-    return false
   }
 }
