@@ -191,6 +191,7 @@ function InputBar({ sending, onSend }: InputBarProps) {
         ref={inputRef}
         value={input}
         onChange={e => setInput(e.target.value)}
+        onPaste={() => { setTimeout(() => { if (inputRef.current) setInput(inputRef.current.value) }, 0) }}
         onKeyDown={handleKeyDown}
         onCompositionStart={handleCompositionStart}
         onCompositionEnd={handleCompositionEnd}
