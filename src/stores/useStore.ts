@@ -412,9 +412,7 @@ export const useStore = create<StoreState>()(
         const c = current as any
         const defaultAI = c.ai || { ...PRESET_AI_CONFIG }
         const persistedAI = p.ai || {}
-        const ai = persistedAI.apiKey?.trim()
-          ? { ...defaultAI, ...persistedAI }
-          : { ...PRESET_AI_CONFIG }
+        const ai = { ...defaultAI, ...persistedAI }
         return {
           ...c,
           ...p,
