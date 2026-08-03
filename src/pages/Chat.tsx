@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState, type CompositionEvent, type FocusEvent, type KeyboardEvent } from 'react'
+import { App } from '@capacitor/app'
 import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { chatWithAI } from '@/lib/ai'
@@ -253,6 +254,7 @@ export default function Chat({ onNavigateSettings }: Props) {
   const [sending, setSending] = useState(false)
   const [streamingText, setStreamingText] = useState('')
   const [usageAccess, setUsageAccess] = useState(true)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const streamingRef = useRef('')
   const scrollRef = useRef<HTMLDivElement>(null)
   const scrollRafRef = useRef<number>(0)
@@ -261,18 +263,20 @@ export default function Chat({ onNavigateSettings }: Props) {
 
   // 清理 RAF，防止内存泄漏
   useEffect(() => {
+    hasUsageAccess().then(setUsageAccess).catch(() => setUsageAccess(false))
+
+    // 监听 App 从后台回到前台，重新检测权限
+    const sub = App.addListener('resume', () => {
+      hasUsageAccess().then(setUsageAccess).catch(() => setUsageAccess(false))
+    })
     return () => {
-      if (scrollRafRef.current) {
-        cancelAnimationFrame(scrollRafRef.current)
-      }
+      sub.then(s => s.remove())
+      if (pollRef.current) clearInterval(pollRef.current)
     }
   }, [])
 
   sendingRef.current = sending
 
-  useEffect(() => {
-    hasUsageAccess().then(setUsageAccess).catch(() => setUsageAccess(false))
-  }, [])
 
   const configured = !!(ai.apiKey?.trim() && ai.endpoint?.trim() && ai.model?.trim())
 
@@ -432,11 +436,22 @@ export default function Chat({ onNavigateSettings }: Props) {
               onClick={async () => {
                 try {
                   await openUsageAccessSettings()
-                  showToast('已跳转到设置页面')
+                  showToast('已跳转到设置页面，授权后返回即可')
+                  // 启动轮询，每2秒检测一次权限
+                  if (pollRef.current) clearInterval(pollRef.current)
+                  pollRef.current = setInterval(() => {
+                    hasUsageAccess().then(granted => {
+                      setUsageAccess(granted)
+                      if (granted) {
+                        if (pollRef.current) clearInterval(pollRef.current)
+                        pollRef.current = null
+                        showToast('权限已获取！')
+                      }
+                    }).catch(() => {})
+                  }, 2000)
                 } catch (err: any) {
                   showToast(err?.message || '无法打开设置页面')
                 }
-                setTimeout(() => hasUsageAccess().then(setUsageAccess), 2000)
               }}
               style={{
                 padding: '6px 14px',
