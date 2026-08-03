@@ -430,7 +430,12 @@ export default function Chat({ onNavigateSettings }: Props) {
             </div>
             <button
               onClick={async () => {
-                await openUsageAccessSettings()
+                try {
+                  await openUsageAccessSettings()
+                  showToast('已跳转到设置页面')
+                } catch (err: any) {
+                  showToast(err?.message || '无法打开设置页面')
+                }
                 setTimeout(() => hasUsageAccess().then(setUsageAccess), 2000)
               }}
               style={{
