@@ -36,18 +36,26 @@
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: none;
   }
-  /* 输入框必须能选择和粘贴，父元素不能设置 user-select: none */
-  input, textarea, [contenteditable] {
-    -webkit-user-select: text;
-    user-select: text;
+  /* 全局允许文本选择，只在特定UI元素上禁用 */
+  * {
+    -webkit-user-select: auto;
+    user-select: auto;
     -webkit-touch-callout: default;
   }
 
-  /* 只有明确不需要文本选择的元素才禁用 */
+  /* 禁用文本选择的元素 */
   button, img, svg, .dock-btn, .achieve-icon-box,
-  .switch, .timer-text, .scrollbar-hide {
+  .switch, .timer-text, .scrollbar-hide, nav, header {
     -webkit-user-select: none;
     user-select: none;
+  }
+
+  /* 确保输入框完全支持选择和长按菜单 */
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    -webkit-touch-callout: default !important;
+    touch-action: manipulation;
   }
   .font-mono {
     font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
