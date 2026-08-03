@@ -772,7 +772,7 @@ function buildContext(state: any): string {
   const errorList = profile.errorQuestions.slice(0, 5).map((q: any) => `  - [${q.resolved ? '✓' : '○'}] ${q.subject}·${q.tag}：${q.desc}`).join('\n') || '  （暂无）'
   const planList = profile.generatedPlan.slice(0, 5).map((p: any) => `  - [${p.completed ? '✓' : '○'}] ${p.task}（${p.subject}·${p.tag}）`).join('\n') || '  （暂无）'
 
-  return `${sysPrompt}
+  return `${SYSTEM_PROMPT}
 
 【当前状态】
 代号:${state.playerTag} HP:${state.hp}/100 积分:${state.points} 连胜:${state.streak}天
