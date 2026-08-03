@@ -1,10 +1,12 @@
 package cn.selfdiscipline.app.plugin
 
+import android.content.ActivityNotFoundException
 import android.Manifest
 import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
@@ -49,11 +51,34 @@ class SelfDisciplinePlugin : Plugin() {
   @PluginMethod
   fun openUsageAccessSettings(call: PluginCall) {
     try {
+      val act = bridge.activity ?: run {
+        call.reject("Activity 不可用")
+        return
+      }
+      // 优先跳转到「使用情况访问权限」设置页
       val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       }
-      activity.startActivity(intent)
+      act.startActivity(intent)
       call.resolve()
+    } catch (e: ActivityNotFoundException) {
+      // 某些 ROM 不支持 ACTION_USAGE_ACCESS_SETTINGS，回退到应用详情页
+      Log.w(TAG, "ACTION_USAGE_ACCESS_SETTINGS not found, fallback to app details", e)
+      try {
+        val act = bridge.activity ?: run {
+          call.reject("Activity 不可用")
+          return
+        }
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+          data = Uri.parse("package:${context.packageName}")
+          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        act.startActivity(intent)
+        call.resolve()
+      } catch (e2: Exception) {
+        Log.e(TAG, "fallback settings also failed", e2)
+        call.reject("无法打开设置页面：${e2.message}")
+      }
     } catch (e: Exception) {
       Log.e(TAG, "openUsageAccessSettings failed", e)
       call.reject("无法打开使用情况访问设置：${e.message}")
