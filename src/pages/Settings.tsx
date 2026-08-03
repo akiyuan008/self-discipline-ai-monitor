@@ -631,7 +631,7 @@ export default function Settings({ onBack }: Props) {
                   try {
                     const method = await exportBackup()
                     if (method === 'download') showToast('备份已下载')
-                    else if (method === 'share') showToast('备份已分享')
+                    else if (method === 'filesystem') showToast('备份已保存到文件')
                     else showToast('备份数据已展示，请手动复制')
                   } catch {
                     showToast('导出失败，请重试')
