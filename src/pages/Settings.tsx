@@ -260,6 +260,7 @@ export default function Settings({ onBack }: Props) {
                 type="date"
                 value={gaokaoDateInput}
                 onChange={(e) => setGaokaoDateInput(e.target.value)}
+                onPaste={(e) => { setTimeout(() => { setGaokaoDateInput(e.currentTarget.value) }, 0) }}
                 onBlur={() => {
                   if (gaokaoDateInput && gaokaoDateInput !== gaokaoDate) {
                     setGaokaoDate(gaokaoDateInput)
@@ -411,6 +412,7 @@ export default function Settings({ onBack }: Props) {
                           type="text"
                           value={modelSearch}
                           onChange={(e) => setModelSearch(e.target.value)}
+                          onPaste={(e) => { setTimeout(() => { setModelSearch(e.currentTarget.value) }, 0) }}
                           placeholder="搜索模型…"
                           autoFocus
                           style={{
@@ -493,8 +495,8 @@ export default function Settings({ onBack }: Props) {
               <textarea
                 value={systemPrompt}
                 onChange={(e) => setSystemPromptLocal(e.target.value)}
-                onPaste={(e) => e.stopPropagation()}
-                onContextMenu={(e) => e.stopPropagation()}
+                onPaste={(e) => { setTimeout(() => { setSystemPromptLocal(e.currentTarget.value) }, 0) }}
+
                 rows={10}
                 placeholder="输入系统提示词…"
                 style={{
@@ -769,6 +771,7 @@ function Field({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onPaste={(e) => { setTimeout(() => { onChange(e.currentTarget.value) }, 0) }}
         style={{
           width: '100%', padding: '10px 12px',
           background: 'var(--bg)', color: 'var(--fg)',
