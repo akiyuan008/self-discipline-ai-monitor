@@ -631,10 +631,7 @@ export default function Settings({ onBack }: Props) {
               <button
                 onClick={async () => {
                   try {
-                    const method = await exportBackup()
-                    if (method === 'download') showToast('备份已下载')
-                    else if (method === 'filesystem') showToast('备份已保存到文件')
-                    else showToast('备份数据已展示，请手动复制')
+                    await exportBackup()
                   } catch {
                     showToast('导出失败，请重试')
                   }
