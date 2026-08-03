@@ -1,7 +1,6 @@
 package cn.selfdiscipline.app.plugin
 
 import android.content.ActivityNotFoundException
-import android.Manifest
 import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.content.Context
@@ -17,20 +16,10 @@ import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
-import org.json.JSONArray
 import java.util.Calendar
 
 /**
  * SelfDisciplinePlugin
- *
- * 通过 @CapacitorPlugin 自动注册到 Capacitor bridge，
- * 前端 window.SelfDiscipline 调用映射到 @PluginMethod。
- *
- * 功能：
- * - getUsageStats: 通过 UsageStatsManager 拉取指定时间段的应用使用时长
- * - hasUsageAccess: 检查是否已授权 PACKAGE_USAGE_STATS（双重检测）
- * - openUsageAccessSettings: 跳到系统设置页申请权限
- * - lockScreen: 通过 PowerManager 强制锁屏 / 遮罩
  */
 @CapacitorPlugin(name = "SelfDiscipline")
 class SelfDisciplinePlugin : Plugin() {
@@ -43,6 +32,7 @@ class SelfDisciplinePlugin : Plugin() {
   @PluginMethod
   fun hasUsageAccess(call: PluginCall) {
     val granted = checkUsageStatsPermission()
+    Log.d(TAG, "hasUsageAccess called, granted=$granted")
     val ret = JSObject()
     ret.put("granted", granted)
     call.resolve(ret)
@@ -50,38 +40,39 @@ class SelfDisciplinePlugin : Plugin() {
 
   @PluginMethod
   fun openUsageAccessSettings(call: PluginCall) {
+    Log.d(TAG, "openUsageAccessSettings called")
+    val act = activity
+    if (act == null) {
+      Log.e(TAG, "activity is null")
+      call.reject("Activity 不可用")
+      return
+    }
+
+    // 方案1：直接跳转到本应用的「使用情况访问权限」设置页
     try {
-      val act = bridge.activity ?: run {
-        call.reject("Activity 不可用")
-        return
-      }
-      // 优先跳转到「使用情况访问权限」设置页
-      val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+      // 不要加 NEW_TASK，从当前 Activity 启动
+      act.startActivity(intent)
+      Log.d(TAG, "Started ACTION_USAGE_ACCESS_SETTINGS")
+      call.resolve()
+      return
+    } catch (e: ActivityNotFoundException) {
+      Log.w(TAG, "ACTION_USAGE_ACCESS_SETTINGS not found", e)
+    } catch (e: Exception) {
+      Log.e(TAG, "Failed to start ACTION_USAGE_ACCESS_SETTINGS", e)
+    }
+
+    // 方案2：跳转到应用详情页
+    try {
+      val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+        data = Uri.parse("package:${act.packageName}")
       }
       act.startActivity(intent)
+      Log.d(TAG, "Started APPLICATION_DETAILS_SETTINGS")
       call.resolve()
-    } catch (e: ActivityNotFoundException) {
-      // 某些 ROM 不支持 ACTION_USAGE_ACCESS_SETTINGS，回退到应用详情页
-      Log.w(TAG, "ACTION_USAGE_ACCESS_SETTINGS not found, fallback to app details", e)
-      try {
-        val act = bridge.activity ?: run {
-          call.reject("Activity 不可用")
-          return
-        }
-        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-          data = Uri.parse("package:${context.packageName}")
-          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        act.startActivity(intent)
-        call.resolve()
-      } catch (e2: Exception) {
-        Log.e(TAG, "fallback settings also failed", e2)
-        call.reject("无法打开设置页面：${e2.message}")
-      }
     } catch (e: Exception) {
-      Log.e(TAG, "openUsageAccessSettings failed", e)
-      call.reject("无法打开使用情况访问设置：${e.message}")
+      Log.e(TAG, "Failed to start APPLICATION_DETAILS_SETTINGS", e)
+      call.reject("无法打开设置页面：${e.message}")
     }
   }
 
@@ -91,7 +82,6 @@ class SelfDisciplinePlugin : Plugin() {
   @PluginMethod
   fun getUsageStats(call: PluginCall) {
     val startTs = call.getLong("startTs") ?: run {
-      // 默认查今天 0 点到当前
       val cal = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
       }
@@ -115,7 +105,6 @@ class SelfDisciplinePlugin : Plugin() {
         obj.put("foregroundMs", s.totalTimeInForeground)
         obj.put("lastTimeUsed", s.lastTimeUsed)
         obj.put("firstTimeUsed", s.firstTimeStamp)
-        // label 在前端再做映射；也可以用 PackageManager 取应用名
         arr.put(obj)
       }
       val ret = JSObject()
@@ -128,15 +117,12 @@ class SelfDisciplinePlugin : Plugin() {
   }
 
   // -------------------------------------------------------------------
-  // 锁屏 / 强制休息
+  // 锁屏
   // -------------------------------------------------------------------
   @PluginMethod
   fun lockScreen(call: PluginCall) {
     val minutes = call.getInt("minutes") ?: 5
     val secs = minutes * 60L
-
-    // 方案 1：直接走 PowerManager 的 goSleep（仅系统应用可用）
-    // 方案 2：启动 LockScreenActivity 全屏遮罩，到时间自动关闭
     try {
       val intent = Intent(context, LockScreenActivity::class.java).apply {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -169,47 +155,49 @@ class SelfDisciplinePlugin : Plugin() {
   }
 
   // -------------------------------------------------------------------
-  // 权限检测：双重检测
-  // 1. AppOpsManager 检测
-  // 2. 尝试直接查询 UsageStats，如果能查到数据就说明有权限
+  // 权限检测：以实际能否查询到 UsageStats 为准
   // -------------------------------------------------------------------
   private fun checkUsageStatsPermission(): Boolean {
-    // 方法1：AppOpsManager
-    val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
-    val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      appOps.unsafeCheckOpNoThrow(
-        AppOpsManager.OPSTR_GET_USAGE_STATS,
-        android.os.Process.myUid(),
-        context.packageName
-      )
-    } else {
-      @Suppress("DEPRECATION")
-      appOps.checkOpNoThrow(
-        AppOpsManager.OPSTR_GET_USAGE_STATS,
-        android.os.Process.myUid(),
-        context.packageName
-      )
-    }
-    if (mode == AppOpsManager.MODE_ALLOWED) {
-      return true
-    }
-
-    // 方法2：fallback - 尝试直接查询 UsageStats
-    // 某些 ROM（如小米、华为）AppOpsManager 返回 MODE_DEFAULT 而不是 MODE_ALLOWED
-    // 但实际上权限已经授予了
+    // 方法1：尝试直接查询 UsageStats（最可靠）
     try {
       val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
       val end = System.currentTimeMillis()
-      val start = end - 60_000 // 查最近1分钟
+      val start = end - 24 * 60 * 60 * 1000 // 查最近24小时
       val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end)
-      if (stats != null && stats.isNotEmpty()) {
-        Log.d(TAG, "AppOps returned $mode but UsageStats query succeeded, treating as granted")
+      if (stats != null) {
+        Log.d(TAG, "UsageStats query returned ${stats.size} items, permission granted")
         return true
       }
     } catch (e: Exception) {
-      Log.d(TAG, "UsageStats fallback query failed: ${e.message}")
+      Log.d(TAG, "UsageStats query failed: ${e.message}")
     }
 
+    // 方法2：AppOpsManager（某些 ROM 可能不准确）
+    try {
+      val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+      val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        appOps.unsafeCheckOpNoThrow(
+          AppOpsManager.OPSTR_GET_USAGE_STATS,
+          android.os.Process.myUid(),
+          context.packageName
+        )
+      } else {
+        @Suppress("DEPRECATION")
+        appOps.checkOpNoThrow(
+          AppOpsManager.OPSTR_GET_USAGE_STATS,
+          android.os.Process.myUid(),
+          context.packageName
+        )
+      }
+      if (mode == AppOpsManager.MODE_ALLOWED) {
+        Log.d(TAG, "AppOpsManager returned MODE_ALLOWED")
+        return true
+      }
+    } catch (e: Exception) {
+      Log.d(TAG, "AppOpsManager check failed: ${e.message}")
+    }
+
+    Log.d(TAG, "UsageStats permission NOT granted")
     return false
   }
 }
