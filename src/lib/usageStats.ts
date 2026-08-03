@@ -59,7 +59,7 @@ export async function openUsageAccessSettings(): Promise<void> {
     throw new Error(e?.message || '无法打开设置页面')
   }
 }
-}
+
 
 // Mock 数据：模拟今天的真实学习+娱乐情况
 function mockUsage(): { study: UsageStat[]; ent: UsageStat[] } {
