@@ -28,7 +28,7 @@ import java.util.Calendar
  *
  * 功能：
  * - getUsageStats: 通过 UsageStatsManager 拉取指定时间段的应用使用时长
- * - hasUsageAccess: 检查是否已授权 PACKAGE_USAGE_STATS
+ * - hasUsageAccess: 检查是否已授权 PACKAGE_USAGE_STATS（双重检测）
  * - openUsageAccessSettings: 跳到系统设置页申请权限
  * - lockScreen: 通过 PowerManager 强制锁屏 / 遮罩
  */
@@ -169,7 +169,12 @@ class SelfDisciplinePlugin : Plugin() {
   }
 
   // -------------------------------------------------------------------
+  // 权限检测：双重检测
+  // 1. AppOpsManager 检测
+  // 2. 尝试直接查询 UsageStats，如果能查到数据就说明有权限
+  // -------------------------------------------------------------------
   private fun checkUsageStatsPermission(): Boolean {
+    // 方法1：AppOpsManager
     val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
     val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       appOps.unsafeCheckOpNoThrow(
@@ -185,6 +190,26 @@ class SelfDisciplinePlugin : Plugin() {
         context.packageName
       )
     }
-    return mode == AppOpsManager.MODE_ALLOWED
+    if (mode == AppOpsManager.MODE_ALLOWED) {
+      return true
+    }
+
+    // 方法2：fallback - 尝试直接查询 UsageStats
+    // 某些 ROM（如小米、华为）AppOpsManager 返回 MODE_DEFAULT 而不是 MODE_ALLOWED
+    // 但实际上权限已经授予了
+    try {
+      val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+      val end = System.currentTimeMillis()
+      val start = end - 60_000 // 查最近1分钟
+      val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end)
+      if (stats != null && stats.isNotEmpty()) {
+        Log.d(TAG, "AppOps returned $mode but UsageStats query succeeded, treating as granted")
+        return true
+      }
+    } catch (e: Exception) {
+      Log.d(TAG, "UsageStats fallback query failed: ${e.message}")
+    }
+
+    return false
   }
 }
