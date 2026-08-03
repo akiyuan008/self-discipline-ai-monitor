@@ -185,7 +185,7 @@ export default function Profile({ onNavigate }: ProfileProps) {
                   cursor: 'pointer',
                   color: isWeak ? 'var(--danger)' : 'var(--fg)'
                 }} onClick={() => setEditingSubject(sub.name)}>
-                  {sub.currentScore} / {sub.targetScore}
+                  {sub.currentScore} / {sub.fullScore}
                 </div>
               )}
             </div>
