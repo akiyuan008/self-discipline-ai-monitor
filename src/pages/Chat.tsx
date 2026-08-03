@@ -8,13 +8,6 @@ interface Props {
   onNavigateSettings?: () => void
 }
 
-const QUICK_PROMPTS = [
-  '帮我加个25分钟背单词的日常任务',
-  '我刚偷偷刷了30分钟短视频，扣我50积分',
-  '奖励我100积分，今天表现不错',
-  '帮我加个成就：连续早起7天'
-]
-
 interface StatusBarProps {
   onClearChat?: () => void
 }
@@ -312,7 +305,6 @@ export default function Chat({ onNavigateSettings }: Props) {
       pushChat({ role: 'assistant', text: greeting })
     }
 
-    }
 
     scrollToBottom()
   }, [configured, messages, clearChat, pushChat, scrollToBottom])
