@@ -1,10 +1,11 @@
 /**
  * 数据备份导入导出工具
- * 导出：遍历所有 localStorage 数据，打包为 JSON
- * 导入：读取 JSON 文件，恢复数据到 localStorage，然后刷新页面
+ * 导出：遍历所有 localStorage 数据 → 生成 JSON 文件 → 保存到手机 Downloads 目录
+ * 导入：读取 JSON 文件 → 恢复数据到 localStorage → 刷新页面
  */
 
 import { Capacitor } from '@capacitor/core'
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
 import { showToast } from '@/components/Toast'
 
 interface BackupData {
@@ -33,87 +34,58 @@ function collectBackupData(): BackupData {
 }
 
 /**
- * 尝试使用 Capacitor Filesystem 保存到 Documents 目录
- */
-async function tryFilesystemSave(json: string, filename: string): Promise<boolean> {
-  try {
-    const fs = await import('@capacitor/filesystem')
-    const { Filesystem, Directory, Encoding } = fs
-    await Filesystem.writeFile({
-      path: filename,
-      data: json,
-      directory: Directory.Documents,
-      encoding: Encoding.UTF8,
-      recursive: true
-    })
-    showToast(`备份已保存到 Documents/${filename}`)
-    return true
-  } catch {
-    return false
-  }
-}
-
-/**
  * 导出备份
- * Android: 优先用 Filesystem 保存到 Documents，回退到 Web Share / 弹窗复制
- * 桌面: 用 Blob 下载
+ * Android: 用 Capacitor Filesystem 保存到 Downloads 目录
+ * 桌面: Blob 下载
  */
-export async function exportBackup(): Promise<'filesystem' | 'download' | 'share' | 'text'> {
+export async function exportBackup(): Promise<'filesystem' | 'download' | 'text'> {
   const data = collectBackupData()
   const json = JSON.stringify(data, null, 2)
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
   const filename = `cyber-survival-backup-${dateStr}.json`
 
-  // Android/iOS：优先用 Filesystem 保存到 Documents 目录
+  // Android/iOS：用 Filesystem 保存到 Downloads 目录
   if (Capacitor.isNativePlatform()) {
-    const ok = await tryFilesystemSave(json, filename)
-    if (ok) return 'filesystem'
-  }
-
-  // 桌面浏览器：Blob 下载
-  if (!Capacitor.isNativePlatform()) {
     try {
-      const blob = new Blob([json], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      setTimeout(() => URL.revokeObjectURL(url), 1000)
-      showToast('备份已下载')
-      return 'download'
-    } catch {
+      await Filesystem.writeFile({
+        path: filename,
+        data: json,
+        directory: Directory.Downloads,
+        encoding: Encoding.UTF8,
+        recursive: true
+      })
+      showToast(`备份已保存到 下载/${filename}`)
+      return 'filesystem'
+    } catch (e: any) {
+      showToast('保存到下载目录失败：' + (e.message || '未知错误'))
       // 回退到弹窗
     }
   }
 
-  // Android/iOS：Web Share API
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: filename,
-        text: json
-      })
-      showToast('备份已分享')
-      return 'share'
-    } catch (e: any) {
-      if (e?.name === 'AbortError') {
-        showToast('分享已取消')
-        return 'share'
-      }
-    }
+  // 桌面浏览器：Blob 下载
+  try {
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    showToast('备份已下载')
+    return 'download'
+  } catch {
+    // 回退到弹窗
   }
 
   // 最终回退：弹窗展示 JSON
   showTextBackup(json, filename)
-  showToast('请复制备份文本')
   return 'text'
 }
 
 /**
- * 弹窗展示备份文本，适配深色模式
+ * 弹窗展示备份文本
  */
 function showTextBackup(json: string, filename: string): void {
   const existing = document.getElementById('__backup_modal')
