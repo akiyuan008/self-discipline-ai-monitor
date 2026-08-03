@@ -36,25 +36,18 @@
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: none;
   }
-  /* ✅ 修复：不用全局 *，精确控制哪些元素禁止选择 */
-  body, div, span, p, h1, h2, h3, h4, h5, h6,
-  button, a, img, svg, nav, header, footer,
-  .card, .view, .dock-btn, .achieve-icon-box,
-  .achieve-progress, .switch, .timer-text,
-  .safe-top, .safe-bottom, .scrollbar-hide,
-  .achieve-progress-bar, .bubble-in, .animate-in,
-  .slide-in-right, .typingDot, .pulse-ring, .breathe {
-    -webkit-user-select: none;
-    user-select: none;
-    -webkit-touch-callout: none;
+  /* 输入框必须能选择和粘贴，父元素不能设置 user-select: none */
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
   }
 
-  /* ✅ 修复：输入元素用 !important 强制允许选择和粘贴 */
-  input, textarea, [contenteditable],
-  input:focus, textarea:focus, [contenteditable]:focus {
-    -webkit-user-select: text !important;
-    user-select: text !important;
-    -webkit-touch-callout: default !important;
+  /* 只有明确不需要文本选择的元素才禁用 */
+  button, img, svg, .dock-btn, .achieve-icon-box,
+  .switch, .timer-text, .scrollbar-hide {
+    -webkit-user-select: none;
+    user-select: none;
   }
   .font-mono {
     font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
