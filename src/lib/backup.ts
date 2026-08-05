@@ -1,6 +1,5 @@
 import { Capacitor } from '@capacitor/core'
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
-import { Preferences } from '@capacitor/preferences'
 import { showToast } from '@/components/Toast'
 
 const BACKUP_FILENAME = 'cyber-survival-backup.json'
@@ -9,54 +8,42 @@ interface BackupData {
   version: number
   exportTime: string
   app: string
-  localStorage: Record<string, string>
-  preferences: Record<string, string | null>
+  data: Record<string, string>
 }
 
 /**
- * 收集所有数据：localStorage + Capacitor Preferences
+ * 收集所有 localStorage 数据
  */
-async function collectBackupData(): Promise<BackupData> {
-  // 1. 收集 localStorage
-  const localStorage: Record<string, string> = {}
-  for (let i = 0; i < window.localStorage.length; i++) {
-    const key = window.localStorage.key(i)
-    if (key) {
-      const val = window.localStorage.getItem(key)
-      if (val !== null) localStorage[key] = val
-    }
-  }
-
-  // 2. 收集 Capacitor Preferences（如果有的话）
-  const preferences: Record<string, string | null> = {}
+function collectAllData(): Record<string, string> {
+  const data: Record<string, string> = {}
   try {
-    const { keys } = await Preferences.keys()
-    for (const key of keys) {
-      const { value } = await Preferences.get({ key })
-      preferences[key] = value
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i)
+      if (key) {
+        const val = window.localStorage.getItem(key)
+        if (val !== null) data[key] = val
+      }
     }
-  } catch {
-    // Preferences 可能未使用，忽略错误
+  } catch (e) {
+    console.error('[Backup] 读取 localStorage 失败', e)
   }
-
-  return {
-    version: 3,
-    exportTime: new Date().toISOString(),
-    app: 'cyber-survival',
-    localStorage,
-    preferences
-  }
+  return data
 }
 
 /**
  * 执行备份核心逻辑
  */
-async function performBackup(): Promise<void> {
-  const data = await collectBackupData()
-  const json = JSON.stringify(data, null, 2)
+async function doBackup(): Promise<void> {
+  const data = collectAllData()
+  const backup: BackupData = {
+    version: 3,
+    exportTime: new Date().toISOString(),
+    app: 'cyber-survival',
+    data
+  }
+  const json = JSON.stringify(backup, null, 2)
 
   if (Capacitor.isNativePlatform()) {
-    // Android/iOS: 保存到 Documents
     await Filesystem.writeFile({
       path: BACKUP_FILENAME,
       data: json,
@@ -65,7 +52,6 @@ async function performBackup(): Promise<void> {
       recursive: true
     })
   } else {
-    // 桌面端: Blob 下载
     const blob = new Blob([json], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -83,7 +69,7 @@ async function performBackup(): Promise<void> {
  */
 export async function exportBackup(): Promise<void> {
   try {
-    await performBackup()
+    await doBackup()
     if (Capacitor.isNativePlatform()) {
       showToast('备份已保存到 Documents/' + BACKUP_FILENAME)
     } else {
@@ -96,12 +82,12 @@ export async function exportBackup(): Promise<void> {
 }
 
 /**
- * 自动备份（静默执行，不弹 Toast）
+ * 自动备份（静默执行）
  */
 export async function autoBackup(): Promise<void> {
   if (!Capacitor.isNativePlatform()) return
   try {
-    await performBackup()
+    await doBackup()
     console.log('[AutoBackup] 完成')
   } catch (e) {
     console.warn('[AutoBackup] 失败', e)
@@ -109,36 +95,38 @@ export async function autoBackup(): Promise<void> {
 }
 
 /**
+ * 启动定时自动备份（每5分钟）
+ */
+export function startAutoBackup(): void {
+  if (!Capacitor.isNativePlatform()) return
+  // 立即备份一次
+  autoBackup().catch(() => {})
+  // 每5分钟备份一次
+  setInterval(() => {
+    autoBackup().catch(() => {})
+  }, 5 * 60 * 1000)
+}
+
+/**
  * 导入备份
  */
 export async function importBackup(file: File): Promise<void> {
   const text = await file.text()
-  let data: BackupData
+  let backup: BackupData
   try {
-    data = JSON.parse(text)
+    backup = JSON.parse(text)
   } catch {
     throw new Error('文件不是有效的 JSON')
   }
 
-  if (!data.localStorage || typeof data.localStorage !== 'object') {
+  if (!backup.data || typeof backup.data !== 'object') {
     throw new Error('备份文件格式不正确')
   }
 
-  // 恢复 localStorage
-  for (const [key, val] of Object.entries(data.localStorage)) {
+  // 恢复所有 localStorage 数据
+  for (const [key, val] of Object.entries(backup.data)) {
     if (typeof val === 'string') {
       window.localStorage.setItem(key, val)
-    }
-  }
-
-  // 恢复 Preferences
-  if (data.preferences && typeof data.preferences === 'object') {
-    for (const [key, val] of Object.entries(data.preferences)) {
-      if (val !== null) {
-        await Preferences.set({ key, value: val })
-      } else {
-        await Preferences.remove({ key })
-      }
     }
   }
 
