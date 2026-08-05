@@ -24,22 +24,33 @@ export default function Home({ onNavigate }: Props) {
   const dungeonDurationMin = useStore(s => s.dungeonDurationMin)
 
   const [entTop3, setEntTop3] = useState<{ label: string; ms: number }[]>([])
-  const [hasAccess, setHasAccess] = useState(true)
+  const [hasAccess, setHasAccess] = useState(false)
   const [lateAlert, setLateAlert] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
+    // 初始检测
     hasUsageAccess().then(setHasAccess).catch(() => setHasAccess(false))
     refresh()
     if (isLateNight()) setLateAlert(true)
 
-    // 监听 App 从后台回到前台，重新检测权限
+    // 监听 App 从后台回到前台
     const sub = App.addListener('resume', () => {
       hasUsageAccess().then(setHasAccess).catch(() => setHasAccess(false))
       refresh()
     })
+
+    // 每3秒轮询检测权限（直到授权成功）
+    const interval = setInterval(() => {
+      hasUsageAccess().then(granted => {
+        setHasAccess(granted)
+        if (granted) clearInterval(interval)
+      }).catch(() => {})
+    }, 3000)
+
     return () => {
       sub.then(s => s.remove())
+      clearInterval(interval)
       if (pollRef.current) clearInterval(pollRef.current)
     }
   }, [])
