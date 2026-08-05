@@ -49,7 +49,7 @@ export default function Onboarding() {
           <input
             value={tag}
             onChange={(e) => setTag(e.target.value)}
-            onPaste={(e) => { setTimeout(() => { setTag(e.currentTarget.value) }, 0) }}
+
             placeholder="PLAYER_01"
             style={{
               width: '100%',
@@ -147,7 +147,7 @@ export default function Onboarding() {
           <input
             value={ai.apiKey}
             onChange={(e) => setAI({ ...ai, apiKey: e.target.value })}
-            onPaste={(e) => { setTimeout(() => { setAI({ ...ai, apiKey: e.currentTarget.value }) }, 0) }}
+
             placeholder="sk-xxx"
             type="password"
             style={{
@@ -168,7 +168,7 @@ export default function Onboarding() {
           <input
             value={ai.endpoint}
             onChange={(e) => setAI({ ...ai, endpoint: e.target.value })}
-            onPaste={(e) => { setTimeout(() => { setAI({ ...ai, endpoint: e.currentTarget.value }) }, 0) }}
+
             placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1"
             style={{
               width: '100%',
@@ -188,7 +188,7 @@ export default function Onboarding() {
           <input
             value={ai.model}
             onChange={(e) => setAI({ ...ai, model: e.target.value })}
-            onPaste={(e) => { setTimeout(() => { setAI({ ...ai, model: e.currentTarget.value }) }, 0) }}
+
             placeholder="qwen-plus"
             style={{
               width: '100%',
