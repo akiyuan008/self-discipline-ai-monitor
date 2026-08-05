@@ -2,12 +2,6 @@ import { Capacitor } from '@capacitor/core'
 import type { UsageStat } from '@/stores/useStore'
 import { STUDY_PACKAGES, ENTERTAINMENT_PACKAGES, APP_LABELS } from '@/data/appClassification'
 
-/**
- * 原生 Android UsageStats 桥接
- * Capacitor Android 通过 SelfDisciplinePlugin 调 UsageStatsManager
- * Web 预览用 mock
- */
-
 export async function fetchUsageStats(startTs: number, endTs: number): Promise<{ study: UsageStat[]; ent: UsageStat[] }> {
   if (Capacitor.getPlatform() !== 'android') {
     return mockUsage()
@@ -43,8 +37,10 @@ export async function hasUsageAccess(): Promise<boolean> {
   try {
     const SelfDiscipline = (window as any).SelfDiscipline
     const r = await SelfDiscipline?.hasUsageAccess?.()
+    console.log('[UsageStats] hasUsageAccess response:', r)
     return !!r?.granted
-  } catch {
+  } catch (e) {
+    console.error('[UsageStats] hasUsageAccess error:', e)
     return false
   }
 }
@@ -55,21 +51,16 @@ export async function openUsageAccessSettings(): Promise<void> {
     const SelfDiscipline = (window as any).SelfDiscipline
     await SelfDiscipline?.openUsageAccessSettings?.()
   } catch (e: any) {
-    console.warn(e)
+    console.error('[UsageStats] openUsageAccessSettings error:', e)
     throw new Error(e?.message || '无法打开设置页面')
   }
 }
 
-/**
- * 请求使用情况权限（AI 工具调用）
- * 直接打开设置页
- */
 export async function requestUsagePermission(): Promise<void> {
   if (Capacitor.getPlatform() !== 'android') return
   await openUsageAccessSettings()
 }
 
-// Mock 数据：模拟今天的真实学习+娱乐情况
 function mockUsage(): { study: UsageStat[]; ent: UsageStat[] } {
   const now = Date.now()
   return {
