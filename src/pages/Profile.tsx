@@ -33,6 +33,19 @@ export default function Profile({ onNavigate }: ProfileProps) {
         个人中心
       </h1>
 
+      {/* 学习档案入口 */}
+      <div className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 12, cursor: 'pointer' }}
+        onClick={() => onNavigate?.('classHistory' as any)}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,120,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>学习档案</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)' }}>课程记录、打卡审查、使用监测</div>
+          </div>
+          <div style={{ fontSize: 18, color: 'var(--muted)' }}>›</div>
+        </div>
+      </div>
+
       {/* ═══ 档案馆内容提上来：绝密档案头 ═══ */}
       <div className="card" style={{
         padding: 20, borderRadius: 16, marginBottom: 12,
