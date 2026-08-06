@@ -135,6 +135,13 @@ export const useClassTaskStore = create<ClassTaskState>()(
       },
 
       startClassTask: (taskId: string) => {
+        const task = get().classTasks.find(t => t.id === taskId)
+        if (!task) return
+        const { can, reason } = require('@/data/schedule').canStartClass(task.period)
+        if (!can) {
+          get().addPointsWithToast(0, reason || '无法开始')
+          return
+        }
         set(s => ({
           classTasks: s.classTasks.map(t =>
             t.id === taskId ? { ...t, status: 'started' as const, startTime: Date.now() } : t
