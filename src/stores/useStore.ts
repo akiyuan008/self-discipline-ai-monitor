@@ -229,10 +229,6 @@ export const useStore = create<StoreState>()(
           case 'reset': get().setHp(80); break
           case 'skin': break
           case 'snack': break
-            const reward = Math.floor(Math.random() * 151) + 50
-            set(s => ({ points: s.points + reward }))
-            get().addPointRecord('earn', reward, '神秘盲盒奖励')
-          }
         }
         return true
       },
