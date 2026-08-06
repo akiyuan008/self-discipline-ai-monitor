@@ -61,8 +61,8 @@ async function scheduleClassNotifications() {
     const remindDate = new Date()
     remindDate.setHours(Math.floor(remindMin / 60), remindMin % 60, 0, 0)
 
-    // 使用唯一ID避免冲突: 日期+节次
-    const notifyId = parseInt(`${now.getDate()}${s.period}`)
+    // 使用唯一ID避免冲突: 月份*10000+日期*100+节次
+    const notifyId = (now.getMonth() + 1) * 10000 + now.getDate() * 100 + s.period
 
     notifications.push({
       title: '⏰ 即将上课',
