@@ -1,10 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
 import { useStore, hpFromStudy } from '@/stores/useStore'
-import { useClassTaskStore } from '@/stores/classTaskStore'
-import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
-import { getPeriodTime } from '@/data/schedule'
-import { verifyClassPhoto, reportToWarden } from '@/lib/verifyAI'
-import { showToast } from '@/components/Toast'
 import { showToast } from '@/components/Toast'
 import { App } from '@capacitor/app'
 import { fetchUsageStats, hasUsageAccess, fmtMs, isLateNight, openUsageAccessSettings } from '@/lib/usageStats'
@@ -27,28 +22,6 @@ export default function Home({ onNavigate }: Props) {
   const setHp = useStore(s => s.setHp)
   const setDungeonDuration = useStore(s => s.setDungeonDuration)
   const dungeonDurationMin = useStore(s => s.dungeonDurationMin)
-
-  const classTasks = useClassTaskStore(s => s.classTasks)
-  const currentTask = useClassTaskStore(s => s.currentTask)
-  const startClassTask = useClassTaskStore(s => s.startClassTask)
-  const completeClassTask = useClassTaskStore(s => s.completeClassTask)
-  const generateTodayTasks = useClassTaskStore(s => s.generateTodayTasks)
-  const addPoints = useStore(s => s.addPoints)
-  const addPointRecord = useStore(s => s.addPointRecord)
-
-  const today = new Date().toISOString().slice(0, 10)
-  const todayTasks = classTasks.filter(t => t.date === today).sort((a, b) => a.period - b.period)
-
-  useEffect(() => { generateTodayTasks() }, [generateTodayTasks])
-
-  async function handleTakePhoto(taskId: string) {
-    try {
-      const image = await Camera.getPhoto({
-        quality: 80,
-        allowEditing: false,
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Camera
-      })
 
       const task = todayTasks.find(t => t.id === taskId)
       if (!task) return
@@ -271,87 +244,6 @@ export default function Home({ onNavigate }: Props) {
         </div>
       </div>
 
-      {/* 今日课程 */}
-      {todayTasks.length > 0 && (
-        <div className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 12 }}>
-          <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginBottom: 10 }}>
-            TODAY_CLASSES
-          </div>
-          {todayTasks.map(task => {
-            const period = getPeriodTime(task.period)
-            const timeStr = period ? `${period.startTime}-${period.endTime}` : ''
-            const isCurrent = currentTask?.id === task.id
-            return (
-              <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: task.status === 'completed' ? 'rgba(22, 163, 74, 0.1)' : task.status === 'overdue' || task.status === 'absent' ? 'rgba(229, 77, 46, 0.1)' : isCurrent ? 'rgba(0, 120, 255, 0.1)' : 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: task.status === 'completed' ? 'var(--success)' : task.status === 'overdue' || task.status === 'absent' ? 'var(--danger)' : isCurrent ? '#0078ff' : 'var(--muted)' }}>
-                  {task.period}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{task.subject}</div>
-                  <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>
-                    {timeStr} · {task.status === 'pending' ? '待开始' : task.status === 'started' ? '进行中' : task.status === 'completed' ? '已完成' : task.status === 'overdue' ? '已逾期' : '缺课'}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--success)' }}>+{task.baseReward}</div>
-                  {task.bonusReward > 0 && <div style={{ fontSize: 9, color: 'var(--warning)' }}>+{task.bonusReward} bonus</div>}
-                </div>
-                {task.status === 'pending' && (
-                  <button onClick={() => startClassTask(task.id)} style={{ padding: '6px 14px', borderRadius: 100, background: 'var(--fg)', color: 'var(--bg)', border: 'none', fontSize: 11, fontWeight: 600 }}>开始</button>
-                )}
-                {task.status === 'started' && (
-                  <button onClick={() => handleTakePhoto(task.id)} style={{ padding: '6px 14px', borderRadius: 100, background: '#0078ff', color: '#fff', border: 'none', fontSize: 11, fontWeight: 600 }}>打卡</button>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-        <div style={{ textAlign: 'center', marginTop: 10 }}>
-          <button onClick={() => onNavigate?.('classHistory')} style={{
-            background: 'none', border: 'none', color: 'var(--muted)',
-            fontSize: 11, cursor: 'pointer'
-          }}>查看学习档案 →</button>
-        </div>
-      </div>
-
-      {/* 今日数据 */}
-      <div className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>TODAY</span>
-          <button onClick={refresh} style={{
-            background: 'none', border: 'none', color: 'var(--muted)',
-            fontSize: 11, cursor: 'pointer', padding: 0
-          }}>↻ 刷新</button>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
-          <div>
-            <div style={{ fontSize: 11, color: 'var(--success)', fontFamily: 'DM Mono, monospace' }}>学习</div>
-            <div style={{ fontSize: 18, fontWeight: 600, marginTop: 2 }}>{fmtMs(todayStudyMs)}</div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 11, color: 'var(--danger)', fontFamily: 'DM Mono, monospace' }}>娱乐</div>
-            <div style={{ fontSize: 18, fontWeight: 600, marginTop: 2 }}>{fmtMs(todayEntMs)}</div>
-          </div>
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
-          目标 {dailyGoalMin} 分钟 · 达成 {Math.round(studyMin / dailyGoalMin * 100)}%
-        </div>
-      </div>
-
-      {/* 娱乐黑洞 Top3 */}
-      {entTop3.length > 0 && (
-        <div className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 16 }}>
-          <div style={{ fontSize: 11, color: 'var(--danger)', fontFamily: 'DM Mono, monospace', marginBottom: 10 }}>
-            ENTERTAINMENT_BLACK_HOLES
-          </div>
-          {entTop3.map((e, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <div style={{ width: 16, height: 16, borderRadius: '50%', background: 'var(--danger)', color: '#fff', fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
-                {i + 1}
-              </div>
-              <div style={{ flex: 1, fontSize: 13 }}>{e.label}</div>
-              <div style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: 'var(--muted)' }}>
                 {fmtMs(e.ms)}
               </div>
             </div>
