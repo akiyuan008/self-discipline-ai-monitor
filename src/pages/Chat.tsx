@@ -160,17 +160,19 @@ const QUICK_PROMPTS = [
 ]
 
 function InputBar({ sending, onSend }: InputBarProps) {
-  const [input, setInput] = useState('')
+  const [displayValue, setDisplayValue] = useState('')
   const [isComposing, setIsComposing] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const sendingRef = useRef(sending)
   sendingRef.current = sending
 
   const handleSend = () => {
-    const text = input.trim()
+    const domValue = inputRef.current?.value ?? displayValue
+    const text = domValue.trim()
     if (!text || sendingRef.current) return
     onSend(text)
-    setInput('')
+    setDisplayValue('')
+    if (inputRef.current) inputRef.current.value = ''
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -183,8 +185,19 @@ function InputBar({ sending, onSend }: InputBarProps) {
   const handleCompositionStart = () => setIsComposing(true)
   const handleCompositionEnd = (e: CompositionEvent<HTMLInputElement>) => {
     setIsComposing(false)
-    setInput(e.currentTarget.value)
+    const finalValue = e.currentTarget.value
+    setDisplayValue(finalValue)
   }
+
+  // 定时同步DOM值到state（支持语音输入等不触发onChange的情况）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (inputRef.current && inputRef.current.value !== displayValue) {
+        setDisplayValue(inputRef.current.value)
+      }
+    }, 100)
+    return () => clearInterval(interval)
+  }, [displayValue])
 
   return (
     <div style={{
@@ -197,8 +210,8 @@ function InputBar({ sending, onSend }: InputBarProps) {
     }}>
       <input
         ref={inputRef}
-        value={input}
-        onChange={e => setInput(e.target.value)}
+        defaultValue={displayValue}
+        onChange={e => setDisplayValue(e.target.value)}
         onKeyDown={handleKeyDown}
         onCompositionStart={handleCompositionStart}
         onCompositionEnd={handleCompositionEnd}
