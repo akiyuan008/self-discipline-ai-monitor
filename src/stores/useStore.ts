@@ -228,16 +228,11 @@ export const useStore = create<StoreState>()(
           case 'doubler': set({ doublerActive: true }); break
           case 'reset': get().setHp(80); break
           case 'skin': break
-          case 'game_time': break
-          case 'free_time': break
-          case 'mystery_box': {
+          case 'snack': break
             const reward = Math.floor(Math.random() * 151) + 50
             set(s => ({ points: s.points + reward }))
             get().addPointRecord('earn', reward, '神秘盲盒奖励')
-            break
           }
-          case 'food': break
-          case 'drink': break
         }
         return true
       },
