@@ -34,7 +34,6 @@ export default function ClassHistory({ onBack }: Props) {
           </div>
         </div>
 
-        {/* Tab切换 */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
           {[
             { key: 'tasks', label: '课程记录' },
@@ -50,7 +49,6 @@ export default function ClassHistory({ onBack }: Props) {
           ))}
         </div>
 
-        {/* 课程记录 */}
         {tab === 'tasks' && (
           <div>
             {sortedHistory.length === 0 && (
@@ -102,7 +100,6 @@ export default function ClassHistory({ onBack }: Props) {
           </div>
         )}
 
-        {/* 打卡审查 */}
         {tab === 'verify' && (
           <div>
             {verifyHistory.length === 0 && (
@@ -117,10 +114,9 @@ export default function ClassHistory({ onBack }: Props) {
                   <span style={{
                     fontSize: 11, fontWeight: 700,
                     color: v.passed ? 'var(--success)' : 'var(--danger)'
-                  }}>{v.score}分 {v.passed ? '通过' : '未通过'}</span>
+                  }}>{v.aiScore}分 {v.passed ? '通过' : '未通过'}</span>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--fg)', marginBottom: 6 }}>{v.aiReview}</div>
-                {v.suggestion && <div style={{ fontSize: 11, color: 'var(--warning)' }}>建议：{v.suggestion}</div>}
                 <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 6 }}>
                   {new Date(v.verifiedAt).toLocaleString('zh-CN')}
                 </div>
@@ -129,7 +125,6 @@ export default function ClassHistory({ onBack }: Props) {
           </div>
         )}
 
-        {/* 监测记录 */}
         {tab === 'monitor' && (
           <div>
             {monitorHistory.length === 0 && (
