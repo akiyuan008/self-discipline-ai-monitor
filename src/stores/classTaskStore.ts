@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { SCHEDULE, getPeriodTime, timeToMinutes } from '@/data/schedule'
+import { SCHEDULE, getPeriodTime, timeToMinutes, canStartClass, canCheckInClass } from '@/data/schedule'
 
 export interface ClassTask {
   id: string
@@ -137,7 +137,7 @@ export const useClassTaskStore = create<ClassTaskState>()(
       startClassTask: (taskId: string) => {
         const task = get().classTasks.find(t => t.id === taskId)
         if (!task) return
-        const { can, reason } = require('@/data/schedule').canStartClass(task.period)
+        const { can, reason } = canStartClass(task.period)
         if (!can) {
           get().addPointsWithToast(0, reason || '无法开始')
           return
