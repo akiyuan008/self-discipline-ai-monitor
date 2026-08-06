@@ -1,229 +1,196 @@
-/**
- * 课程表数据
- * 从图片中提取：周一到周六有课，周日自习
- * 每节课：开始时间、结束时间、科目
- */
-
 export interface ClassPeriod {
-  id: number           // 节次 1-12
-  startTime: string    // "08:00"
-  endTime: string      // "09:00"
+  period: number        // 第几节 1-12
+  startTime: string     // "08:00"
+  endTime: string       // "09:00"
+}
+
+export interface ClassSchedule {
+  dayOfWeek: number     // 0=周日, 1=周一...6=周六
+  period: number
   subject: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  baseReward: number
+  penalty: number
 }
 
-export interface DaySchedule {
-  day: number          // 0=周日, 1=周一, ..., 6=周六
-  dayName: string
-  periods: ClassPeriod[]
-}
+// 时间段定义
+export const PERIODS: ClassPeriod[] = [
+  { period: 1, startTime: '08:00', endTime: '09:00' },
+  { period: 2, startTime: '09:00', endTime: '10:00' },
+  { period: 3, startTime: '10:10', endTime: '11:10' },
+  { period: 4, startTime: '11:10', endTime: '11:40' },
+  { period: 5, startTime: '13:40', endTime: '14:40' },
+  { period: 6, startTime: '14:40', endTime: '15:40' },
+  { period: 7, startTime: '15:50', endTime: '16:50' },
+  { period: 8, startTime: '16:50', endTime: '17:50' },
+  { period: 9, startTime: '18:00', endTime: '19:00' },
+  { period: 10, startTime: '19:00', endTime: '20:00' },
+  { period: 11, startTime: '21:00', endTime: '22:00' },
+  { period: 12, startTime: '22:00', endTime: '22:30' },
+]
 
-// 课程表：周一到周六
-export const WEEKLY_SCHEDULE: DaySchedule[] = [
-  // 周一
-  {
-    day: 1, dayName: '周一',
-    periods: [
-      { id: 1, startTime: '08:00', endTime: '09:00', subject: '数学' },
-      { id: 2, startTime: '09:00', endTime: '10:00', subject: '数学' },
-      { id: 3, startTime: '10:10', endTime: '11:10', subject: '化学' },
-      { id: 4, startTime: '11:10', endTime: '11:40', subject: '化学' },
-      { id: 5, startTime: '13:40', endTime: '14:40', subject: '生物' },
-      { id: 6, startTime: '14:40', endTime: '15:40', subject: '生物' },
-      { id: 7, startTime: '15:50', endTime: '16:50', subject: '数学' },
-      { id: 8, startTime: '16:50', endTime: '17:50', subject: '数学' },
-      { id: 9, startTime: '18:00', endTime: '19:00', subject: '化学' },
-      { id: 10, startTime: '19:00', endTime: '20:00', subject: '化学' },
-      { id: 11, startTime: '21:00', endTime: '22:00', subject: '数学' },
-      { id: 12, startTime: '22:00', endTime: '22:30', subject: '语文' },
-    ]
-  },
-  // 周二
-  {
-    day: 2, dayName: '周二',
-    periods: [
-      { id: 1, startTime: '08:00', endTime: '09:00', subject: '数学' },
-      { id: 2, startTime: '09:00', endTime: '10:00', subject: '数学' },
-      { id: 3, startTime: '10:10', endTime: '11:10', subject: '生物' },
-      { id: 4, startTime: '11:10', endTime: '11:40', subject: '生物' },
-      { id: 5, startTime: '13:40', endTime: '14:40', subject: '化学' },
-      { id: 6, startTime: '14:40', endTime: '15:40', subject: '化学' },
-      { id: 7, startTime: '15:50', endTime: '16:50', subject: '数学' },
-      { id: 8, startTime: '16:50', endTime: '17:50', subject: '数学' },
-      { id: 9, startTime: '18:00', endTime: '19:00', subject: '生物' },
-      { id: 10, startTime: '19:00', endTime: '20:00', subject: '生物' },
-      { id: 11, startTime: '21:00', endTime: '22:00', subject: '物理' },
-      { id: 12, startTime: '22:00', endTime: '22:30', subject: '英语' },
-    ]
-  },
-  // 周三
-  {
-    day: 3, dayName: '周三',
-    periods: [
-      { id: 1, startTime: '08:00', endTime: '09:00', subject: '化学' },
-      { id: 2, startTime: '09:00', endTime: '10:00', subject: '化学' },
-      { id: 3, startTime: '10:10', endTime: '11:10', subject: '物理' },
-      { id: 4, startTime: '11:10', endTime: '11:40', subject: '物理' },
-      { id: 5, startTime: '13:40', endTime: '14:40', subject: '化学' },
-      { id: 6, startTime: '14:40', endTime: '15:40', subject: '化学' },
-      { id: 7, startTime: '15:50', endTime: '16:50', subject: '物理' },
-      { id: 8, startTime: '16:50', endTime: '17:50', subject: '物理' },
-      { id: 9, startTime: '18:00', endTime: '19:00', subject: '生物' },
-      { id: 10, startTime: '19:00', endTime: '20:00', subject: '生物' },
-      { id: 11, startTime: '21:00', endTime: '22:00', subject: '化学' },
-      { id: 12, startTime: '22:00', endTime: '22:30', subject: '语文' },
-    ]
-  },
-  // 周四
-  {
-    day: 4, dayName: '周四',
-    periods: [
-      { id: 1, startTime: '08:00', endTime: '09:00', subject: '生物' },
-      { id: 2, startTime: '09:00', endTime: '10:00', subject: '生物' },
-      { id: 3, startTime: '10:10', endTime: '11:10', subject: '化学' },
-      { id: 4, startTime: '11:10', endTime: '11:40', subject: '化学' },
-      { id: 5, startTime: '13:40', endTime: '14:40', subject: '物理' },
-      { id: 6, startTime: '14:40', endTime: '15:40', subject: '物理' },
-      { id: 7, startTime: '15:50', endTime: '16:50', subject: '生物' },
-      { id: 8, startTime: '16:50', endTime: '17:50', subject: '生物' },
-      { id: 9, startTime: '18:00', endTime: '19:00', subject: '物理' },
-      { id: 10, startTime: '19:00', endTime: '20:00', subject: '物理' },
-      { id: 11, startTime: '21:00', endTime: '22:00', subject: '生物' },
-      { id: 12, startTime: '22:00', endTime: '22:30', subject: '英语' },
-    ]
-  },
-  // 周五
-  {
-    day: 5, dayName: '周五',
-    periods: [
-      { id: 1, startTime: '08:00', endTime: '09:00', subject: '物理' },
-      { id: 2, startTime: '09:00', endTime: '10:00', subject: '物理' },
-      { id: 3, startTime: '10:10', endTime: '11:10', subject: '数学' },
-      { id: 4, startTime: '11:10', endTime: '11:40', subject: '数学' },
-      { id: 5, startTime: '13:40', endTime: '14:40', subject: '生物' },
-      { id: 6, startTime: '14:40', endTime: '15:40', subject: '生物' },
-      { id: 7, startTime: '15:50', endTime: '16:50', subject: '数学' },
-      { id: 8, startTime: '16:50', endTime: '17:50', subject: '数学' },
-      { id: 9, startTime: '18:00', endTime: '19:00', subject: '化学' },
-      { id: 10, startTime: '19:00', endTime: '20:00', subject: '化学' },
-      { id: 11, startTime: '21:00', endTime: '22:00', subject: '数学' },
-      { id: 12, startTime: '22:00', endTime: '22:30', subject: '数学' },
-    ]
-  },
-  // 周六
-  {
-    day: 6, dayName: '周六',
-    periods: [
-      { id: 1, startTime: '08:00', endTime: '09:00', subject: '数学' },
-      { id: 2, startTime: '09:00', endTime: '10:00', subject: '数学' },
-      { id: 3, startTime: '10:10', endTime: '11:10', subject: '生物' },
-      { id: 4, startTime: '11:10', endTime: '11:40', subject: '生物' },
-      { id: 5, startTime: '13:40', endTime: '14:40', subject: '物理' },
-      { id: 6, startTime: '14:40', endTime: '15:40', subject: '物理' },
-      { id: 7, startTime: '15:50', endTime: '16:50', subject: '化学' },
-      { id: 8, startTime: '16:50', endTime: '17:50', subject: '化学' },
-      { id: 9, startTime: '18:00', endTime: '19:00', subject: '物理' },
-      { id: 10, startTime: '19:00', endTime: '20:00', subject: '物理' },
-      { id: 11, startTime: '21:00', endTime: '22:00', subject: '物理' },
-      { id: 12, startTime: '22:00', endTime: '22:30', subject: '物理' },
-    ]
-  },
-  // 周日：自习
-  {
-    day: 0, dayName: '周日',
-    periods: [
-      { id: 1, startTime: '08:00', endTime: '09:00', subject: '自习' },
-      { id: 2, startTime: '09:00', endTime: '10:00', subject: '自习' },
-      { id: 3, startTime: '10:10', endTime: '11:10', subject: '自习' },
-      { id: 4, startTime: '11:10', endTime: '11:40', subject: '自习' },
-      { id: 5, startTime: '13:40', endTime: '14:40', subject: '自习' },
-      { id: 6, startTime: '14:40', endTime: '15:40', subject: '自习' },
-      { id: 7, startTime: '15:50', endTime: '16:50', subject: '自习' },
-      { id: 8, startTime: '16:50', endTime: '17:50', subject: '自习' },
-      { id: 9, startTime: '18:00', endTime: '19:00', subject: '自习' },
-      { id: 10, startTime: '19:00', endTime: '20:00', subject: '自习' },
-      { id: 11, startTime: '21:00', endTime: '22:00', subject: '自习' },
-      { id: 12, startTime: '22:00', endTime: '22:30', subject: '自习' },
-    ]
-  }
+// 周一到周六的课程表（周日全部自习）
+export const SCHEDULE: ClassSchedule[] = [
+  // ========== 周一 ==========
+  { dayOfWeek: 1, period: 1, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 1, period: 2, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 1, period: 3, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 1, period: 4, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 1, period: 5, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 1, period: 6, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 1, period: 7, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 1, period: 8, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 1, period: 9, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 1, period: 10, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 1, period: 11, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 1, period: 12, subject: '语文', difficulty: 'easy', baseReward: 30, penalty: 50 },
+
+  // ========== 周二 ==========
+  { dayOfWeek: 2, period: 1, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 2, period: 2, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 2, period: 3, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 2, period: 4, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 2, period: 5, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 2, period: 6, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 2, period: 7, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 2, period: 8, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 2, period: 9, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 2, period: 10, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 2, period: 11, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 2, period: 12, subject: '英语', difficulty: 'easy', baseReward: 30, penalty: 50 },
+
+  // ========== 周三 ==========
+  { dayOfWeek: 3, period: 1, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 3, period: 2, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 3, period: 3, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 3, period: 4, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 3, period: 5, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 3, period: 6, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 3, period: 7, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 3, period: 8, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 3, period: 9, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 3, period: 10, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 3, period: 11, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 3, period: 12, subject: '语文', difficulty: 'easy', baseReward: 30, penalty: 50 },
+
+  // ========== 周四 ==========
+  { dayOfWeek: 4, period: 1, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 4, period: 2, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 4, period: 3, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 4, period: 4, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 4, period: 5, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 4, period: 6, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 4, period: 7, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 4, period: 8, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 4, period: 9, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 4, period: 10, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 4, period: 11, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 4, period: 12, subject: '英语', difficulty: 'easy', baseReward: 30, penalty: 50 },
+
+  // ========== 周五 ==========
+  { dayOfWeek: 5, period: 1, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 5, period: 2, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 5, period: 3, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 5, period: 4, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 5, period: 5, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 5, period: 6, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 5, period: 7, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 5, period: 8, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 5, period: 9, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 5, period: 10, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 5, period: 11, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 5, period: 12, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+
+  // ========== 周六 ==========
+  { dayOfWeek: 6, period: 1, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 6, period: 2, subject: '数学', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 6, period: 3, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 6, period: 4, subject: '生物', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 6, period: 5, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 6, period: 6, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 6, period: 7, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 6, period: 8, subject: '化学', difficulty: 'medium', baseReward: 40, penalty: 50 },
+  { dayOfWeek: 6, period: 9, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 6, period: 10, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 6, period: 11, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+  { dayOfWeek: 6, period: 12, subject: '物理', difficulty: 'hard', baseReward: 50, penalty: 50 },
+
+  // ========== 周日（全部自习）==========
+  { dayOfWeek: 0, period: 1, subject: '自习', difficulty: 'easy', baseReward: 20, penalty: 50 },
+  { dayOfWeek: 0, period: 2, subject: '自习', difficulty: 'easy', baseReward: 20, penalty: 50 },
+  { dayOfWeek: 0, period: 3, subject: '自习', difficulty: 'easy', baseReward: 20, penalty: 50 },
+  { dayOfWeek: 0, period: 4, subject: '自习', difficulty: 'easy', baseReward: 20, penalty: 50 },
+  { dayOfWeek: 0, period: 5, subject: '自习', difficulty: 'easy', baseReward: 20, penalty: 50 },
+  { dayOfWeek: 0, period: 6, subject: '自习', difficulty: 'easy', baseReward: 20, penalty: 50 },
+  { dayOfWeek: 0, period: 7, subject: '自习', difficulty: 'easy', baseReward: 20, penalty: 50 },
+  { dayOfWeek: 0, period: 8, subject: '自习', difficulty: 'easy', baseReward: 20, penalty: 50 },
+  { dayOfWeek: 0, period: 9, subject: '自习', difficulty: 'easy', baseReward: 20, penalty: 50 },
+  { dayOfWeek: 0, period: 10, subject: '自习', difficulty: 'easy', baseReward: 20, penalty: 50 },
+  { dayOfWeek: 0, period: 11, subject: '自习', difficulty: 'easy', baseReward: 20, penalty: 50 },
+  { dayOfWeek: 0, period: 12, subject: '自习', difficulty: 'easy', baseReward: 20, penalty: 50 },
 ]
 
 /**
- * 获取今天的课程表
+ * 获取今天的课程
  */
-export function getTodaySchedule(): DaySchedule | null {
-  const day = new Date().getDay()
-  return WEEKLY_SCHEDULE.find(s => s.day === day) || null
+export function getTodaySchedule(): ClassSchedule[] {
+  const now = new Date()
+  const dayOfWeek = now.getDay() // 0=周日
+  return SCHEDULE.filter(s => s.dayOfWeek === dayOfWeek)
+}
+
+/**
+ * 获取某节课的时间段
+ */
+export function getPeriodTime(period: number): ClassPeriod | undefined {
+  return PERIODS.find(p => p.period === period)
+}
+
+/**
+ * 将时间字符串转为分钟数（用于比较）
+ */
+export function timeToMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number)
+  return h * 60 + m
+}
+
+/**
+ * 获取当前进行中的课程
+ */
+export function getCurrentClass(): ClassSchedule | null {
+  const now = new Date()
+  const dayOfWeek = now.getDay()
+  const currentMinutes = now.getHours() * 60 + now.getMinutes()
+
+  const today = SCHEDULE.filter(s => s.dayOfWeek === dayOfWeek)
+  for (const cls of today) {
+    const period = getPeriodTime(cls.period)
+    if (!period) continue
+    const startMin = timeToMinutes(period.startTime)
+    const endMin = timeToMinutes(period.endTime)
+    if (currentMinutes >= startMin && currentMinutes <= endMin) {
+      return cls
+    }
+  }
+  return null
 }
 
 /**
  * 获取下一节课
  */
-export function getNextPeriod(): { period: ClassPeriod; minutesUntil: number } | null {
+export function getNextClass(): ClassSchedule | null {
   const now = new Date()
-  const today = getTodaySchedule()
-  if (!today) return null
-
+  const dayOfWeek = now.getDay()
   const currentMinutes = now.getHours() * 60 + now.getMinutes()
 
-  for (const period of today.periods) {
-    const [h, m] = period.startTime.split(':').map(Number)
-    const startMinutes = h * 60 + m
-    if (startMinutes > currentMinutes) {
-      return { period, minutesUntil: startMinutes - currentMinutes }
+  const today = SCHEDULE.filter(s => s.dayOfWeek === dayOfWeek)
+  for (const cls of today) {
+    const period = getPeriodTime(cls.period)
+    if (!period) continue
+    const startMin = timeToMinutes(period.startTime)
+    if (startMin > currentMinutes) {
+      return cls
     }
   }
   return null
-}
-
-/**
- * 获取当前正在进行的课
- */
-export function getCurrentPeriod(): ClassPeriod | null {
-  const now = new Date()
-  const today = getTodaySchedule()
-  if (!today) return null
-
-  const currentMinutes = now.getHours() * 60 + now.getMinutes()
-
-  for (const period of today.periods) {
-    const [sh, sm] = period.startTime.split(':').map(Number)
-    const [eh, em] = period.endTime.split(':').map(Number)
-    const startMinutes = sh * 60 + sm
-    const endMinutes = eh * 60 + em
-    if (currentMinutes >= startMinutes && currentMinutes < endMinutes) {
-      return period
-    }
-  }
-  return null
-}
-
-/**
- * 计算课程积分奖励
- * 基础：每节课按时完成 +50 积分
- * 难度加成：
- *   - 数学/物理（难）：+30 额外
- *   - 化学/生物（中）：+15 额外
- *   - 语文/英语（基础）：+10 额外
- *   - 自习：+20 额外（需要自律）
- */
-export function calculateClassReward(subject: string): number {
-  const base = 50
-  const bonus: Record<string, number> = {
-    '数学': 30, '物理': 30,
-    '化学': 15, '生物': 15,
-    '语文': 10, '英语': 10,
-    '自习': 20
-  }
-  return base + (bonus[subject] || 10)
-}
-
-/**
- * 计算逾期惩罚
- * 每节课逾期：-30 积分
- * 连续逾期3节课：额外 -100 积分
- */
-export function calculateOverduePenalty(consecutiveOverdue: number): number {
-  const base = 30
-  const extra = consecutiveOverdue >= 3 ? 100 : 0
-  return -(base + extra)
 }
