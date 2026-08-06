@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState, type CompositionEvent, type FocusEvent, type KeyboardEvent } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type CompositionEvent, type KeyboardEvent } from 'react'
 import { App } from '@capacitor/app'
 import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
@@ -105,7 +105,6 @@ const TypingIndicator = memo(function TypingIndicator() {
   )
 })
 
-// 历史记录侧边栏
 function ChatHistory({ onClose }: { onClose: () => void }) {
   const messages = useStore(s => s.chat)
   const grouped = messages.reduce((acc, msg) => {
@@ -168,12 +167,10 @@ function InputBar({ sending, onSend }: InputBarProps) {
   sendingRef.current = sending
 
   const handleSend = () => {
-    const domValue = inputRef.current?.value ?? input
-    const text = domValue.trim()
+    const text = input.trim()
     if (!text || sendingRef.current) return
     onSend(text)
     setInput('')
-    if (inputRef.current) inputRef.current.value = ''
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -186,8 +183,7 @@ function InputBar({ sending, onSend }: InputBarProps) {
   const handleCompositionStart = () => setIsComposing(true)
   const handleCompositionEnd = (e: CompositionEvent<HTMLInputElement>) => {
     setIsComposing(false)
-    const finalValue = inputRef.current?.value ?? e.currentTarget.value
-    setInput(finalValue)
+    setInput(e.currentTarget.value)
   }
 
   return (
@@ -220,7 +216,9 @@ function InputBar({ sending, onSend }: InputBarProps) {
           border: '1px solid var(--border)',
           color: 'var(--fg)',
           fontSize: 14,
-          outline: 'none'
+          outline: 'none',
+          WebkitUserSelect: 'text',
+          userSelect: 'text'
         }}
       />
       <button
@@ -327,14 +325,15 @@ export default function Chat({ onNavigateSettings }: Props) {
   }, [configured, onNavigateSettings, pushChat])
 
   return (
-    <div className="safe-top safe-bottom" style={{
+    <div className="safe-top" style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100dvh',
       maxHeight: '100dvh',
       background: 'var(--bg)',
       position: 'relative',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      paddingBottom: 70
     }}>
       <StatusBar
         onClearChat={handleClearChat}
