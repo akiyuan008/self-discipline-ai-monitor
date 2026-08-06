@@ -77,7 +77,7 @@ export default function App() {
       {currentPage === 'settings' && <Settings onBack={goHome} />}
       {currentPage === 'pointsDetail' && <PointsDetail onBack={goHome} />}
       {currentPage === 'classHistory' && <ClassHistory onBack={goHome} />}
-      {onboarded && currentPage !== 'onboarding' && currentPage !== 'dungeon' && currentPage !== 'classHistory' && (
+      {onboarded && currentPage !== 'onboarding' && currentPage !== 'dungeon' && currentPage !== 'classHistory' && currentPage !== 'chat' && (
         <Dock current={currentPage} onChange={navigate} />
       )}
     </div>
