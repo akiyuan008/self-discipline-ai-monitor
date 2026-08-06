@@ -194,3 +194,47 @@ export function getNextClass(): ClassSchedule | null {
   }
   return null
 }
+
+/**
+ * 判断当前是否可以开始某节课（课前15分钟到课后10分钟）
+ */
+export function canStartClass(period: number): { can: boolean; reason?: string } {
+  const now = new Date()
+  const currentMin = now.getHours() * 60 + now.getMinutes()
+  const p = getPeriodTime(period)
+  if (!p) return { can: false, reason: '课程不存在' }
+
+  const startMin = timeToMinutes(p.startTime)
+  const endMin = timeToMinutes(p.endTime)
+
+  // 课前15分钟到课后10分钟可以开始
+  if (currentMin < startMin - 15) {
+    return { can: false, reason: `还未到上课时间，${p.startTime}开始` }
+  }
+  if (currentMin > endMin + 10) {
+    return { can: false, reason: '课程已结束' }
+  }
+  return { can: true }
+}
+
+/**
+ * 判断当前是否可以打卡某节课（课程进行中或刚结束）
+ */
+export function canCheckInClass(period: number): { can: boolean; reason?: string } {
+  const now = new Date()
+  const currentMin = now.getHours() * 60 + now.getMinutes()
+  const p = getPeriodTime(period)
+  if (!p) return { can: false, reason: '课程不存在' }
+
+  const startMin = timeToMinutes(p.startTime)
+  const endMin = timeToMinutes(p.endTime)
+
+  // 课程开始后到课后30分钟内可以打卡
+  if (currentMin < startMin) {
+    return { can: false, reason: `课程还未开始，${p.startTime}开始` }
+  }
+  if (currentMin > endMin + 30) {
+    return { can: false, reason: '已超过打卡时限' }
+  }
+  return { can: true }
+}
