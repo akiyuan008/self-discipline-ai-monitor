@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { App as CapacitorApp } from '@capacitor/app'
-import { useStore, hpFromStudy } from '@/stores/useStore'
+import { useStore } from '@/stores/useStore'
 import Onboarding from '@/pages/Onboarding'
 import Home from '@/pages/Home'
 import Dungeon from '@/pages/Dungeon'
@@ -11,204 +11,90 @@ import Chat from '@/pages/Chat'
 import Achievements from '@/pages/Achievements'
 import Settings from '@/pages/Settings'
 import PointsDetail from '@/pages/PointsDetail'
-import Dock from '@/components/Dock'
-import Toast from '@/components/Toast'
-import { fetchUsageStats } from '@/lib/usageStats'
-import type { PageId } from '@/stores/useStore'
+import NavBar from '@/components/NavBar'
+import { checkUpdate } from '@/lib/update'
 
-// Dock 栏可见的主页面
-const DOCK_PAGES: PageId[] = ['home', 'quests', 'chat', 'shop', 'profile']
+function PointsToast() {
+  const lastChange = useStore(s => s.lastPointsChange)
+  const [visible, setVisible] = useState(false)
+  const [display, setDisplay] = useState<{ amount: number; reason: string } | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastTimeRef = useRef<number>(0)
 
-// 全屏子页面 → 返回目标页
-const BACK_MAP: Partial<Record<PageId, PageId>> = {
-  dungeon: 'home',
-  achievements: 'profile',
-  settings: 'profile',
-  pointsDetail: 'home',
+  useEffect(() => {
+    if (!lastChange) return
+    if (lastChange.time === lastTimeRef.current) return
+    if (Date.now() - lastChange.time > 5000) return
+
+    lastTimeRef.current = lastChange.time
+    setDisplay({ amount: lastChange.amount, reason: lastChange.reason })
+    setVisible(true)
+
+    if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    timeoutRef.current = setTimeout(() => setVisible(false), 3000)
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
+  }, [lastChange])
+
+  if (!visible || !display) return null
+
+  const isPositive = display.amount >= 0
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 24,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      zIndex: 9999,
+      background: isPositive ? 'rgba(22, 163, 74, 0.95)' : 'rgba(229, 77, 46, 0.95)',
+      color: '#fff',
+      padding: '10px 20px',
+      borderRadius: 100,
+      fontSize: 13,
+      fontWeight: 600,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+      animation: 'slideDown 0.3s ease',
+      pointerEvents: 'none',
+      whiteSpace: 'nowrap'
+    }}>
+      {isPositive ? '+' : ''}{display.amount} 积分 · {display.reason}
+    </div>
+  )
 }
 
 export default function App() {
+  const page = useStore(s => s.onboarded ? 'home' : 'onboarding')
+  const [currentPage, setCurrentPage] = useState(page)
   const onboarded = useStore(s => s.onboarded)
-  const isDark = useStore(s => s.isDark)
-  const [current, setCurrent] = useState<PageId>('home')
-
-  // 用 ref 持有最新页面，避免 backButton 监听器闭包过期
-  const currentRef = useRef(current)
-  currentRef.current = current
-
-  // 监听软键盘高度（visualViewport），动态调整 Chat 页面底部留白
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
-  useEffect(() => {
-    const vv = window.visualViewport
-    if (!vv) return
-
-    const update = () => {
-      const h = Math.max(0, window.innerHeight - vv.height)
-      setKeyboardHeight(h)
-    }
-
-    vv.addEventListener('resize', update)
-    vv.addEventListener('scroll', update)
-    update()
-
-    return () => {
-      vv.removeEventListener('resize', update)
-      vv.removeEventListener('scroll', update)
-    }
-  }, [])
 
   useEffect(() => {
-    document.body.classList.toggle('dark', isDark)
-  }, [isDark])
-
-  // ═══ Android 返回键 / 全面屏手势返回 ═══
-  useEffect(() => {
-    let listenerHandle: any
-    let mounted = true
-
-    CapacitorApp.addListener('backButton', ({ canGoBack }) => {
-      const page = currentRef.current
-      // 在全屏子页面 → 返回上级
-      if (BACK_MAP[page]) {
-        setCurrent(BACK_MAP[page]!)
-        return
-      }
-      // 在 Dock 页面但不是首页 → 回首页
-      if (page !== 'home') {
-        setCurrent('home')
-        return
-      }
-      // 在首页 → 退出 App
-      CapacitorApp.exitApp()
-    }).then((h: any) => {
-      if (mounted) {
-        listenerHandle = h
-      } else {
-        // 组件已卸载，立即清理监听器
-        h?.remove?.()
-      }
-    }).catch(() => {
-      // Web 环境下没有 backButton 事件，忽略错误
-    })
-
-    return () => {
-      mounted = false
-      listenerHandle?.remove?.()
-    }
-  }, [])
-
-  // 启动时跨日结算 + 拉取 UsageStats
-  useEffect(() => {
-    if (!onboarded) return
-    const s = useStore.getState()
-    s.dailySettle()
-    fetchUsageStats((() => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); })(), Date.now())
-      .then(({ study, ent }) => {
-        s.syncUsage(study, ent)
-        const current = useStore.getState()
-        if (!current.hpLocked) {
-          current.setHp(hpFromStudy(current.todayStudyMs, current.dailyGoalMin * 60_000))
-          useStore.setState({ hpLocked: false })
-        }
-      })
-      .catch((err) => {
-        console.warn('[App] initial fetchUsageStats failed', err)
-      })
-    const id = window.setInterval(() => {
-      const st = useStore.getState()
-      st.dailySettle()
-      fetchUsageStats((() => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); })(), Date.now())
-        .then(({ study, ent }) => {
-          st.syncUsage(study, ent)
-          const current = useStore.getState()
-          if (!current.hpLocked) {
-            current.setHp(hpFromStudy(current.todayStudyMs, current.dailyGoalMin * 60_000))
-            useStore.setState({ hpLocked: false })
-          }
-        })
-        .catch((err) => {
-          console.warn('[App] interval fetchUsageStats failed', err)
-        })
-    }, 5 * 60_000)
-    return () => window.clearInterval(id)
+    if (onboarded) setCurrentPage('home')
   }, [onboarded])
 
-  if (!onboarded) {
-    return (
-      <>
-        <Onboarding />
-        <Toast />
-      </>
-    )
-  }
+  useEffect(() => {
+    checkUpdate()
+  }, [])
 
-  // 全屏页（无 Dock）：深渊/设置/成就/积分详情
-  if (current === 'dungeon') {
-    return (
-      <>
-        <Dungeon onExit={() => setCurrent('home')} />
-        <Toast />
-      </>
-    )
-  }
-  if (current === 'achievements') {
-    return (
-      <>
-        <Achievements onBack={() => setCurrent('profile')} />
-        <Toast />
-      </>
-    )
-  }
-  if (current === 'settings') {
-    return (
-      <>
-        <Settings onBack={() => setCurrent('profile')} />
-        <Toast />
-      </>
-    )
-  }
-  if (current === 'pointsDetail') {
-    return (
-      <>
-        <PointsDetail onBack={() => setCurrent('home')} />
-        <Toast />
-      </>
-    )
-  }
-
-  // 带 Dock 的主页面（包括 Chat）
-  const showDock = DOCK_PAGES.includes(current)
-
-  const renderPage = () => {
-    switch (current) {
-      case 'home':
-        return <Home onNavigate={(p: PageId) => setCurrent(p)} />
-      case 'quests':
-        return <Quests onNavigate={(p: PageId) => setCurrent(p)} />
-      case 'chat':
-        return <Chat onNavigateSettings={() => setCurrent('settings')} />
-      case 'shop':
-        return <Shop onNavigate={(p: PageId) => setCurrent(p)} />
-      case 'profile':
-        return <Profile onNavigate={(p: 'achievements' | 'settings' | 'chat') => setCurrent(p)} />
-      default:
-        return <Home onNavigate={(p: PageId) => setCurrent(p)} />
-    }
-  }
-
-  // Chat 页面需要全高布局，Dock 浮在上层
-  const isChat = current === 'chat'
-
-  // Chat 页面底部留白：至少 80px 防 Dock 遮挡，键盘弹起时按实际键盘高度动态增加
-  const chatPaddingBottom = isChat ? Math.max(80, keyboardHeight + 16) : undefined
+  const navigate = (p: string) => setCurrentPage(p)
 
   return (
-    <div className="min-h-full relative" style={{ height: isChat ? '100vh' : undefined }}>
-      <div className={isChat ? '' : 'animate-in'} key={current} style={isChat ? { height: '100%', paddingBottom: chatPaddingBottom } : undefined}>
-        {renderPage()}
-      </div>
-      <Toast />
-      {showDock && <Dock current={current} onChange={setCurrent} keyboardHeight={keyboardHeight} />}
+    <div className="app-container">
+      <PointsToast />
+      {currentPage === 'onboarding' && <Onboarding onDone={() => setCurrentPage('home')} />}
+      {currentPage === 'home' && <Home onNavigate={navigate} />}
+      {currentPage === 'dungeon' && <Dungeon onNavigate={navigate} />}
+      {currentPage === 'quests' && <Quests onNavigate={navigate} />}
+      {currentPage === 'shop' && <Shop onNavigate={navigate} />}
+      {currentPage === 'profile' && <Profile onNavigate={navigate} />}
+      {currentPage === 'chat' && <Chat onNavigate={navigate} />}
+      {currentPage === 'achievements' && <Achievements onNavigate={navigate} />}
+      {currentPage === 'settings' && <Settings onNavigate={navigate} />}
+      {currentPage === 'pointsDetail' && <PointsDetail onNavigate={navigate} />}
+      {onboarded && currentPage !== 'onboarding' && (
+        <NavBar current={currentPage} onNavigate={navigate} />
+      )}
     </div>
   )
 }
