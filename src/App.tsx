@@ -11,6 +11,7 @@ import Chat from '@/pages/Chat'
 import Achievements from '@/pages/Achievements'
 import Settings from '@/pages/Settings'
 import PointsDetail from '@/pages/PointsDetail'
+import ClassHistory from '@/pages/ClassHistory'
 import Dock from '@/components/Dock'
 import { checkUpdate } from '@/lib/update'
 
@@ -75,7 +76,8 @@ export default function App() {
       {currentPage === 'achievements' && <Achievements onBack={goHome} />}
       {currentPage === 'settings' && <Settings onBack={goHome} />}
       {currentPage === 'pointsDetail' && <PointsDetail onBack={goHome} />}
-      {onboarded && currentPage !== 'onboarding' && currentPage !== 'dungeon' && (
+      {currentPage === 'classHistory' && <ClassHistory onBack={goHome} />}
+      {onboarded && currentPage !== 'onboarding' && currentPage !== 'dungeon' && currentPage !== 'classHistory' && (
         <Dock current={currentPage} onChange={navigate} />
       )}
     </div>
