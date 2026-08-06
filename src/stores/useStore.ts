@@ -126,6 +126,16 @@ interface StoreState {
   addCustomQuest: (q: { title: string; desc: string; reward: number; category: 'daily' | 'weekly' | 'main' }) => string
   addCustomAchievement: (a: { name: string; desc: string; total: number }) => string
   init: (tag: string, goal: number, ai?: AIConfig) => void
+  // 课程任务
+  classTasks: ClassTask[]
+  currentTask: ClassTask | null
+  notificationSetting: NotificationSetting
+  monitorState: MonitorState
+  fullAttendanceDays: number
+  lastAttendanceDate: string
+  lastPointsChange: PointsChange | null
+
+
   reset: () => void
   setDungeon: (sec: number, active: boolean) => void
   setDungeonDuration: (min: number) => void
@@ -198,6 +208,15 @@ export const useStore = create<StoreState>()(
       modelList: [...PRESET_MODEL_LIST],
       hpLocked: false,
       shields: 0,
+      // 课程任务初始状态
+      classTasks: [],
+      currentTask: null,
+      notificationSetting: { enabled: true, remindMinutes: 4 },
+      monitorState: { lastCheckTime: 0, warningCount: 0, entertainmentMs: 0, studyMs: 0, isPunished: false },
+      fullAttendanceDays: 0,
+      lastAttendanceDate: '',
+      lastPointsChange: null,
+
       doublerActive: false,
       dungeonRemainingSec: 0,
       dungeonActive: false,
