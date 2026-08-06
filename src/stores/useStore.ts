@@ -26,8 +26,8 @@ export interface PointRecord {
 
 export interface AIConfig {
   apiKey: string
-  endpoint: string   // 例如 https://api.deepseek.com
-  model: string      // 例如 deepseek-v4-flash
+  endpoint: string
+  model: string
 }
 
 export const DEFAULT_SYSTEM_PROMPT = `你是用户的个人成长监督者（监管者）。
@@ -59,56 +59,37 @@ export interface UsageStat {
 }
 
 interface StoreState {
-  // 引导
   onboarded: boolean
   playerTag: string
   dailyGoalMin: number
-
-  // 资源
   hp: number
   points: number
   streak: number
   totalFocusMs: number
-  todayStudyMs: number       // 今日学习累计
-  todayEntMs: number         // 今日娱乐累计
-  totalEntMs: number         // 累计娱乐时长（高考分数扣分用）
-  lastSyncDay: string        // 跨日结算用 yyyy-mm-dd
-
-  // 高考目标
-  gaokaoDate: string         // 高考日期 yyyy-mm-dd
-  gaokaoTargetScore: number  // 目标分数
-  gaokaoBaseScore: number    // 基础估分（起步分）
-
-  // 任务/成就/商品
+  todayStudyMs: number
+  todayEntMs: number
+  totalEntMs: number
+  lastSyncDay: string
+  gaokaoDate: string
+  gaokaoTargetScore: number
+  gaokaoBaseScore: number
   quests: Quest[]
   achievements: Achievement[]
   ownedItems: Record<string, number>
-
-  // 积分记录
   pointHistory: PointRecord[]
-
-  // 深色模式
   isDark: boolean
-
-  // AI
   ai: AIConfig
   chat: ChatMessage[]
-  systemPrompt: string          // 系统提示词（存 localStorage）
-  modelList: string[]           // 从 API 拉取的模型列表
-
-  // HP 锁：AI 手动设置 HP 后锁定，避免被定时同步覆盖
+  systemPrompt: string
+  modelList: string[]
   hpLocked: boolean
-
-  // 道具效果
-  shields: number        // 免罚卡剩余数量
-  doublerActive: boolean // 双倍卡是否激活
-
-  // 深渊状态
+  shields: number
+  doublerActive: boolean
   dungeonRemainingSec: number
   dungeonActive: boolean
-  dungeonDurationMin: number // 选定的番茄钟时长（分钟）
+  dungeonDurationMin: number
+  lastPointsChange: { amount: number; reason: string; time: number } | null
 
-  // 操作
   setHp: (n: number) => void
   hitHp: (n: number) => void
   addPoints: (n: number) => void
@@ -126,16 +107,6 @@ interface StoreState {
   addCustomQuest: (q: { title: string; desc: string; reward: number; category: 'daily' | 'weekly' | 'main' }) => string
   addCustomAchievement: (a: { name: string; desc: string; total: number }) => string
   init: (tag: string, goal: number, ai?: AIConfig) => void
-  // 课程任务
-  classTasks: ClassTask[]
-  currentTask: ClassTask | null
-  notificationSetting: NotificationSetting
-  monitorState: MonitorState
-  fullAttendanceDays: number
-  lastAttendanceDate: string
-  lastPointsChange: PointsChange | null
-
-
   reset: () => void
   setDungeon: (sec: number, active: boolean) => void
   setDungeonDuration: (min: number) => void
@@ -154,7 +125,6 @@ function todayStr(): string {
   return `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')}`
 }
 
-// Bug 6 修复：crypto.randomUUID 在旧 WebView 中不支持，加 fallback
 function genId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
@@ -162,9 +132,6 @@ function genId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
-// ═══════════════════════════════════════════════════════════
-// 预置 API 配置 — 阿里云百炼（通义千问）
-// ═══════════════════════════════════════════════════════════
 export const PRESET_AI_CONFIG: AIConfig = {
   apiKey: '',
   endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
@@ -208,19 +175,11 @@ export const useStore = create<StoreState>()(
       modelList: [...PRESET_MODEL_LIST],
       hpLocked: false,
       shields: 0,
-      // 课程任务初始状态
-      classTasks: [],
-      currentTask: null,
-      notificationSetting: { enabled: true, remindMinutes: 4 },
-      monitorState: { lastCheckTime: 0, warningCount: 0, entertainmentMs: 0, studyMs: 0, isPunished: false },
-      fullAttendanceDays: 0,
-      lastAttendanceDate: '',
-      lastPointsChange: null,
-
       doublerActive: false,
       dungeonRemainingSec: 0,
       dungeonActive: false,
       dungeonDurationMin: 25,
+      lastPointsChange: null,
 
       setHp: (n) => set(s => ({ hp: Math.max(0, Math.min(100, Math.round(n))), hpLocked: true })),
       hitHp: (n) => set(s => ({ hp: Math.max(0, s.hp - n) })),
@@ -235,7 +194,8 @@ export const useStore = create<StoreState>()(
           pointHistory: [
             { id: genId(), type, amount: Math.abs(amount), reason, ts: Date.now() },
             ...s.pointHistory
-          ].slice(0, 200)
+          ].slice(0, 200),
+          lastPointsChange: { amount: Math.abs(amount), reason, time: Date.now() }
         })),
       addStreak: (n) => set(s => ({ streak: Math.max(0, s.streak + n) })),
       addFocusMs: (n) => set(s => ({ totalFocusMs: s.totalFocusMs + n, todayStudyMs: s.todayStudyMs + n })),
@@ -256,17 +216,28 @@ export const useStore = create<StoreState>()(
       buyItem: (id) => {
         const item = SHOP_ITEMS.find(i => i.id === id)
         if (!item) return false
+        const currentCount = get().ownedItems[id] || 0
+        if (item.limit !== undefined && currentCount >= item.limit) return false
         if (item.lockLevel && get().streak < item.lockLevel) return false
         if (!get().spendPoints(item.cost)) return false
         get().addPointRecord('spend', item.cost, `购买：${item.name}`)
         set(s => ({ ownedItems: { ...s.ownedItems, [id]: (s.ownedItems[id] || 0) + 1 } }))
-        // 道具效果
         switch (item.effect) {
           case 'potion': get().setHp(get().hp + 30); break
           case 'shield': set(s => ({ shields: s.shields + 1 })); break
           case 'doubler': set({ doublerActive: true }); break
           case 'reset': get().setHp(80); break
-          case 'skin': break // 皮肤仅标记拥有
+          case 'skin': break
+          case 'game_time': break
+          case 'free_time': break
+          case 'mystery_box': {
+            const reward = Math.floor(Math.random() * 151) + 50
+            set(s => ({ points: s.points + reward }))
+            get().addPointRecord('earn', reward, '神秘盲盒奖励')
+            break
+          }
+          case 'food': break
+          case 'drink': break
         }
         return true
       },
@@ -278,7 +249,6 @@ export const useStore = create<StoreState>()(
             ax.id === id ? { ...ax, unlocked: true, progress: ax.total } : ax
           )
         }))
-        // 解锁成就奖励积分
         set(s => ({ points: s.points + 200 }))
         get().addPointRecord('earn', 200, `解锁成就：${a.name}`)
       },
@@ -291,7 +261,6 @@ export const useStore = create<StoreState>()(
             ax.id === id ? { ...ax, progress: newProgress } : ax
           )
         }))
-        // 进度满了自动解锁
         if (newProgress >= a.total) {
           get().unlockAchievement(id)
         }
@@ -359,15 +328,19 @@ export const useStore = create<StoreState>()(
           quests: [],
           achievements: [],
           ownedItems: {},
+          pointHistory: [],
           isDark: false,
           ai: { ...PRESET_AI_CONFIG },
           chat: [],
           systemPrompt: DEFAULT_SYSTEM_PROMPT,
           modelList: [...PRESET_MODEL_LIST],
           hpLocked: false,
+          shields: 0,
+          doublerActive: false,
           dungeonRemainingSec: 0,
           dungeonActive: false,
-          dungeonDurationMin: 25
+          dungeonDurationMin: 25,
+          lastPointsChange: null
         }),
       setDungeon: (sec, active) => set({ dungeonRemainingSec: sec, dungeonActive: active }),
       setDungeonDuration: (min) => set({ dungeonDurationMin: min }),
@@ -398,7 +371,6 @@ export const useStore = create<StoreState>()(
         if (s.todayStudyMs >= dailyGoalMs) {
           set({ streak: s.streak + 1, lastSyncDay: today, hpLocked: false })
         } else {
-          // 免罚卡：消耗一个 shield 保留连胜
           if ((s.shields || 0) > 0) {
             set({ shields: s.shields - 1, lastSyncDay: today, hpLocked: false })
           } else {
@@ -410,12 +382,10 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'cyber-survival-store',
-      version: 3,  // 版本升级：清除旧预置数据
+      version: 3,
       storage: createJSONStorage(() => localStorage),
-      // 迁移：旧版本用户清除预置的成就/任务/积分
       migrate: (persisted: any, version: number) => {
         if (version < 3 && persisted) {
-          // 清除旧版本的预置数据
           persisted.quests = []
           persisted.achievements = []
           persisted.points = 0
@@ -443,16 +413,12 @@ export const useStore = create<StoreState>()(
   )
 )
 
-// 派生
 export function hpFromStudy(studyMs: number, goalMs: number): number {
   if (goalMs <= 0) return 0
   const ratio = studyMs / goalMs
   return Math.round(Math.min(100, 30 + ratio * 70))
 }
 
-// ═══════════════════════════════════════════════════════════
-// 高考估分计算
-// ═══════════════════════════════════════════════════════════
 export function calcGaokaoScore(state: {
   gaokaoBaseScore: number
   totalFocusMs: number
@@ -462,16 +428,13 @@ export function calcGaokaoScore(state: {
   const studyHours = state.totalFocusMs / 3_600_000
   const entHours = state.totalEntMs / 3_600_000
   const completedQuests = state.quests.filter(q => q.completed).length
-
   const score = state.gaokaoBaseScore
     + studyHours * 5
     - entHours * 3
     + completedQuests * 3
-
   return Math.round(Math.max(200, Math.min(750, score)))
 }
 
-// 距高考剩余天数
 export function daysUntilGaokao(gaokaoDate: string): number {
   const target = new Date(gaokaoDate + 'T00:00:00')
   const now = new Date()
