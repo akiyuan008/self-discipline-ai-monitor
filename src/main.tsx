@@ -36,6 +36,7 @@ async function scheduleClassNotifications() {
   const now = new Date()
   const nowMin = now.getHours() * 60 + now.getMinutes()
 
+  // 清除所有旧通知
   try {
     const pending = await LocalNotifications.getPending()
     if (pending.notifications.length > 0) {
@@ -45,26 +46,42 @@ async function scheduleClassNotifications() {
     console.warn('[Notify] cancel failed', e)
   }
 
-  const notifications = todaySchedule
-    .map(s => {
-      const period = getPeriodTime(s.period)
-      if (!period) return null
-      const startMin = timeToMinutes(period.startTime)
-      const remindMin = startMin - 4
-      if (remindMin <= nowMin) return null
-      const remindDate = new Date()
-      remindDate.setHours(Math.floor(remindMin / 60), remindMin % 60, 0, 0)
-      return {
-        title: '即将上课',
-        body: `${s.subject} 还有4分钟开始，请做好准备`,
-        id: s.period,
-        schedule: { at: remindDate, allowWhileIdle: true }
-      }
+  const notifications: any[] = []
+
+  for (const s of todaySchedule) {
+    const period = getPeriodTime(s.period)
+    if (!period) continue
+
+    const startMin = timeToMinutes(period.startTime)
+    const remindMin = startMin - 4
+
+    // 只设置未来时间的通知
+    if (remindMin <= nowMin) continue
+
+    const remindDate = new Date()
+    remindDate.setHours(Math.floor(remindMin / 60), remindMin % 60, 0, 0)
+
+    // 使用唯一ID避免冲突: 日期+节次
+    const notifyId = parseInt(`${now.getDate()}${s.period}`)
+
+    notifications.push({
+      title: '⏰ 即将上课',
+      body: `${s.subject} 还有4分钟开始（${period.startTime}），请做好准备`,
+      id: notifyId,
+      schedule: { at: remindDate, allowWhileIdle: true },
+      sound: 'default',
+      smallIcon: 'ic_notification',
+      attachments: []
     })
-    .filter(Boolean) as any[]
+  }
 
   if (notifications.length > 0) {
-    await LocalNotifications.schedule({ notifications })
+    try {
+      await LocalNotifications.schedule({ notifications })
+      console.log('[Notify] scheduled', notifications.length, 'notifications')
+    } catch (e) {
+      console.warn('[Notify] schedule failed', e)
+    }
   }
 }
 
