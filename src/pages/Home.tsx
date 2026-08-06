@@ -3,6 +3,8 @@ import { useStore, hpFromStudy } from '@/stores/useStore'
 import { useClassTaskStore } from '@/stores/classTaskStore'
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
 import { getPeriodTime } from '@/data/schedule'
+import { verifyClassPhoto, reportToWarden } from '@/lib/verifyAI'
+import { showToast } from '@/components/Toast'
 import { showToast } from '@/components/Toast'
 import { App } from '@capacitor/app'
 import { fetchUsageStats, hasUsageAccess, fmtMs, isLateNight, openUsageAccessSettings } from '@/lib/usageStats'
@@ -47,10 +49,38 @@ export default function Home({ onNavigate }: Props) {
         resultType: CameraResultType.Base64,
         source: CameraSource.Camera
       })
-      const reward = completeClassTask(taskId, image.base64String || undefined)
+
+      const task = todayTasks.find(t => t.id === taskId)
+      if (!task) return
+
+      showToast('验证官审查中...')
+
+      const verifyResult = await verifyClassPhoto(image.base64String || '', task.subject)
+
+      useClassTaskStore.getState().addVerifyRecord({
+        taskId,
+        date: today,
+        subject: task.subject,
+        photoUrl: image.base64String || '',
+        aiReview: verifyResult.review,
+        aiScore: verifyResult.score,
+        passed: verifyResult.passed
+      })
+
+      if (!verifyResult.passed) {
+        showToast(`验证未通过：${verifyResult.review}`)
+        await reportToWarden(`${task.subject}课打卡未通过（${verifyResult.score}分）。${verifyResult.review}`)
+        return
+      }
+
+      const reward = completeClassTask(taskId, image.base64String || undefined, verifyResult.review, verifyResult.score)
       if (reward > 0) {
         addPoints(reward)
         addPointRecord('earn', reward, '课程打卡完成')
+        showToast(`验证通过！${verifyResult.score}分`)
+        if (verifyResult.score >= 90) {
+          await reportToWarden(`${task.subject}课打卡优秀！${verifyResult.score}分。${verifyResult.review}`)
+        }
       }
     } catch (e: any) {
       if (e.message !== 'User cancelled photos app') {
@@ -277,6 +307,13 @@ export default function Home({ onNavigate }: Props) {
           })}
         </div>
       )}
+        <div style={{ textAlign: 'center', marginTop: 10 }}>
+          <button onClick={() => onNavigate?.('classHistory')} style={{
+            background: 'none', border: 'none', color: 'var(--muted)',
+            fontSize: 11, cursor: 'pointer'
+          }}>查看学习档案 →</button>
+        </div>
+      </div>
 
       {/* 今日数据 */}
       <div className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 12 }}>
