@@ -38,6 +38,17 @@ export const SHOP_ITEMS: ShopItem[] = [
     effect: 'skin',
     lockLevel: 7,
   },
+  {
+    id: 'theme_wandering',
+    name: '行星发动机皮肤',
+    desc: '流浪地球主题 - UEG控制台风格',
+    cost: 800,
+    iconBg: 'rgba(255, 69, 0, 0.1)',
+    iconColor: '#ff4500',
+    iconPath: 'M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2ZM12 20C7.58 20 4 16.42 4 12S7.58 4 12 4 20 7.58 20 12 16.42 20 12 20ZM12 6C9 6 7 8.5 7 11C7 13.5 8.5 15.5 11 16.5V18H13V16.5C15.5 15.5 17 13.5 17 11C17 8.5 15 6 12 6Z',
+    effect: 'skin',
+    badge: '限定',
+  },
 
   // ===== 零食兑换 =====
   {
