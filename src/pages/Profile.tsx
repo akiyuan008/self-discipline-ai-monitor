@@ -6,6 +6,73 @@ interface ProfileProps {
   onNavigate?: (page: 'achievements' | 'settings' | 'chat') => void
 }
 
+function ExpPanel() {
+  const exp = useStore(s => s.exp)
+  const totalExp = useStore(s => s.totalExp)
+  const level = useStore(s => s.level)
+  const theme = useStore(s => s.theme)
+
+  const expInLevel = totalExp % 1000
+  const expPercent = Math.min(100, (expInLevel / 1000) * 100)
+  const expToNext = 1000 - expInLevel
+
+  return (
+    <div className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 12, position: 'relative' }}>
+      <div className="corner-deco tl" />
+      <div className="corner-deco tr" />
+      <div className="corner-deco bl" />
+      <div className="corner-deco br" />
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: theme === 'wandering' ? 'linear-gradient(135deg, #ff4500, #f59e0b)' : 'var(--bg-alt)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 16,
+            boxShadow: theme === 'wandering' ? '0 0 10px rgba(255, 69, 0, 0.3)' : 'none'
+          }}>
+            {theme === 'wandering' ? '🚀' : '⭐'}
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, fontFamily: 'Teko, sans-serif', letterSpacing: 1 }}>LVL.{level}</div>
+            <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>
+              {totalExp.toLocaleString()} XP
+            </div>
+          </div>
+        </div>
+        <div className="level-badge">
+          RANK {level}
+        </div>
+      </div>
+
+      <div className={theme === 'wandering' ? 'exp-bar-wandering' : ''} style={{
+        height: 6,
+        borderRadius: 3,
+        background: 'var(--bg-alt)',
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          height: '100%',
+          width: `${expPercent}%`,
+          background: theme === 'wandering' ? 'linear-gradient(90deg, #ff4500, #f59e0b)' : 'var(--success)',
+          borderRadius: 3,
+          transition: 'width 0.5s ease',
+          boxShadow: theme === 'wandering' ? '0 0 10px rgba(255, 69, 0, 0.5)' : 'none'
+        }} />
+      </div>
+
+      <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 6, textAlign: 'right', fontFamily: 'Share Tech Mono, monospace' }}>
+        NEXT LVL: {expToNext} XP
+      </div>
+
+      <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, lineHeight: 1.5, fontFamily: 'Share Tech Mono, monospace' }}>
+        +1XP/MIN STUDY · +50XP CHECK-IN · +20XP QUEST · +100XP FULL ATTENDANCE
+      </div>
+    </div>
+  )
+}
+
 export default function Profile({ onNavigate }: ProfileProps) {
   const playerTag = useStore(s => s.playerTag)
   const streak = useStore(s => s.streak)
