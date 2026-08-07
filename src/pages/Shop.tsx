@@ -37,11 +37,12 @@ export default function Shop({ onNavigate }: Props) {
           <button
             onClick={() => setEditMode(!editMode)}
             style={{
-              background: 'var(--bg-alt)', border: '1px solid var(--border)',
+              border: '1px solid var(--border)',
               borderRadius: 100, padding: '6px 12px',
-              fontSize: 11, fontWeight: 600, color: editMode ? 'var(--bg)' : 'var(--fg)',
+              fontSize: 11, fontWeight: 600,
               cursor: 'pointer',
-              background: editMode ? 'var(--fg)' : 'var(--bg-alt)'
+              background: editMode ? 'var(--fg)' : 'var(--bg-alt)',
+              color: editMode ? 'var(--bg)' : 'var(--fg)'
             }}
           >{editMode ? '完成' : '编辑'}</button>
           <button
