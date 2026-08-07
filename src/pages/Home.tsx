@@ -77,8 +77,10 @@ export default function Home({ onNavigate }: Props) {
 
   async function refresh() {
     try {
-      const stats = await fetchUsageStats()
-      const ent = stats.filter(s => !s.isStudy).sort((a, b) => b.totalMs - a.totalMs).slice(0, 3)
+      const now = new Date()
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const stats = await fetchUsageStats(startOfDay.getTime(), now.getTime())
+      const ent = stats.ent.sort((a, b) => b.totalMs - a.totalMs).slice(0, 3)
       setEntTop3(ent.map(e => ({ label: e.label, ms: e.totalMs })))
     } catch (e) { logger.warn('home', 'refresh usage stats failed', { error: String(e) }) }
   }
