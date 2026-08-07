@@ -399,6 +399,7 @@ export const useStore = create<StoreState>()(
           set({ streak: 0, lastSyncDay: today })
         }
         set({ todayStudyMs: 0, todayEntMs: 0 })
+      },
       addExp: (amount, reason) => {
         set(s => {
           const xpGain = Math.max(0, Math.round(amount))
