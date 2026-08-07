@@ -367,7 +367,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
                       {model || '选择模型'}
                     </span>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" style={{ flexShrink: 0, transition: 'transform 0.2s', transform: modelDropdownOpen ? 'rotate(180deg)' : 'none' }}>
-                      <path d="M6 9l6 6 6-6" />
+                      <path d="M15 18l-6-6 6-6" />
                     </svg>
                   </button>
 
@@ -820,7 +820,7 @@ function Header({ onBack, title, subtitle }: { onBack: () => void; title: string
         <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
           {subtitle}
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700 }}>{title}</div>
+        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5 }}>{title}</div>
       </div>
     </div>
   )

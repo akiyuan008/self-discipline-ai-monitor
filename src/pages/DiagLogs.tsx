@@ -96,7 +96,7 @@ export default function DiagLogs({ onBack }: Props) {
           </button>
           <div>
             <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>DIAG_LOGS</div>
-            <div style={{ fontSize: 20, fontWeight: 700 }}>诊断日志</div>
+            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5 }}>诊断日志</div>
           </div>
           <div style={{ flex: 1 }} />
           <div style={{ textAlign: 'right', fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>

@@ -84,7 +84,7 @@ export default function PointsDetail({ onBack }: Props) {
         {/* 收支摘要 */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           <div className="card" style={{
-            flex: 1, padding: 14, borderRadius: 12,
+            flex: 1, padding: 14, borderRadius: 16,
             display: 'flex', flexDirection: 'column', alignItems: 'center'
           }}>
             <div style={{ fontSize: 10, color: 'var(--success)', fontFamily: 'DM Mono, monospace', marginBottom: 4 }}>
@@ -96,7 +96,7 @@ export default function PointsDetail({ onBack }: Props) {
             <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>累计获得</div>
           </div>
           <div className="card" style={{
-            flex: 1, padding: 14, borderRadius: 12,
+            flex: 1, padding: 14, borderRadius: 16,
             display: 'flex', flexDirection: 'column', alignItems: 'center'
           }}>
             <div style={{ fontSize: 10, color: 'var(--danger)', fontFamily: 'DM Mono, monospace', marginBottom: 4 }}>
@@ -139,7 +139,7 @@ export default function PointsDetail({ onBack }: Props) {
         {/* 记录列表 */}
         {filtered.length === 0 ? (
           <div className="card" style={{
-            padding: 40, borderRadius: 12, textAlign: 'center'
+            padding: 40, borderRadius: 16, textAlign: 'center'
           }}>
             <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.3 }}>∅</div>
             <div style={{ fontSize: 13, color: 'var(--muted)' }}>暂无积分记录</div>
@@ -160,7 +160,7 @@ function RecordItem({ record }: { record: PointRecord }) {
   const isEarn = record.type === 'earn'
   return (
     <div className="card" style={{
-      padding: '12px 14px', borderRadius: 12,
+      padding: '12px 14px', borderRadius: 16,
       display: 'flex', alignItems: 'center', gap: 12
     }}>
       {/* 图标 */}

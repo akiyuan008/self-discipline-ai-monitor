@@ -31,7 +31,7 @@ export default function Achievements({ onBack }: Props) {
 
         {/* AI 管理提示 */}
         <div className="card" style={{
-          padding: '12px 16px', borderRadius: 12, marginBottom: 12,
+          padding: '12px 16px', borderRadius: 16, marginBottom: 8,
           display: 'flex', alignItems: 'center', gap: 10,
           background: 'var(--bg-alt)'
         }}>
@@ -83,13 +83,13 @@ export default function Achievements({ onBack }: Props) {
               key={a.id}
               className="card"
               style={{
-                padding: 14, borderRadius: 12,
+                padding: 14, borderRadius: 16,
                 display: 'flex', gap: 12, alignItems: 'center',
                 opacity: a.unlocked ? 1 : 0.7
               }}
             >
               <div style={{
-                width: 44, height: 44, borderRadius: 12,
+                width: 44, height: 44, borderRadius: 16,
                 background: a.iconBg, color: a.iconColor,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0

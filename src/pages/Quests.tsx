@@ -92,7 +92,7 @@ export default function Quests({ onNavigate }: Props) {
           <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
             QUEST_CENTER
           </div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 0 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5, marginBottom: 0 }}>
             任务中心
           </h1>
         </div>

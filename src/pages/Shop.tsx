@@ -30,7 +30,7 @@ export default function Shop({ onNavigate }: Props) {
           <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
             ITEM_SHOP
           </div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 0 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5, marginBottom: 0 }}>
             补给站
           </h1>
         </div>

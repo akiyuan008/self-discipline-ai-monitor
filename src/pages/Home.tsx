@@ -111,7 +111,7 @@ export default function Home({ onNavigate }: Props) {
       {/* 深夜提醒 */}
       {lateAlert && (
         <div className="card" style={{
-          padding: '12px 16px', borderRadius: 12, marginBottom: 16,
+          padding: '12px 16px', borderRadius: 16, marginBottom: 12,
           background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)'
         }}>
           <div style={{ fontSize: 13, fontWeight: 500, color: '#F59E0B' }}>
@@ -226,7 +226,7 @@ export default function Home({ onNavigate }: Props) {
 
       {/* 娱乐 Top3 */}
       {entTop3.length > 0 && (
-        <div className="card" style={{ padding: 16, borderRadius: 12, marginBottom: 16 }}>
+        <div className="card" style={{ padding: 16, borderRadius: 16, marginBottom: 12 }}>
           <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginBottom: 8 }}>
             ENTERTAINMENT_TOP3
           </div>
@@ -242,7 +242,7 @@ export default function Home({ onNavigate }: Props) {
       )}
 
       {/* 主线进度 */}
-      <div className="card" style={{ padding: 16, borderRadius: 12, marginBottom: 16 }}>
+      <div className="card" style={{ padding: 16, borderRadius: 16, marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>MAIN_QUEST</div>
           <div style={{ fontSize: 12, fontWeight: 600 }}>{mainProgress}%</div>
@@ -259,7 +259,7 @@ export default function Home({ onNavigate }: Props) {
       </div>
 
       {/* 番茄钟时长选择 */}
-      <div className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 12 }}>
+      <div className="card" style={{ padding: 14, borderRadius: 16, marginBottom: 8 }}>
         <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginBottom: 8 }}>
           DUNGEON_DURATION
         </div>
@@ -301,7 +301,7 @@ export default function Home({ onNavigate }: Props) {
       </div>
 
       {/* XP 进度 */}
-      <div className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 12, marginTop: 16 }}>
+      <div className="card" style={{ padding: 14, borderRadius: 16, marginBottom: 8, marginTop: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <div style={{ fontSize: 12, fontWeight: 600 }}>
             Lv.{xpLevel}

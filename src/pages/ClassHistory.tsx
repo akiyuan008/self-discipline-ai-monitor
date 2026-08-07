@@ -27,7 +27,16 @@ export default function ClassHistory({ onBack }: Props) {
     <div style={{ position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 500, overflow: 'auto' }} className="safe-top safe-bottom animate-in">
       <div style={{ padding: '16px 20px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <button onClick={onBack} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--fg)' }}>←</button>
+          <button onClick={onBack} style={{
+      width: 36, height: 36, borderRadius: '50%',
+      background: 'var(--card-bg)', border: '1px solid var(--border)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      cursor: 'pointer', color: 'var(--fg)'
+    }}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+    </button>
           <div>
             <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>HISTORY</div>
             <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>学习档案</h1>
@@ -57,7 +66,7 @@ export default function ClassHistory({ onBack }: Props) {
               </div>
             )}
             {sortedHistory.map(day => (
-              <div key={day.date} className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 12 }}>
+              <div key={day.date} className="card" style={{ padding: 14, borderRadius: 16, marginBottom: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <span style={{ fontSize: 14, fontWeight: 600 }}>{fmtDate(day.date)}</span>
                   <div style={{ display: 'flex', gap: 8, fontSize: 11 }}>
@@ -108,7 +117,7 @@ export default function ClassHistory({ onBack }: Props) {
               </div>
             )}
             {[...verifyHistory].reverse().map((v, i) => (
-              <div key={i} className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 12 }}>
+              <div key={i} className="card" style={{ padding: 14, borderRadius: 16, marginBottom: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>{v.subject}</span>
                   <span style={{
@@ -133,7 +142,7 @@ export default function ClassHistory({ onBack }: Props) {
               </div>
             )}
             {[...monitorHistory].reverse().map((m, i) => (
-              <div key={i} className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 12 }}>
+              <div key={i} className="card" style={{ padding: 14, borderRadius: 16, marginBottom: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtDate(m.date)}</span>
                   {m.isPunished && <span style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 600 }}>⚠ 被警告</span>}

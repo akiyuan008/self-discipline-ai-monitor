@@ -27,12 +27,12 @@ export default function Profile({ onNavigate }: ProfileProps) {
       <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
         PROFILE
       </div>
-      <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 16 }}>
+      <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5, marginBottom: 16 }}>
         个人中心
       </h1>
 
       {/* 学习档案入口（含薄弱点摘要） */}
-      <div className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 12, cursor: 'pointer' }}
+      <div className="card" style={{ padding: 14, borderRadius: 16, marginBottom: 8, cursor: 'pointer' }}
         onClick={() => onNavigate?.('classHistory' as any)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,120,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</div>

@@ -449,7 +449,7 @@ export default function Chat({ onNavigateSettings }: Props) {
 
         {messages.length === 0 && configured && (
           <div style={{
-            padding: '14px 14px', borderRadius: 12, background: 'var(--card-bg)',
+            padding: '14px 14px', borderRadius: 16, background: 'var(--card-bg)',
             border: '1px solid var(--border)', marginBottom: 12, color: 'var(--muted)', fontSize: 13
           }}>
             现在可以直接和监管者交流，要求、惩罚、奖励、任务和成就都会同步到你的状态里。
