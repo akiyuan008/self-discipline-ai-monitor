@@ -35,7 +35,7 @@ export default function Dungeon({ onExit }: Props) {
   const isWandering = theme === 'wandering'
 
   const circumference = 2 * Math.PI * 100
-  const progress = mode === 'free' 
+  const progress = mode === 'free'
     ? ((freeTime % 60) / 60) * 100
     : totalTime > 0 ? (timeLeft / totalTime) * 100 : 100
   const strokeOffset = circumference - (progress / 100) * circumference
@@ -73,7 +73,6 @@ export default function Dungeon({ onExit }: Props) {
             return prev
           }
           if (prev > 0) return prev - 1
-          // 完成
           return 0
         })
       }, 1000)
@@ -139,14 +138,66 @@ export default function Dungeon({ onExit }: Props) {
 
   const displayTime = mode === 'free' ? freeTime : timeLeft
 
+  const btnBase: React.CSSProperties = {
+    background: 'rgba(0,0,0,0.3)',
+    border: '1px solid var(--border)',
+    color: 'var(--fg)',
+    padding: '12px 16px',
+    fontFamily: isWandering ? 'Teko, sans-serif' : 'inherit',
+    fontSize: '1.1rem',
+    letterSpacing: 1,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 6,
+    clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)',
+    transition: 'all 0.2s',
+  }
+
+  const ignitionBtn: React.CSSProperties = {
+    ...btnBase,
+    flexGrow: 1,
+    justifyContent: 'center',
+    background: isRunning ? 'var(--success)' : 'rgba(255,69,0,0.1)',
+    borderColor: 'var(--success)',
+    color: isRunning ? '#fff' : 'var(--success)',
+    fontSize: '1.2rem',
+    boxShadow: isRunning ? '0 0 20px rgba(255,69,0,0.4)' : 'none',
+  }
+
   return (
     <div className="safe-top safe-bottom" style={{
-      position: 'fixed', inset: 0, background: 'var(--bg)',
+      position: 'fixed', inset: 0,
+      background: isWandering ? '#0b0c10' : 'var(--bg)',
       zIndex: 600, display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
     }}>
+      {/* 背景网格 - 仅流浪地球主题 */}
+      {isWandering && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: `linear-gradient(rgba(255, 69, 0, 0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 69, 0, 0.05) 1px, transparent 1px)`,
+          backgroundSize: '40px 40px',
+          zIndex: 0, pointerEvents: 'none'
+        }} />
+      )}
+
+      {/* 扫描线 */}
+      {isWandering && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(69, 162, 158, 0.03) 2px, rgba(69, 162, 158, 0.03) 4px)',
+          zIndex: 1, pointerEvents: 'none'
+        }} />
+      )}
+
       {/* 全屏闪烁 */}
-      <div className={flash ? 'flash-overlay active' : 'flash-overlay'} />
+      <div className={flash ? 'flash-overlay active' : 'flash-overlay'} style={{
+        position: 'fixed', inset: 0,
+        background: isWandering ? '#ff4500' : 'var(--success)',
+        opacity: 0, pointerEvents: 'none', zIndex: 9999
+      }} />
 
       {/* 返回按钮 */}
       <button onClick={() => {
@@ -163,31 +214,19 @@ export default function Dungeon({ onExit }: Props) {
         position: 'absolute', top: 16, left: 16, zIndex: 10,
         background: 'var(--card-bg)', border: '1px solid var(--border)',
         color: 'var(--fg)', padding: '8px 14px', fontSize: 13,
-        cursor: 'pointer', fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'inherit'
+        cursor: 'pointer', fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'inherit',
+        clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
       }}>
-        ← EXIT
-      </button>
-
-      {/* 主题切换 */}
-      <button onClick={() => {
-        const store = useStore.getState()
-        store.setTheme(store.theme === 'wandering' ? 'default' : 'wandering')
-      }} style={{
-        position: 'absolute', top: 16, right: 16, zIndex: 10,
-        background: 'var(--card-bg)', border: '1px solid var(--border)',
-        color: 'var(--fg)', width: 36, height: 36, fontSize: 16,
-        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-      }}>
-        {isWandering ? '◑' : '☀'}
+        ← {isWandering ? 'EXIT' : '返回'}
       </button>
 
       {/* 主控制台 */}
       <div style={{
-        position: 'relative', zIndex: 10, width: '90%', maxWidth: 400,
+        position: 'relative', zIndex: 10, width: '90%', maxWidth: 450,
         padding: '30px 20px', background: 'var(--card-bg)',
         border: '2px solid var(--border)',
         clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
-        boxShadow: '0 0 40px rgba(0,0,0,0.8)'
+        boxShadow: isWandering ? '0 0 40px rgba(0,0,0,0.8)' : '0 10px 30px rgba(0,0,0,0.1)'
       }}>
         {/* 角标 */}
         <div className="corner-deco tl" />
@@ -226,7 +265,8 @@ export default function Dungeon({ onExit }: Props) {
             </div>
             <div className={isWandering ? 'thrust-text' : ''} style={{
               color: 'var(--success)', fontWeight: 'bold',
-              fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'inherit'
+              fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'inherit',
+              fontSize: '1.1rem'
             }}>
               {thrust}%
             </div>
@@ -240,7 +280,23 @@ export default function Dungeon({ onExit }: Props) {
           margin: '0 auto 30px'
         }}>
           {/* 涡轮环 */}
-          <div className="turbine-ring" />
+          <div style={{
+            position: 'absolute', width: '100%', height: '100%',
+            border: `3px dashed ${isWandering ? 'rgba(255,255,255,0.1)' : 'rgba(128,128,128,0.2)'}`,
+            borderRadius: '50%',
+            animation: 'turbineSpinReverse 30s linear infinite'
+          }}>
+            <div style={{
+              position: 'absolute', top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '90%', height: '90%',
+              border: `2px solid ${isWandering ? 'rgba(255,69,0,0.2)' : 'rgba(128,128,128,0.15)'}`,
+              borderLeftColor: 'transparent',
+              borderRightColor: 'transparent',
+              borderRadius: '50%',
+              animation: 'turbineSpin 10s linear infinite'
+            }} />
+          </div>
 
           {/* SVG进度环 */}
           <svg style={{
@@ -257,7 +313,11 @@ export default function Dungeon({ onExit }: Props) {
               strokeDashoffset={strokeOffset}
               style={{
                 transition: 'stroke-dashoffset 1s linear, stroke 0.3s',
-                filter: isWandering && isRunning ? 'drop-shadow(0 0 15px rgba(255,69,0,0.8))' : 'drop-shadow(0 0 5px rgba(255,69,0,0.3))'
+                filter: isWandering && isRunning
+                  ? 'drop-shadow(0 0 15px rgba(255,69,0,0.8))'
+                  : isWandering
+                    ? 'drop-shadow(0 0 5px rgba(255,69,0,0.3))'
+                    : 'none'
               }} />
           </svg>
 
@@ -265,18 +325,22 @@ export default function Dungeon({ onExit }: Props) {
           <div style={{
             fontFamily: isWandering ? 'Teko, sans-serif' : 'DM Mono, monospace',
             fontSize: '4.5rem', lineHeight: 1, color: 'var(--fg)',
-            zIndex: 5, textShadow: isWandering ? '0 0 20px rgba(255,69,0,0.4)' : 'none',
+            zIndex: 5,
+            textShadow: isWandering ? '0 0 20px rgba(255,69,0,0.4)' : 'none',
             textAlign: 'center'
           }}>
             {formatTime(displayTime)}
           </div>
 
           {/* 状态指示器 */}
-          <div className="status-indicator" style={{
+          <div style={{
             position: 'absolute', bottom: 55,
             fontSize: '0.9rem', letterSpacing: 3,
             color: isRunning ? 'var(--success)' : 'var(--muted)',
-            borderColor: isRunning ? 'var(--success)' : 'var(--muted)'
+            background: 'var(--card-bg)',
+            padding: '2px 8px',
+            border: `1px solid ${isRunning ? 'var(--success)' : 'var(--muted)'}`,
+            fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'inherit'
           }}>
             {isRunning ? (isWandering ? 'IGNITION' : '专注中') : (isWandering ? 'STANDBY' : '待机')}
           </div>
@@ -284,36 +348,14 @@ export default function Dungeon({ onExit }: Props) {
 
         {/* 控制按钮 */}
         <div style={{ width: '100%', display: 'flex', gap: 12, justifyContent: 'center' }}>
-          <button onClick={() => setShowSettings(true)} style={{
-            background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)',
-            color: 'var(--fg)', padding: '12px 16px',
-            fontFamily: isWandering ? 'Teko, sans-serif' : 'inherit',
-            fontSize: '1.1rem', letterSpacing: 1, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 6
-          }}>
+          <button onClick={() => setShowSettings(true)} style={btnBase}>
             <span>⚙</span> {isWandering ? 'SET' : '设置'}
           </button>
-          <button onClick={toggleEngine} style={{
-            flexGrow: 1,
-            background: isRunning ? 'var(--success)' : 'rgba(255,69,0,0.1)',
-            border: '1px solid var(--success)',
-            color: isRunning ? '#fff' : 'var(--success)',
-            padding: '12px 20px',
-            fontFamily: isWandering ? 'Teko, sans-serif' : 'inherit',
-            fontSize: '1.2rem', letterSpacing: 1, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            boxShadow: isRunning ? '0 0 20px rgba(255,69,0,0.4)' : 'none'
-          }}>
+          <button onClick={toggleEngine} style={ignitionBtn}>
             <span>{isRunning ? '❚❚' : '▶'}</span>
             {isRunning ? (isWandering ? 'SHUTDOWN' : '停止') : (isWandering ? 'IGNITION' : '开始')}
           </button>
-          <button onClick={resetEngine} style={{
-            background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border)',
-            color: 'var(--fg)', padding: '12px 16px',
-            fontFamily: isWandering ? 'Teko, sans-serif' : 'inherit',
-            fontSize: '1.1rem', letterSpacing: 1, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 6
-          }}>
+          <button onClick={resetEngine} style={btnBase}>
             <span>↺</span> {isWandering ? 'RST' : '重置'}
           </button>
         </div>

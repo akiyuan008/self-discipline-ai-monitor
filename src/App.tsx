@@ -48,7 +48,7 @@ function PointsToast() {
       pointerEvents: 'none', whiteSpace: 'nowrap'
     }}>
       {isPositive ? '+' : ''}{display.amount} 积分 · {display.reason}
-    </div></ThemeProvider>
+    </div>
   )
 }
 
