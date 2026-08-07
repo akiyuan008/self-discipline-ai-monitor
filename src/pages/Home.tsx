@@ -112,9 +112,9 @@ export default function Home({ onNavigate }: Props) {
       {lateAlert && (
         <div className="card" style={{
           padding: '12px 16px', borderRadius: 16, marginBottom: 12,
-          background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)'
+          background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.2)'
         }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: '#F59E0B' }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--warning)' }}>
             深夜了，监管者注意到你还在熬夜
           </div>
           <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
@@ -127,15 +127,20 @@ export default function Home({ onNavigate }: Props) {
       {!hasAccess && (
         <div className="card" style={{
           padding: 20, borderRadius: 16, marginBottom: 16,
-          background: 'linear-gradient(135deg, rgba(229, 77, 46, 0.06) 0%, rgba(245, 158, 11, 0.04) 100%)',
+          background: 'rgba(229, 77, 46, 0.04)',
           border: '1px solid rgba(229, 77, 46, 0.15)'
         }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
             <div style={{
               width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-              background: 'rgba(229, 77, 46, 0.12)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18
-            }}>🔒</div>
+              background: 'rgba(229, 77, 46, 0.08)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>
                 需要使用情况访问权限
@@ -181,10 +186,10 @@ export default function Home({ onNavigate }: Props) {
             }}
             style={{
               width: '100%', padding: '12px', borderRadius: 100,
-              background: 'linear-gradient(135deg, var(--danger), #F59E0B)',
+              background: 'var(--danger)',
               color: '#fff', border: 'none',
               fontSize: 14, fontWeight: 700, cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(229, 77, 46, 0.25)'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
             }}
           >
             前往授权 →
@@ -316,7 +321,7 @@ export default function Home({ onNavigate }: Props) {
         <div style={{ height: 6, background: 'var(--bg-alt)', borderRadius: 100, overflow: 'hidden' }}>
           <div style={{
             height: '100%', width: `${xpProgress}%`,
-            background: 'linear-gradient(90deg, #3B82F6, #8B5CF6)',
+            background: 'var(--fg)',
             borderRadius: 100, transition: 'width 0.5s ease'
           }} />
         </div>

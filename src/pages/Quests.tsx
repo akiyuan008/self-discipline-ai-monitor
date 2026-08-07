@@ -113,8 +113,7 @@ export default function Quests({ onNavigate }: Props) {
       {/* 今日课程 */}
       {todayTasks.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted)' }}>
-          <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>📚</div>
-          <div style={{ fontSize: 14 }}>今日暂无课程</div>
+          <div style={{ fontSize: 14, opacity: 0.4 }}>今日暂无课程</div>
         </div>
       )}
       {todayTasks.map(task => {
@@ -131,7 +130,7 @@ export default function Quests({ onNavigate }: Props) {
                 <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
                   {timeStr} · {task.status === 'pending' ? '待开始' :
                     task.status === 'started' ? '进行中' :
-                    task.status === 'completed' ? '✓ 已完成' :
+                    task.status === 'completed' ? '已完成' :
                     task.status === 'overdue' ? '已逾期' : '缺课'}
                 </div>
               </div>
@@ -174,7 +173,7 @@ export default function Quests({ onNavigate }: Props) {
                     border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer'
                   }}
                 >
-                  📷 拍照打卡
+                  拍照打卡
                 </button>
               )}
             </div>

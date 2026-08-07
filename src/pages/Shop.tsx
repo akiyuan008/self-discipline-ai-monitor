@@ -92,8 +92,8 @@ export default function Shop({ onNavigate }: Props) {
                   name: newItem.name.trim(),
                   desc: newItem.desc.trim() || '自定义道具',
                   cost: Math.max(1, newItem.cost),
-                  iconBg: 'rgba(139, 92, 246, 0.1)',
-                  iconColor: '#8b5cf6',
+                  iconBg: 'var(--bg-alt)',
+                  iconColor: 'var(--fg)',
                   iconPath: 'M12 2L2 7L12 12L22 7L12 2M2 17L12 22L22 17M2 12L12 17L22 12',
                   effect: 'snack'
                 })

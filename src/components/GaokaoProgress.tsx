@@ -38,7 +38,7 @@ export default function GaokaoProgress({ variant = 'full' }: Props) {
       }}>
         <div style={{
           fontSize: 22, fontWeight: 700, lineHeight: 1,
-          color: isDanger ? 'var(--danger)' : isWarning ? '#F59E0B' : 'var(--success)'
+          color: isDanger ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--success)'
         }}>
           {days}
         </div>
@@ -54,7 +54,7 @@ export default function GaokaoProgress({ variant = 'full' }: Props) {
         <div style={{ width: 60, height: 4, background: 'var(--bg-alt)', borderRadius: 100, overflow: 'hidden' }}>
           <div style={{
             height: '100%', width: `${progress}%`,
-            background: isDanger ? 'var(--danger)' : isWarning ? '#F59E0B' : 'var(--success)',
+            background: isDanger ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--success)',
             borderRadius: 100, transition: 'width 0.6s ease'
           }} />
         </div>
@@ -72,10 +72,10 @@ export default function GaokaoProgress({ variant = 'full' }: Props) {
       <div style={{
         position: 'absolute', inset: 0,
         background: isDanger
-          ? 'linear-gradient(135deg, rgba(229,77,46,0.06) 0%, transparent 60%)'
+          ? 'rgba(229,77,46,0.04)'
           : isWarning
-            ? 'linear-gradient(135deg, rgba(245,158,11,0.06) 0%, transparent 60%)'
-            : 'linear-gradient(135deg, rgba(22,163,74,0.06) 0%, transparent 60%)',
+            ? 'rgba(245,158,11,0.04)'
+            : 'rgba(22,163,74,0.04)',
         pointerEvents: 'none'
       }} />
 
@@ -112,7 +112,7 @@ export default function GaokaoProgress({ variant = 'full' }: Props) {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
               <span style={{
                 fontSize: 24, fontWeight: 700,
-                color: isDanger ? 'var(--danger)' : isWarning ? '#F59E0B' : 'var(--success)'
+                color: isDanger ? 'var(--danger)' : isWarning ? 'var(--warning)' : 'var(--success)'
               }}>
                 {currentScore}
               </span>
@@ -130,10 +130,10 @@ export default function GaokaoProgress({ variant = 'full' }: Props) {
             <div style={{
               height: '100%', width: `${progress}%`,
               background: isDanger
-                ? 'linear-gradient(90deg, #E54D2E, #F59E0B)'
+                ? 'var(--danger)'
                 : isWarning
-                  ? 'linear-gradient(90deg, #F59E0B, #16A34A)'
-                  : 'linear-gradient(90deg, #16A34A, #3B82F6)',
+                  ? 'var(--warning)'
+                  : 'var(--success)',
               borderRadius: 100,
               transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
             }} />

@@ -35,7 +35,12 @@ export default function Profile({ onNavigate }: ProfileProps) {
       <div className="card" style={{ padding: 14, borderRadius: 16, marginBottom: 8, cursor: 'pointer' }}
         onClick={() => onNavigate?.('classHistory' as any)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,120,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</div>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--fg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          </svg>
+        </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>学习档案</div>
             <div style={{ fontSize: 11, color: 'var(--muted)' }}>课程记录、打卡审查、薄弱项分析</div>
@@ -64,13 +69,8 @@ export default function Profile({ onNavigate }: ProfileProps) {
       {/* ═══ 档案馆内容提上来：绝密档案头 ═══ */}
       <div className="card" style={{
         padding: 20, borderRadius: 16, marginBottom: 12,
-        position: 'relative', overflow: 'hidden'
+        position: 'relative'
       }}>
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(135deg, rgba(59,130,246,0.06) 0%, transparent 60%)',
-          pointerEvents: 'none'
-        }} />
         <div style={{ position: 'relative' }}>
           <div style={{
             display: 'flex', justifyContent: 'space-between',
@@ -223,8 +223,8 @@ export default function Profile({ onNavigate }: ProfileProps) {
               <div style={{
                 height: '100%', width: `${pct}%`,
                 background: isWeak
-                  ? 'linear-gradient(90deg, #E54D2E, #F59E0B)'
-                  : 'linear-gradient(90deg, #16A34A, #3B82F6)',
+                  ? 'var(--danger)'
+                  : 'var(--success)',
                 borderRadius: 100, transition: 'width 0.5s'
               }} />
             </div>
