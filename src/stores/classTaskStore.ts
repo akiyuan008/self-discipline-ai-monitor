@@ -92,6 +92,7 @@ interface ClassTaskState {
   taskHistory: ClassTaskHistory[]
   verifyHistory: VerifyRecord[]
   monitorHistory: MonitorHistory[]
+  abyssRecords: AbyssRecord[]
 
   // Actions
   generateTodayTasks: () => void
@@ -105,6 +106,7 @@ interface ClassTaskState {
   setNotification: (setting: Partial<NotificationSetting>) => void
   addVerifyRecord: (record: Omit<VerifyRecord, 'verifiedAt'>) => void
   addMonitorHistory: (record: MonitorHistory) => void
+  addAbyssRecord: (record: AbyssRecord) => void
   getTaskHistory: (date?: string) => ClassTaskHistory | undefined
   getVerifyHistory: (taskId?: string) => VerifyRecord[]
   getMonitorHistory: (date?: string) => MonitorHistory | undefined

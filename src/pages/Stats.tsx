@@ -39,9 +39,9 @@ export default function Stats({ onBack }: Props) {
   // 深渊战绩
   const abyssStats = useMemo(() => {
     const total = abyssRecords.length
-    const completed = abyssRecords.filter(r => r.completed).length
+    const completed = abyssRecords.filter((r: AbyssRecord) => r.completed).length
     const failed = total - completed
-    const totalDuration = abyssRecords.reduce((sum, r) => sum + r.duration, 0)
+    const totalDuration = abyssRecords.reduce((sum: number, r: AbyssRecord) => sum + r.duration, 0)
     return { total, completed, failed, totalDuration }
   }, [abyssRecords])
 
@@ -64,7 +64,7 @@ export default function Stats({ onBack }: Props) {
     return data
   }, [taskHistory])
 
-  const heatmapMax = Math.max(1, ...Object.values(heatmapData))
+  const heatmapMax = Math.max(1, ...Object.values(heatmapData).filter((v): v is number => typeof v === 'number'))
 
   function getHeatColor(value: number) {
     if (value === 0) return 'rgba(255,255,255,0.03)'
