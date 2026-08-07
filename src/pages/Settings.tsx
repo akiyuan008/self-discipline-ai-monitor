@@ -14,10 +14,6 @@ export default function Settings({ onBack }: Props) {
   const ai = useStore(s => s.ai)
   const setAI = useStore(s => s.setAI)
   const playerTag = useStore(s => s.playerTag)
-  const dailyGoalMin = useStore(s => s.dailyGoalMin)
-  const dungeonDurationMin = useStore(s => s.dungeonDurationMin)
-  const setDailyGoal = useStore(s => s.setDailyGoal)
-  const setDungeonDuration = useStore(s => s.setDungeonDuration)
   const reset = useStore(s => s.reset)
   const storedSystemPrompt = useStore(s => s.systemPrompt)
   const modelList = useStore(s => s.modelList)
@@ -190,52 +186,6 @@ export default function Settings({ onBack }: Props) {
               aria-checked={isDark}
             />
           </Row>
-        </Section>
-
-        {/* 番茄钟 + 学习目标 */}
-        <Section title="玩法参数">
-          <div className="card" style={{ padding: 16, borderRadius: 12 }}>
-            <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginBottom: 8 }}>
-              DAILY_GOAL_MIN
-            </div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
-              {[60, 120, 180, 240, 360].map(m => (
-                <button
-                  key={m}
-                  onClick={() => { setDailyGoal(m); showToast(`目标设为 ${m} 分钟`) }}
-                  style={{
-                    flex: 1, padding: '8px',
-                    background: dailyGoalMin === m ? 'var(--fg)' : 'var(--bg-alt)',
-                    color: dailyGoalMin === m ? 'var(--bg)' : 'var(--muted)',
-                    border: 'none', borderRadius: 8,
-                    fontSize: 12, fontWeight: 600, cursor: 'pointer'
-                  }}
-                >
-                  {m}m
-                </button>
-              ))}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginBottom: 8 }}>
-              DUNGEON_DURATION_MIN
-            </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[5, 15, 25, 50].map(m => (
-                <button
-                  key={m}
-                  onClick={() => { setDungeonDuration(m); showToast(`番茄钟设为 ${m} 分钟`) }}
-                  style={{
-                    flex: 1, padding: '8px',
-                    background: dungeonDurationMin === m ? 'var(--fg)' : 'var(--bg-alt)',
-                    color: dungeonDurationMin === m ? 'var(--bg)' : 'var(--muted)',
-                    border: 'none', borderRadius: 8,
-                    fontSize: 12, fontWeight: 600, cursor: 'pointer'
-                  }}
-                >
-                  {m}m
-                </button>
-              ))}
-            </div>
-          </div>
         </Section>
 
         {/* 高考目标配置 */}
@@ -580,20 +530,33 @@ export default function Settings({ onBack }: Props) {
           </div>
         </Section>
 
-        {/* 玩家信息 */}
+        {/* 账户与版本 */}
         <Section title="账户">
           <div className="card" style={{
             padding: 16, borderRadius: 12,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
           }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>{playerTag}</div>
-              <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-                本地账户 · 数据存于设备
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              marginBottom: 12, paddingBottom: 12,
+              borderBottom: '1px solid var(--border)'
+            }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{playerTag}</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+                  本地账户 · 数据存于设备
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--success)', fontFamily: 'DM Mono, monospace' }}>
+                ACTIVE
               </div>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--success)', fontFamily: 'DM Mono, monospace' }}>
-              ACTIVE
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>Cyber Survival</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+                v2.5.0 · LOCAL · OFFLINE
+              </div>
             </div>
           </div>
         </Section>
@@ -684,31 +647,6 @@ export default function Settings({ onBack }: Props) {
           </div>
         </Section>
 
-        {/* 关于 */}
-        <Section title="关于">
-          <div className="card" style={{
-            padding: 16, borderRadius: 12,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-          }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>Cyber Survival</div>
-              <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-                v2.5.0 · React + Capacitor
-              </div>
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-              LOCAL · OFFLINE
-            </div>
-          </div>
-        </Section>
-
-        <div style={{
-          textAlign: 'center', padding: '24px 0',
-          fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace'
-        }}>
-          CYBER SURVIVAL · v2.5.0<br />
-          React + Capacitor
-        </div>
       </div>
     </div>
   )

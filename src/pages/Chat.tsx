@@ -7,15 +7,18 @@ import { hasUsageAccess, openUsageAccessSettings } from '@/lib/usageStats'
 
 interface Props {
   onNavigateSettings?: () => void
+  onBack?: () => void
 }
 
 interface StatusBarProps {
   onClearChat?: () => void
   onToggleHistory?: () => void
   showHistory: boolean
+  onBack?: () => void
+  onNavigateSettings?: () => void
 }
 
-const StatusBar = memo(function StatusBar({ onClearChat, onToggleHistory, showHistory }: StatusBarProps) {
+const StatusBar = memo(function StatusBar({ onClearChat, onToggleHistory, showHistory, onBack, onNavigateSettings }: StatusBarProps) {
   const ai = useStore(s => s.ai)
   const hp = useStore(s => s.hp)
   const points = useStore(s => s.points)
@@ -23,44 +26,70 @@ const StatusBar = memo(function StatusBar({ onClearChat, onToggleHistory, showHi
 
   return (
     <div style={{
-      padding: '10px 14px',
-      borderBottom: '1px solid var(--border)',
-      background: 'var(--card-bg)',
+      padding: '16px 20px 12px',
       display: 'flex',
-      alignItems: 'center',
-      gap: 8,
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
       flexShrink: 0
     }}>
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{
-          width: 8, height: 8, borderRadius: '50%',
-          background: ai.apiKey ? 'var(--success)' : 'var(--muted)',
-          flexShrink: 0
-        }} className={ai.apiKey ? 'pulse-ring' : ''} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {onBack && (
+          <button
+            onClick={onBack}
+            style={{
+              width: 36, height: 36, borderRadius: '50%',
+              background: 'var(--card-bg)', border: '1px solid var(--border)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: 'var(--fg)'
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+        )}
         <div>
-          <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+          <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: ai.apiKey ? 'var(--success)' : 'var(--muted)',
+              display: 'inline-block'
+            }} />
             AI_WARDEN · {ai.apiKey ? 'ONLINE' : 'OFFLINE'}
           </div>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>监管者</div>
+          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5, margin: 0 }}>监管者</h1>
+          <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
+            HP {hp} · {points} PTS
+          </div>
         </div>
       </div>
-
-      <div style={{ display: 'flex', gap: 4, fontSize: 10, fontFamily: 'DM Mono, monospace', color: 'var(--muted)' }}>
-        <span style={{ padding: '3px 8px', borderRadius: 100, background: hp < 30 ? 'rgba(229,77,46,0.1)' : 'var(--bg-alt)', color: hp < 30 ? 'var(--danger)' : 'var(--muted)' }}>HP {hp}</span>
-        <span style={{ padding: '3px 8px', borderRadius: 100, background: 'var(--bg-alt)' }}>{points} PTS</span>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button onClick={() => onToggleHistory?.()} style={{
+          padding: '6px 10px', borderRadius: 100, background: showHistory ? 'var(--fg)' : 'var(--bg-alt)',
+          border: '1px solid var(--border)',
+          fontSize: 11, color: showHistory ? 'var(--bg)' : 'var(--muted)', cursor: 'pointer'
+        }}>历史</button>
+        {messages.length > 0 && (
+          <button onClick={() => onClearChat?.()} style={{
+            padding: '6px 10px', borderRadius: 100, background: 'var(--bg-alt)',
+            border: '1px solid var(--border)',
+            fontSize: 11, color: 'var(--muted)', cursor: 'pointer'
+          }}>清空</button>
+        )}
+        {onNavigateSettings && (
+          <button onClick={() => onNavigateSettings()} style={{
+            width: 32, height: 32, borderRadius: '50%',
+            background: 'var(--card-bg)', border: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', color: 'var(--fg)'
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+        )}
       </div>
-
-      <button onClick={() => onToggleHistory?.()} style={{
-        padding: '6px 10px', borderRadius: 100, background: showHistory ? 'var(--fg)' : 'var(--bg-alt)',
-        border: 'none', fontSize: 11, color: showHistory ? 'var(--bg)' : 'var(--muted)', cursor: 'pointer'
-      }}>历史</button>
-
-      {messages.length > 0 && (
-        <button onClick={() => onClearChat?.()} style={{
-          padding: '6px 10px', borderRadius: 100, background: 'var(--bg-alt)',
-          border: 'none', fontSize: 11, color: 'var(--muted)', cursor: 'pointer'
-        }}>清空</button>
-      )}
     </div>
   )
 })
@@ -249,7 +278,7 @@ function InputBar({ sending, onSend }: InputBarProps) {
   )
 }
 
-export default function Chat({ onNavigateSettings }: Props) {
+export default function Chat({ onNavigateSettings, onBack }: Props) {
   const messages = useStore(s => s.chat)
   const pushChat = useStore(s => s.pushChat)
   const clearChat = useStore(s => s.clearChat)
@@ -352,6 +381,8 @@ export default function Chat({ onNavigateSettings }: Props) {
         onClearChat={handleClearChat}
         onToggleHistory={() => setShowHistory(!showHistory)}
         showHistory={showHistory}
+        onBack={onBack}
+        onNavigateSettings={onNavigateSettings}
       />
 
       {showHistory && <ChatHistory onClose={() => setShowHistory(false)} />}
@@ -390,7 +421,7 @@ export default function Chat({ onNavigateSettings }: Props) {
             display: 'flex', alignItems: 'center', gap: 10
           }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#E54D2E' }}>缺少使用情况访问权限</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)' }}>缺少使用情况访问权限</div>
               <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>监管者需要此权限查阅你的真实学习/娱乐时长</div>
             </div>
             <button onClick={async () => {
@@ -406,8 +437,8 @@ export default function Chat({ onNavigateSettings }: Props) {
                 }, 2000)
               } catch (err: any) { showToast(err?.message || '无法打开设置') }
             }} style={{
-              padding: '6px 12px', borderRadius: 100, background: '#E54D2E',
-              color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer'
+              padding: '6px 12px', borderRadius: 100, background: 'var(--danger)',
+              color: 'var(--bg)', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer'
             }}>去授权</button>
           </div>
         )}

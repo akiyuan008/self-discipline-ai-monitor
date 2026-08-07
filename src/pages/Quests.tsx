@@ -132,7 +132,7 @@ export default function Quests({ onNavigate }: Props) {
           background: tab === 'tasks' ? 'var(--fg)' : 'transparent',
           color: tab === 'tasks' ? 'var(--bg)' : 'var(--muted)',
           border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer'
-        }}>日常任务</button>
+        }}>任务</button>
         <button onClick={() => setTab('classes')} style={{
           flex: 1, padding: '8px', borderRadius: 100,
           background: tab === 'classes' ? 'var(--fg)' : 'transparent',

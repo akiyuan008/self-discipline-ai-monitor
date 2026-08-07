@@ -53,6 +53,13 @@ export default function App() {
   const page = useStore(s => s.onboarded ? 'home' : 'onboarding')
   const [currentPage, setCurrentPage] = useState<PageId>(page)
   const onboarded = useStore(s => s.onboarded)
+  const isDark = useStore(s => s.isDark)
+
+  // 深色模式：同步到 DOM
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark)
+    document.body.style.backgroundColor = isDark ? '#000000' : ''
+  }, [isDark])
 
   useEffect(() => {
     if (onboarded && currentPage === 'onboarding') setCurrentPage('home')
@@ -72,7 +79,7 @@ export default function App() {
       {currentPage === 'quests' && <Quests onNavigate={navigate} />}
       {currentPage === 'shop' && <Shop onNavigate={navigate} />}
       {currentPage === 'profile' && <Profile onNavigate={navigate} />}
-      {currentPage === 'chat' && <Chat onNavigateSettings={() => navigate('settings')} />}
+      {currentPage === 'chat' && <Chat onNavigateSettings={() => navigate('settings')} onBack={goHome} />}
       {currentPage === 'achievements' && <Achievements onBack={goHome} />}
       {currentPage === 'settings' && <Settings onBack={goHome} />}
       {currentPage === 'pointsDetail' && <PointsDetail onBack={goHome} />}
