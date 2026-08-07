@@ -5,8 +5,10 @@
     <item name="colorPrimaryDark">#1E47DB</item>
     <item name="colorAccent">#2454FF</item>
     <item name="android:windowBackground">#F6F7F9</item>
-    <item name="android:statusBarColor">#2454FF</item>
-    <item name="android:windowLightStatusBar">false</item>
+    <item name="android:statusBarColor">@android:color/transparent</item>
+    <item name="android:navigationBarColor">@android:color/transparent</item>
+    <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    <item name="android:windowLightStatusBar">true</item>
   </style>
 
   <style name="LockScreenTheme" parent="Theme.AppCompat.NoActionBar">

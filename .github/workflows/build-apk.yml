@@ -66,12 +66,16 @@ jobs:
           echo "=== res/values ==="
           ls -la "$RES_DIR"
 
-      - name: 🔧 Ensure AppCompat dependency in build.gradle
+      - name: 🔧 Ensure dependencies in build.gradle
         run: |
           GRADLE_FILE=android/app/build.gradle
           if ! grep -q "androidx.appcompat:appcompat" "$GRADLE_FILE"; then
             sed -i '/dependencies {/a \    implementation "androidx.appcompat:appcompat:1.6.1"' "$GRADLE_FILE"
             echo "Added AppCompat dependency"
+          fi
+          if ! grep -q "androidx.core:core-ktx" "$GRADLE_FILE"; then
+            sed -i '/dependencies {/a \    implementation "androidx.core:core-ktx:1.13.1"' "$GRADLE_FILE"
+            echo "Added core-ktx dependency"
           fi
           echo "=== build.gradle dependencies ==="
           grep -A 30 "dependencies {" "$GRADLE_FILE" | head -35

@@ -2,11 +2,15 @@ package cn.selfdiscipline.app
 
 import android.os.Bundle
 import android.webkit.WebView
+import androidx.core.view.WindowCompat
 import cn.selfdiscipline.app.plugin.LockScreenActivity
 import com.getcapacitor.BridgeActivity
 
 class MainActivity : BridgeActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
+    // 全面屏 edge-to-edge：内容延伸到状态栏和导航栏下方
+    WindowCompat.setDecorFitsSystemWindows(window, false)
+
     registerPlugin(cn.selfdiscipline.app.plugin.SelfDisciplinePlugin::class.java)
     super.onCreate(savedInstanceState)
 
