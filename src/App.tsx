@@ -97,7 +97,7 @@ export default function App() {
       {currentPage === 'quests' && <Quests onNavigate={navigate} />}
       {currentPage === 'shop' && <Shop onNavigate={navigate} />}
       {currentPage === 'profile' && <Profile onNavigate={navigate} />}
-      {currentPage === 'chat' {currentPage === 'chat' && <Chat onNavigateSettings={() => navigate('settings')} onBack={goHome} />}{currentPage === 'chat' && <Chat onNavigateSettings={() => navigate('settings')} onBack={goHome} />} <Chat onNavigateSettings={() => navigate('settings')} />}
+      {currentPage === 'chat' && <Chat onNavigateSettings={() => navigate('settings')} />}
       {currentPage === 'achievements' && <Achievements onBack={goHome} />}
       {currentPage === 'settings' && <Settings onBack={goHome} />}
       {currentPage === 'pointsDetail' && <PointsDetail onBack={goHome} />}
