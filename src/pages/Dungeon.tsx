@@ -32,7 +32,7 @@ export default function Dungeon({ onExit }: Props) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeRef = useRef<number>(0)
 
-  const isWandering = true
+  const isWandering = theme === 'wandering'
 
   const circumference = 2 * Math.PI * 100
   const progress = mode === 'free'

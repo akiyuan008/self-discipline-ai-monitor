@@ -6,7 +6,20 @@
 
 @layer base {
   :root {
-    /* 流浪地球主题 - 默认全局 */
+    --bg: #ffffff;
+    --bg-alt: #f5f5f7;
+    --fg: #1a1a2e;
+    --muted: #8a8a8a;
+    --card-bg: #ffffff;
+    --border: #e5e5e5;
+    --danger: #E54D2E;
+    --success: #16A34A;
+    --warning: #f59e0b;
+    --info: #3B82F6;
+    --accent: #667eea;
+    --accent-dim: rgba(102, 126, 234, 0.1);
+  }
+  [data-theme="wandering"] {
     --bg: #0b0c10;
     --bg-alt: #0d1b2a;
     --fg: #e8ecf1;
@@ -25,7 +38,7 @@
     margin: 0;
   }
   body {
-    font-family: 'Share Tech Mono', 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', monospace;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
     background: var(--bg);
     color: var(--fg);
     -webkit-font-smoothing: antialiased;
@@ -471,4 +484,8 @@ h1, h2, h3 {
   background-size: 40px 40px;
   z-index: 0;
   pointer-events: none;
+}
+
+[data-theme="wandering"] body {
+  font-family: 'Share Tech Mono', 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', monospace;
 }

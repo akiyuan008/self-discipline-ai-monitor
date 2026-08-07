@@ -1,7 +1,7 @@
 {
-  "version": "1.1.1",
-  "versionCode": 3,
-  "changelog": "修复App.tsx语法错误，升级Dungeon行星发动机控制台，新增背景网格/扫描线/涡轮环效果",
+  "version": "2.0.0",
+  "versionCode": 10,
+  "changelog": "v2.0 正式发布：新增行星发动机主题皮肤（800积分解锁），任务中心UI重构，禁用自动更新弹窗",
   "downloadUrl": "https://github.com/akiyuan008/self-discipline-ai-monitor/releases/latest/download/app-release.apk",
   "force": false
 }

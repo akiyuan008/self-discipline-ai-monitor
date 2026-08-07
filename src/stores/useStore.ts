@@ -195,8 +195,8 @@ export const useStore = create<StoreState>()(
       exp: 0,
       totalExp: 0,
       level: 1,
-      theme: 'wandering',
-      unlockedThemes: ['default', 'wandering'],
+      theme: 'default',
+      unlockedThemes: ['default'],
 
       addPoints: (n) => set(s => ({ points: s.points + n })),
       addXp: (n) => set(s => ({ xp: s.xp + Math.max(0, Math.round(n)) })),
@@ -364,8 +364,8 @@ export const useStore = create<StoreState>()(
           exp: 0,
           totalExp: 0,
           level: 1,
-          theme: 'wandering',
-          unlockedThemes: ['default', 'wandering']
+          theme: 'default',
+          unlockedThemes: ['default']
         }),
       setDungeon: (sec, active) => set({ dungeonRemainingSec: sec, dungeonActive: active }),
       setDungeonDuration: (min) => set({ dungeonDurationMin: min }),
