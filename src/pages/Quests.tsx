@@ -227,15 +227,31 @@ export default function Quests({ onNavigate }: Props) {
             {/* 操作按钮 */}
             <div style={{ display: 'flex', gap: 6, position: 'relative', zIndex: 1 }}>
               {(status.status === 'pending' || status.status === 'ongoing') && task.status !== 'started' && task.status !== 'completed' && (
-                <button onClick={() => enterAbyss(task)} style={{
-                  flex: 1, padding: '8px', background: 'rgba(255,69,0,0.1)',
-                  border: '1px solid #ff4500', color: '#ff4500',
-                  fontFamily: 'Teko, sans-serif', fontSize: 13, letterSpacing: 1,
-                  cursor: 'pointer', textTransform: 'uppercase',
-                  clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
-                }}>
-                  ENTER ABYSS
-                </button>
+                <>
+                  {status.status === 'pending' && (
+                    <button onClick={() => {
+                      // 立即准备：设置提醒并显示准备中
+                      showToast(`${task.subject} 准备模式已启动`)
+                    }} style={{
+                      flex: 1, padding: '8px', background: 'rgba(69,162,158,0.1)',
+                      border: '1px solid #45a29e', color: '#45a29e',
+                      fontFamily: 'Share Tech Mono, monospace', fontSize: 11,
+                      cursor: 'pointer', letterSpacing: 1,
+                      clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
+                    }}>
+                      PREPARE
+                    </button>
+                  )}
+                  <button onClick={() => enterAbyss(task)} style={{
+                    flex: 1, padding: '8px', background: 'rgba(255,69,0,0.1)',
+                    border: '1px solid #ff4500', color: '#ff4500',
+                    fontFamily: 'Teko, sans-serif', fontSize: 13, letterSpacing: 1,
+                    cursor: 'pointer', textTransform: 'uppercase',
+                    clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
+                  }}>
+                    ENTER ABYSS
+                  </button>
+                </>
               )}
               {task.status === 'started' && (
                 <>

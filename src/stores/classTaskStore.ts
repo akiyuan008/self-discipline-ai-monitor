@@ -49,6 +49,15 @@ export interface MonitorHistory {
   checkTime: number
 }
 
+export interface AbyssRecord {
+  date: string
+  subject: string
+  duration: number
+  completed: boolean
+  quitReason?: string
+  timestamp: number
+}
+
 export interface PointsChange {
   amount: number
   reason: string

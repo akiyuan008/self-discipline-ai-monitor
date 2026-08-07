@@ -14,6 +14,7 @@ import Settings from '@/pages/Settings'
 import PointsDetail from '@/pages/PointsDetail'
 import ClassHistory from '@/pages/ClassHistory'
 import DiagLogs from '@/pages/DiagLogs'
+import Stats from '@/pages/Stats'
 import Dock from '@/components/Dock'
 import { checkUpdate } from '@/lib/update'
 import { ThemeProvider } from '@/components/ThemeToggle'
@@ -115,13 +116,14 @@ export default function App() {
       {currentPage === 'dungeon' && <Dungeon onExit={goHome} />}
       {currentPage === 'quests' && <Quests onNavigate={navigate} />}
       {currentPage === 'shop' && <Shop onNavigate={navigate} />}
-      {currentPage === 'profile' && <Profile onNavigate={navigate} />}
+      {currentPage === 'profile' && <Profile onNavigate={navigate} onNavigateStats={() => navigate('stats')} />}
       {currentPage === 'chat' && <Chat onNavigateSettings={() => navigate('settings')} />}
       {currentPage === 'achievements' && <Achievements onBack={goBack} />}
       {currentPage === 'settings' && <Settings onBack={goBack} onNavigateDiagLogs={() => navigate('diagLogs')} />}
       {currentPage === 'pointsDetail' && <PointsDetail onBack={goBack} />}
       {currentPage === 'classHistory' && <ClassHistory onBack={goBack} />}
       {currentPage === 'diagLogs' && <DiagLogs onBack={goBack} />}
+        {currentPage === 'stats' && <Stats onBack={goBack} />}
       {onboarded && currentPage !== 'onboarding' && currentPage !== 'dungeon' && currentPage !== 'classHistory' && (
         <Dock current={currentPage} onChange={navigate} />
       )}

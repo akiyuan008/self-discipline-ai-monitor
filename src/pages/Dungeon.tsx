@@ -1,6 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
+import { useClassTaskStore } from '@/stores/classTaskStore'
+import { getPeriodTime } from '@/data/schedule'
+
+const ABYSS_QUOTES = [
+  '正在深渊中，请勿挣扎',
+  '专注即力量，分心即毁灭',
+  '引擎全功率运转中',
+  '放弃幻想，准备战斗',
+  '每一秒专注都在推动地球',
+  '系统锁定，禁止中断',
+  '你的未来正在此刻构建',
+]
 
 interface Props {
   onExit: () => void
@@ -28,9 +40,15 @@ export default function Dungeon({ onExit }: Props) {
   const [showSettings, setShowSettings] = useState(false)
   const [setMin, setSetMin] = useState(dungeonDurationMin)
   const [flash, setFlash] = useState(false)
+  const [quote] = useState(() => ABYSS_QUOTES[Math.floor(Math.random() * ABYSS_QUOTES.length)])
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false)
+  const [quitPenalty, setQuitPenalty] = useState('')
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeRef = useRef<number>(0)
+
+  const currentTask = useClassTaskStore(s => s.currentTask)
+  const addAbyssRecord = useClassTaskStore(s => s.addAbyssRecord)
 
   const isWandering = theme === 'wandering'
 
@@ -201,13 +219,12 @@ export default function Dungeon({ onExit }: Props) {
 
       {/* 返回按钮 */}
       <button onClick={() => {
-        if (isRunning && timerRef.current) {
-          clearInterval(timerRef.current)
-          const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000)
-          if (elapsed > 0) {
-            addFocusMs(elapsed * 1000)
-            addExp(elapsed, '专注学习')
-          }
+        if (isRunning) {
+          // 深渊模式退出惩罚确认
+          const penalties = ['背诵一段课文', '做10个深蹲', '抄写10个单词', '闭眼冥想1分钟']
+          setQuitPenalty(penalties[Math.floor(Math.random() * penalties.length)])
+          setShowQuitConfirm(true)
+          return
         }
         onExit()
       }} style={{
@@ -343,6 +360,25 @@ export default function Dungeon({ onExit }: Props) {
             fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'inherit'
           }}>
             {isRunning ? (isWandering ? 'IGNITION' : '专注中') : (isWandering ? 'STANDBY' : '待机')}
+          </div>
+
+          {/* 课程名称 & 励志语录 */}
+          {currentTask && (
+            <div style={{
+              position: 'absolute', top: 10,
+              fontSize: 11, fontFamily: 'Teko, sans-serif',
+              letterSpacing: 2, color: '#45a29e',
+              textTransform: 'uppercase'
+            }}>
+              {currentTask.subject}
+            </div>
+          )}
+          <div style={{
+            position: 'absolute', top: -30, width: '100%', textAlign: 'center',
+            fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace',
+            letterSpacing: 1, opacity: 0.7
+          }}>
+            {quote}
           </div>
         </div>
 
