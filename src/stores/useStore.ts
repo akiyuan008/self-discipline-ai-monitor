@@ -418,7 +418,6 @@ export const useStore = create<StoreState>()(
             ? s.unlockedThemes
             : [...s.unlockedThemes, themeId]
         })),
-      }
     }),
     {
       name: 'cyber-survival-store',
