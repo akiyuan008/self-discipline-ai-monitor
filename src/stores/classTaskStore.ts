@@ -126,6 +126,7 @@ export const useClassTaskStore = create<ClassTaskState>()(
       taskHistory: [],
       verifyHistory: [],
       monitorHistory: [],
+      abyssRecords: [],
 
       generateTodayTasks: () => {
         const today = new Date()

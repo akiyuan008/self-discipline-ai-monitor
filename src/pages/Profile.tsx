@@ -3,7 +3,8 @@ import { useStore, daysUntilGaokao } from '@/stores/useStore'
 import { useGaoKaoStore } from '@/stores/gaoKaoStore'
 
 interface ProfileProps {
-  onNavigate?: (page: 'achievements' | 'settings' | 'chat') => void
+  onNavigate?: (page: any) => void
+  onNavigateStats?: () => void
 }
 
 function ExpPanel() {
@@ -73,7 +74,7 @@ function ExpPanel() {
   )
 }
 
-export default function Profile({ onNavigate }: ProfileProps) {
+export default function Profile({ onNavigate, onNavigateStats }: ProfileProps) {
   const playerTag = useStore(s => s.playerTag)
   const streak = useStore(s => s.streak)
   const points = useStore(s => s.points)

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useStore } from '@/stores/useStore'
 import { useClassTaskStore } from '@/stores/classTaskStore'
+import type { AbyssRecord } from '@/stores/classTaskStore'
 
 interface Props {
   onBack: () => void
@@ -64,7 +65,8 @@ export default function Stats({ onBack }: Props) {
     return data
   }, [taskHistory])
 
-  const heatmapMax = Math.max(1, ...Object.values(heatmapData).filter((v): v is number => typeof v === 'number'))
+  const heatmapValues = Object.values(heatmapData).filter((v): v is number => typeof v === 'number')
+  const heatmapMax = Math.max(1, ...heatmapValues)
 
   function getHeatColor(value: number) {
     if (value === 0) return 'rgba(255,255,255,0.03)'
@@ -341,7 +343,7 @@ export default function Stats({ onBack }: Props) {
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {[
-              { id: 'physics', name: '物理达人', desc: '物理专注满10小时', check: () => subjectStats.find(([s]) => s === '物理')?.[1] >= 10 },
+              { id: 'physics', name: '物理达人', desc: '物理专注满10小时', check: () => (subjectStats.find(([s]) => s === '物理')?.[1] ?? 0) >= 10 },
               { id: 'early', name: '早起鸟', desc: '连续一周完成早八课程', check: () => streak >= 7 },
               { id: 'abyss30', name: '深渊行者', desc: '连续30天无失败记录', check: () => streak >= 30 },
               { id: 'focus100', name: '百小时专注', desc: '累计专注100小时', check: () => totalFocusMs >= 360000000 },
