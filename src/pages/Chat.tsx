@@ -79,6 +79,28 @@ const StatusBar = memo(function StatusBar({ onClearChat, onToggleHistory, showHi
 
 const Bubble = memo(function Bubble({ role, text }: { role: string; text: string }) {
   const isUser = role === 'user'
+  const isSystem = role === 'system'
+
+  // system 消息：居中灰色小卡片，区别于 AI 回复
+  if (isSystem) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
+        <div className="bubble-in" style={{
+          maxWidth: '90%',
+          padding: '6px 12px',
+          borderRadius: 100,
+          background: 'var(--bg-alt)',
+          color: 'var(--muted)',
+          fontSize: 11,
+          lineHeight: 1.4,
+          textAlign: 'center',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word'
+        }}>{text}</div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', marginBottom: 10 }}>
       <div className="bubble-in" style={{

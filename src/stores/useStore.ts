@@ -15,6 +15,7 @@ export type PageId =
   | 'settings'
   | 'pointsDetail'
   | 'classHistory'
+  | 'diagLogs'
   | 'onboarding'
 
 export interface PointRecord {
@@ -220,12 +221,13 @@ export const useStore = create<StoreState>()(
         const reward = q.reward || 0
         set(s => ({
           quests: s.quests.map(qx => qx.id === id ? { ...qx, progress: qx.total, completed: true } : qx),
-          points: s.points + reward
+          points: s.points + reward,
+          xp: s.xp + 20
         }))
         if (reward > 0) get().addPointRecord('earn', reward, `完成任务：${q.title}`)
       },
       buyItem: (id) => {
-        const item = SHOP_ITEMS.find(i => i.id === id)
+        const item = [...SHOP_ITEMS, ...get().customShopItems].find(i => i.id === id)
         if (!item) return false
         const currentCount = get().ownedItems[id] || 0
         if (item.limit !== undefined && currentCount >= item.limit) return false
@@ -248,7 +250,7 @@ export const useStore = create<StoreState>()(
             ax.id === id ? { ...ax, unlocked: true, progress: ax.total } : ax
           )
         }))
-        set(s => ({ points: s.points + 200 }))
+        set(s => ({ points: s.points + 200, xp: s.xp + 200 }))
         get().addPointRecord('earn', 200, `解锁成就：${a.name}`)
       },
       updateAchievementProgress: (id, progress) => {
@@ -313,7 +315,8 @@ export const useStore = create<StoreState>()(
           onboarded: false,
           playerTag: 'PLAYER_01',
           dailyGoalMin: 120,
-              points: 0,
+          points: 0,
+          xp: 0,
           streak: 0,
           totalFocusMs: 0,
           todayStudyMs: 0,
@@ -326,13 +329,16 @@ export const useStore = create<StoreState>()(
           quests: [],
           achievements: [],
           ownedItems: {},
+          customShopItems: [],
           pointHistory: [],
           isDark: false,
           ai: { ...PRESET_AI_CONFIG },
+          ai2: { ...PRESET_AI_CONFIG },
+          aiMode: 'single',
           chat: [],
           systemPrompt: DEFAULT_SYSTEM_PROMPT,
           modelList: [...PRESET_MODEL_LIST],
-                      dungeonRemainingSec: 0,
+          dungeonRemainingSec: 0,
           dungeonActive: false,
           dungeonDurationMin: 25,
           lastPointsChange: null
@@ -364,7 +370,7 @@ export const useStore = create<StoreState>()(
         if (s.lastSyncDay === today) return
         const dailyGoalMs = s.dailyGoalMin * 60_000
         if (s.todayStudyMs >= dailyGoalMs) {
-          set({ streak: s.streak + 1, lastSyncDay: today })
+          set(s2 => ({ streak: s2.streak + 1, lastSyncDay: today, xp: s2.xp + 100 }))
         } else {
           set({ streak: 0, lastSyncDay: today })
         }

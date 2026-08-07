@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore, type PageId } from '@/stores/useStore'
 import { SHOP_ITEMS, type ShopItem } from '@/data/shop'
 import { showToast } from '@/components/Toast'
+import { logger } from '@/lib/logger'
 
 interface Props {
   onNavigate?: (p: PageId) => void
@@ -98,6 +99,7 @@ export default function Shop({ onNavigate }: Props) {
                 })
                 setNewItem({ name: '', desc: '', cost: 100 })
                 setShowAddForm(false)
+                logger.info('shop', `添加自定义道具：${newItem.name.trim()}`, { cost: Math.max(1, newItem.cost) })
                 showToast('道具已添加')
               }}
               style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--fg)', color: 'var(--bg)', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
@@ -198,9 +200,11 @@ export default function Shop({ onNavigate }: Props) {
                 disabled={!canBuy || !enough || editMode}
                 onClick={() => {
                   if (buy(item.id)) {
+                    logger.info('shop', `购买道具：${item.name}`, { cost: item.cost, id: item.id })
                     showToast(`购买成功：${item.name}${ownedCount > 0 ? ` (×${ownedCount + 1})` : ''}`)
                   } else {
-                    showToast('积分不足')
+                    logger.warn('shop', `购买失败：${item.name}`, { cost: item.cost, points })
+                    showToast('积分不足或已达购买上限')
                   }
                 }}
                 style={{

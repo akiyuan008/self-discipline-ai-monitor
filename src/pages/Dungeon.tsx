@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
+import { logger } from '@/lib/logger'
 
 interface Props {
   onExit: () => void
@@ -17,11 +18,14 @@ export default function Dungeon({ onExit }: Props) {
   const totalSec = dungeonDurationMin * 60
   const [remaining, setRemaining] = useState(totalSec)
   const [paused, setPaused] = useState(false)
+  const pausedRef = useRef(false)
   const timerRef = useRef<number | undefined>(undefined)
+  const completedRef = useRef(false)
   const handlersRef = useRef({
     onExit,
     addPoints,
     addFocusMs,
+    addXp: useStore.getState().addXp,
     completeQuest,
     unlockAchievement,
     setDungeon
@@ -29,12 +33,13 @@ export default function Dungeon({ onExit }: Props) {
 
   // keep latest handlers in a ref to avoid re-creating interval when store selectors change
   useEffect(() => {
-    handlersRef.current = { onExit, addPoints, addFocusMs, completeQuest, unlockAchievement, setDungeon }
+    handlersRef.current = { onExit, addPoints, addFocusMs, addXp: useStore.getState().addXp, completeQuest, unlockAchievement, setDungeon }
   }, [onExit, addPoints, addFocusMs, completeQuest, unlockAchievement, setDungeon])
 
   useEffect(() => {
     // reset remaining when duration changes
     setRemaining(totalSec)
+    completedRef.current = false
 
     // initialize dungeon state
     handlersRef.current.setDungeon(totalSec, true)
@@ -43,17 +48,21 @@ export default function Dungeon({ onExit }: Props) {
     if (timerRef.current) window.clearInterval(timerRef.current)
 
     const tick = () => {
-      if (paused) return
+      // 用 ref 判断暂停，不重建 interval
+      if (pausedRef.current) return
       setRemaining(prev => {
         const next = Math.max(0, prev - 1)
         handlersRef.current.setDungeon(next, true)
-        if (next <= 0) {
+        if (next <= 0 && !completedRef.current) {
+          completedRef.current = true
           window.clearInterval(timerRef.current)
           const reward = 100 + dungeonDurationMin * 20
           handlersRef.current.addPoints(reward)
           handlersRef.current.addFocusMs(dungeonDurationMin * 60_000)
+          handlersRef.current.addXp(30 + dungeonDurationMin)
           handlersRef.current.completeQuest('q3')
           handlersRef.current.unlockAchievement('a1')
+          logger.info('dungeon', `深渊挑战完成 ${dungeonDurationMin} 分钟`, { reward, xp: 30 + dungeonDurationMin })
           showToast(`胜利 +${reward} 积分`)
           setTimeout(() => handlersRef.current.onExit(), 800)
         }
@@ -63,7 +72,7 @@ export default function Dungeon({ onExit }: Props) {
 
     timerRef.current = window.setInterval(tick, 1000)
     return () => window.clearInterval(timerRef.current)
-  }, [paused, dungeonDurationMin])
+  }, [dungeonDurationMin])
 
   const mins = Math.floor(remaining / 60)
   const secs = remaining % 60
@@ -107,7 +116,13 @@ export default function Dungeon({ onExit }: Props) {
       {/* 控制按钮 */}
       <div style={{ display: 'flex', gap: 12, position: 'absolute', bottom: 'max(40px, env(safe-area-inset-bottom))' }}>
         <button
-          onClick={() => setPaused(p => !p)}
+          onClick={() => {
+            setPaused(p => {
+              pausedRef.current = !p
+              logger.info('dungeon', !p ? '深渊挑战暂停' : '深渊挑战继续', { remaining })
+              return !p
+            })
+          }}
           style={{
             padding: '12px 24px',
             borderRadius: 100,
@@ -125,6 +140,7 @@ export default function Dungeon({ onExit }: Props) {
             const penalty = 30
             useStore.getState().addPoints(-penalty)
             useStore.getState().addPointRecord('spend', penalty, '放弃深渊挑战')
+            logger.warn('dungeon', '放弃深渊挑战', { remaining, penalty })
             showToast(`放弃挑战 -${penalty} 积分`)
             onExit()
           }}

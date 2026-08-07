@@ -1,8 +1,16 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
-
-const SelfDisciplinePlugin = registerPlugin('SelfDiscipline') as any
 import type { UsageStat } from '@/stores/useStore'
 import { STUDY_PACKAGES, ENTERTAINMENT_PACKAGES, APP_LABELS } from '@/data/appClassification'
+import { logger } from '@/lib/logger'
+
+// 惰性获取插件代理，避免模块加载时 Capacitor 未初始化
+let _plugin: any = null
+function getPlugin(): any {
+  if (!_plugin) {
+    _plugin = registerPlugin('SelfDiscipline') as any
+  }
+  return _plugin
+}
 
 export async function fetchUsageStats(startTs: number, endTs: number): Promise<{ study: UsageStat[]; ent: UsageStat[] }> {
   if (Capacitor.getPlatform() !== 'android') {
@@ -10,7 +18,7 @@ export async function fetchUsageStats(startTs: number, endTs: number): Promise<{
   }
   try {
         
-    const res = await SelfDisciplinePlugin.getUsageStats({ startTs, endTs })
+    const res = await getPlugin().getUsageStats({ startTs, endTs })
     const stats: any[] = res?.stats ?? []
     const study: UsageStat[] = []
     const ent: UsageStat[] = []
@@ -29,7 +37,7 @@ export async function fetchUsageStats(startTs: number, endTs: number): Promise<{
     }
     return { study, ent }
   } catch (e) {
-    console.warn('[UsageStats] native failed', e)
+    logger.warn('usage', '原生使用统计查询失败，使用 mock 数据', { error: String(e) })
     return mockUsage()
   }
 }
@@ -38,11 +46,10 @@ export async function hasUsageAccess(): Promise<boolean> {
   if (Capacitor.getPlatform() !== 'android') return true
   try {
         
-    const r = await SelfDisciplinePlugin.hasUsageAccess()
-    console.log('[UsageStats] hasUsageAccess response:', r)
+    const r = await getPlugin().hasUsageAccess()
     return !!r?.granted
   } catch (e) {
-    console.error('[UsageStats] hasUsageAccess error:', e)
+    logger.error('usage', 'hasUsageAccess 查询失败', { error: String(e) })
     return false
   }
 }
@@ -50,10 +57,11 @@ export async function hasUsageAccess(): Promise<boolean> {
 export async function openUsageAccessSettings(): Promise<void> {
   if (Capacitor.getPlatform() !== 'android') return
   try {
-        
-    await SelfDisciplinePlugin.openUsageAccessSettings()
+    logger.info('auth', '尝试打开使用情况访问设置页')
+    await getPlugin().openUsageAccessSettings()
+    logger.info('auth', '设置页跳转成功')
   } catch (e: any) {
-    console.error('[UsageStats] openUsageAccessSettings error:', e)
+    logger.error('auth', '打开使用情况访问设置页失败', { error: String(e?.message || e) })
     throw new Error(e?.message || '无法打开设置页面')
   }
 }

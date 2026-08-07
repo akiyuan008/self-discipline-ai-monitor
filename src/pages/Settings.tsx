@@ -7,9 +7,10 @@ import { useClassTaskStore } from '@/stores/classTaskStore'
 
 interface Props {
   onBack: () => void
+  onNavigateDiagLogs?: () => void
 }
 
-export default function Settings({ onBack }: Props) {
+export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
   const isDark = useStore(s => s.isDark)
   const toggleDark = useStore(s => s.toggleDark)
   const ai = useStore(s => s.ai)
@@ -53,7 +54,10 @@ export default function Settings({ onBack }: Props) {
     setApiKey(ai.apiKey || '')
     setEndpoint(ai.endpoint || '')
     setModel(ai.model || '')
-  }, [ai.apiKey, ai.endpoint, ai.model])
+    setApiKey2(ai2.apiKey || '')
+    setEndpoint2(ai2.endpoint || '')
+    setModel2(ai2.model || '')
+  }, [ai.apiKey, ai.endpoint, ai.model, ai2.apiKey, ai2.endpoint, ai2.model])
 
 
   // 保存：先存 localStorage（通过 store persist），再异步测试
@@ -613,6 +617,28 @@ export default function Settings({ onBack }: Props) {
               </div>
             </div>
           </div>
+        </Section>
+
+        {/* 诊断日志 */}
+        <Section title="诊断">
+          <button
+            onClick={() => onNavigateDiagLogs?.()}
+            className="card"
+            style={{
+              width: '100%', padding: '14px 16px', borderRadius: 12,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              cursor: 'pointer', textAlign: 'left',
+              background: 'var(--card-bg)', border: '1px solid var(--border)'
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--fg)' }}>诊断日志</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>查看运行日志、导出问题报告</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
         </Section>
 
         {/* 危险 */}

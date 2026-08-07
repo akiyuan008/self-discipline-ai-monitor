@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useStore } from '@/stores/useStore'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { SCHEDULE, getPeriodTime, timeToMinutes, canStartClass, canCheckInClass } from '@/data/schedule'
 
@@ -167,6 +168,10 @@ export const useClassTaskStore = create<ClassTaskState>()(
         }
         if (aiScore && aiScore >= 80) bonus += 20
 
+        // XP 奖励：打卡 +50，AI 评分 >=90 额外 +30
+        let xpGain = 50
+        if (aiScore && aiScore >= 90) xpGain += 30
+
         const totalReward = task.baseReward + bonus
         const completedTask: ClassTask = {
           ...task,
@@ -203,6 +208,9 @@ export const useClassTaskStore = create<ClassTaskState>()(
           lastPointsChange: { amount: totalReward, reason: `完成${task.subject}课`, time: now },
           taskHistory: [...otherHistory, newHistory]
         })
+
+        // XP 跨 store 更新
+        useStore.getState().addXp(xpGain)
 
         return totalReward
       },

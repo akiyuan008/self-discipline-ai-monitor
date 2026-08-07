@@ -1,5 +1,6 @@
 import { useStore } from '@/stores/useStore'
 import { useClassTaskStore } from '@/stores/classTaskStore'
+import { logger } from '@/lib/logger'
 
 export interface VerifyResult {
   passed: boolean
@@ -44,10 +45,28 @@ export async function verifyClassPhoto(photoBase64: string, subject: string): Pr
     return { passed: true, score: 85, review: 'AI验证官离线，自动通过', suggestion: '' }
   }
 
+  const startTime = Date.now()
+  logger.info('verify', `开始验证 ${subject} 课打卡照片`, {
+    model: verifyAI.model,
+    mode: state.aiMode,
+    photoSize: photoBase64.length
+  })
+
   try {
+    // 多模态格式：完整发送照片（不截断）
+    const imageUrl = photoBase64.startsWith('data:')
+      ? photoBase64
+      : `data:image/jpeg;base64,${photoBase64}`
+
     const messages = [
       { role: 'system', content: VERIFY_PROMPT },
-      { role: 'user', content: `请审查这张${subject}课的打卡照片。照片base64: ${photoBase64.slice(0, 500)}...` }
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: `请审查这张${subject}课的打卡照片。` },
+          { type: 'image_url', image_url: { url: imageUrl } }
+        ]
+      }
     ]
 
     const resp = await fetch(verifyAI.endpoint + '/chat/completions', {
@@ -64,7 +83,11 @@ export async function verifyClassPhoto(photoBase64: string, subject: string): Pr
       })
     })
 
-    if (!resp.ok) throw new Error(`API错误: ${resp.status}`)
+    if (!resp.ok) {
+      const errText = await resp.text().catch(() => '')
+      logger.error('verify', `验证 API 返回 ${resp.status}`, { body: errText.slice(0, 300) })
+      throw new Error(`API错误: ${resp.status}`)
+    }
     const data = await resp.json()
     const text = data.choices?.[0]?.message?.content || ''
 
@@ -72,12 +95,18 @@ export async function verifyClassPhoto(photoBase64: string, subject: string): Pr
     const jsonMatch = text.match(/\{[\s\S]*?\}/)
     if (jsonMatch) {
       const result = JSON.parse(jsonMatch[0])
-      return {
+      const verifyResult = {
         passed: result.passed ?? true,
         score: Math.max(0, Math.min(100, Math.round(result.score || 0))),
         review: result.review || '验证完成',
         suggestion: result.suggestion || ''
       }
+      logger.info('verify', `${subject} 课验证完成`, {
+        passed: verifyResult.passed,
+        score: verifyResult.score,
+        elapsed: Date.now() - startTime
+      })
+      return verifyResult
     }
 
     // 回退：简单解析
@@ -89,7 +118,7 @@ export async function verifyClassPhoto(photoBase64: string, subject: string): Pr
       suggestion: ''
     }
   } catch (e) {
-    console.warn('[VerifyAI] failed:', e)
+    logger.error('verify', '照片验证失败，降级为自动通过', { error: String(e), elapsed: Date.now() - startTime })
     return { passed: true, score: 80, review: '验证服务异常，自动通过', suggestion: '' }
   }
 }

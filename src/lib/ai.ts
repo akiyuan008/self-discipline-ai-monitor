@@ -1,4 +1,5 @@
 import { useStore, type AIConfig, type ChatMessage } from '@/stores/useStore'
+import { logger } from '@/lib/logger'
 import { useGaoKaoStore } from '@/stores/gaoKaoStore'
 import { fetchUsageStats, hasUsageAccess, openUsageAccessSettings, fmtMs } from '@/lib/usageStats'
 
@@ -505,6 +506,7 @@ export async function chatWithAI(
       if (r.content) return r.content
       return '（空回复）'
     } catch (e2: any) {
+      logger.error('ai', 'AI 对话请求失败（重试后仍失败）', { error: String(e2.message || e.message), model: ai.model })
       return `网络错误：${e2.message || e.message}`
     }
   }
@@ -810,6 +812,7 @@ export async function testConnection(cfg: {
     clearTimeout(timer)
 
     if (res.ok) {
+      logger.info('ai', 'AI 连接测试成功', { model: cfg.model, endpoint: cfg.endpoint })
       return { ok: true, msg: '连接成功，监管者已就绪' }
     }
     const text = await res.text()

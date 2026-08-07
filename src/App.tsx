@@ -13,6 +13,7 @@ import Achievements from '@/pages/Achievements'
 import Settings from '@/pages/Settings'
 import PointsDetail from '@/pages/PointsDetail'
 import ClassHistory from '@/pages/ClassHistory'
+import DiagLogs from '@/pages/DiagLogs'
 import Dock from '@/components/Dock'
 import { checkUpdate } from '@/lib/update'
 
@@ -116,9 +117,10 @@ export default function App() {
       {currentPage === 'profile' && <Profile onNavigate={navigate} />}
       {currentPage === 'chat' && <Chat onNavigateSettings={() => navigate('settings')} />}
       {currentPage === 'achievements' && <Achievements onBack={goBack} />}
-      {currentPage === 'settings' && <Settings onBack={goBack} />}
+      {currentPage === 'settings' && <Settings onBack={goBack} onNavigateDiagLogs={() => navigate('diagLogs')} />}
       {currentPage === 'pointsDetail' && <PointsDetail onBack={goBack} />}
       {currentPage === 'classHistory' && <ClassHistory onBack={goBack} />}
+      {currentPage === 'diagLogs' && <DiagLogs onBack={goBack} />}
       {onboarded && currentPage !== 'onboarding' && currentPage !== 'dungeon' && currentPage !== 'classHistory' && (
         <Dock current={currentPage} onChange={navigate} />
       )}

@@ -9,12 +9,15 @@ import { useClassTaskStore } from '@/stores/classTaskStore'
 import { useStore } from '@/stores/useStore'
 import { fetchUsageStats } from '@/lib/usageStats'
 import { SCHEDULE, getPeriodTime, timeToMinutes } from '@/data/schedule'
+import { logger, installGlobalErrorHandlers } from '@/lib/logger'
 
 CapApp.addListener('pause', () => { autoBackup().catch(() => {}) })
 startAutoBackup()
+installGlobalErrorHandlers()
 
 let monitorInterval: ReturnType<typeof setInterval> | null = null
 let overdueInterval: ReturnType<typeof setInterval> | null = null
+let fullAttendanceInterval: ReturnType<typeof setInterval> | null = null
 
 async function requestNotificationPermission() {
   try {
@@ -43,7 +46,7 @@ async function scheduleClassNotifications() {
       await LocalNotifications.cancel(pending)
     }
   } catch (e) {
-    console.warn('[Notify] cancel failed', e)
+    logger.warn('notify', '清除旧通知失败', { error: String(e) })
   }
 
   const notifSetting = useClassTaskStore.getState().notificationSetting
@@ -79,9 +82,9 @@ async function scheduleClassNotifications() {
   if (notifications.length > 0) {
     try {
       await LocalNotifications.schedule({ notifications })
-      console.log('[Notify] scheduled', notifications.length, 'notifications')
+      logger.info('notify', `已安排 ${notifications.length} 条课程提醒`, { ids: notifications.map(n => n.id) })
     } catch (e) {
-      console.warn('[Notify] schedule failed', e)
+      logger.error('notify', '课程提醒安排失败', { error: String(e) })
     }
   }
 }
@@ -121,7 +124,7 @@ async function monitorUsage() {
       }
     }
   } catch (e) {
-    console.warn('[Monitor] usage stats failed', e)
+    logger.error('monitor', '使用统计拉取失败', { error: String(e) })
   }
 }
 
@@ -157,6 +160,8 @@ function checkFullAttendance() {
 }
 
 function startScheduler() {
+  // 连签结算：检测跨天，更新 streak
+  useStore.getState().dailySettle()
   generateTodayTasks()
   scheduleClassNotifications()
 
@@ -175,13 +180,15 @@ function startScheduler() {
   const msUntilCheck = checkTime.getTime() - now.getTime()
   setTimeout(() => {
     checkFullAttendance()
-    setInterval(checkFullAttendance, 24 * 60 * 60 * 1000)
+    if (fullAttendanceInterval) clearInterval(fullAttendanceInterval)
+    fullAttendanceInterval = setInterval(checkFullAttendance, 24 * 60 * 60 * 1000)
   }, msUntilCheck)
 }
 
 startScheduler()
 
 CapApp.addListener('resume', () => {
+  useStore.getState().dailySettle()
   generateTodayTasks()
   scheduleClassNotifications()
   checkOverdue()

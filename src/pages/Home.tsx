@@ -3,6 +3,7 @@ import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { App } from '@capacitor/app'
 import { fetchUsageStats, hasUsageAccess, fmtMs, isLateNight, openUsageAccessSettings } from '@/lib/usageStats'
+import { logger } from '@/lib/logger'
 import GaokaoProgress from '@/components/GaokaoProgress'
 import type { PageId } from '@/stores/useStore'
 
@@ -64,8 +65,6 @@ export default function Home({ onNavigate }: Props) {
       const top = [...ent].sort((a, b) => b.totalMs - a.totalMs).slice(0, 3)
         .map(e => ({ label: e.label, ms: e.totalMs }))
       setEntTop3(top)
-      const s = useStore.getState()
-      // HP 系统已移除
     } catch (err) {
       console.warn('[Home] refresh failed', err)
       showToast('使用情况刷新失败，请稍后重试')
@@ -74,11 +73,10 @@ export default function Home({ onNavigate }: Props) {
 
   const xpLevel = Math.floor(Math.sqrt(xp / 100)) + 1
   const xpCurrentLevelXp = (xpLevel - 1) ** 2 * 100
-  const xxpNextLevelXp = xpLevel ** 2 * 100
-  const xpProgress = Math.min(100, Math.round((xp - xpCurrentLevelXp) / (xxpNextLevelXp - xpCurrentLevelXp) * 100))
+  const xpNextLevelXp = xpLevel ** 2 * 100
+  const xpProgress = Math.min(100, Math.round((xp - xpCurrentLevelXp) / (xpNextLevelXp - xpCurrentLevelXp) * 100))
   const focusHours = Math.floor(totalFocusMs / 3600_000)
   const studyMin = Math.floor(todayStudyMs / 60_000)
-  const entMin = Math.floor(todayEntMs / 60_000)
   const mainProgress = Math.min(100, Math.round((todayStudyMs / (dailyGoalMin * 60_000)) * 100))
 
 
@@ -171,6 +169,7 @@ export default function Home({ onNavigate }: Props) {
                     if (granted) {
                       if (pollRef.current) clearInterval(pollRef.current)
                       pollRef.current = null
+                      logger.info('auth', '使用情况访问权限已获取')
                       showToast('授权成功！监管者已上线')
                       refresh()
                     }
@@ -301,9 +300,30 @@ export default function Home({ onNavigate }: Props) {
         </button>
       </div>
 
+      {/* XP 进度 */}
+      <div className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 12, marginTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 600 }}>
+            Lv.{xpLevel}
+            <span style={{ fontSize: 10, color: 'var(--muted)', marginLeft: 6, fontFamily: 'DM Mono, monospace' }}>
+              {xp} XP
+            </span>
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+            距 Lv.{xpLevel + 1} 还差 {Math.max(0, xpNextLevelXp - xp)} XP
+          </div>
+        </div>
+        <div style={{ height: 6, background: 'var(--bg-alt)', borderRadius: 100, overflow: 'hidden' }}>
+          <div style={{
+            height: '100%', width: `${xpProgress}%`,
+            background: 'linear-gradient(90deg, #3B82F6, #8B5CF6)',
+            borderRadius: 100, transition: 'width 0.5s ease'
+          }} />
+        </div>
+      </div>
+
       {/* 状态摘要 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 16 }}>
-        <Stat label="等级" value={`Lv.${xpLevel}`} suffix="" />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
         <Stat label="积分" value={points.toString()} onClick={() => onNavigate?.('pointsDetail')} />
         <Stat label="连签" value={`${streak}`} suffix="天" />
       </div>

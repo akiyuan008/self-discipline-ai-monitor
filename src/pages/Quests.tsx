@@ -5,12 +5,7 @@ import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
 import { getPeriodTime, canStartClass, canCheckInClass } from '@/data/schedule'
 import { verifyClassPhoto, reportToWarden } from '@/lib/verifyAI'
 import { showToast } from '@/components/Toast'
-
-const ACCENT_COLOR: Record<string, string> = {
-  success: 'var(--success)',
-  warning: 'var(--warning)',
-  info: 'var(--info)'
-}
+import { logger } from '@/lib/logger'
 
 interface Props {
   onNavigate?: (p: PageId) => void
@@ -26,7 +21,6 @@ export default function Quests({ onNavigate }: Props) {
   const currentTask = useClassTaskStore(s => s.currentTask)
   const startClassTask = useClassTaskStore(s => s.startClassTask)
   const completeClassTask = useClassTaskStore(s => s.completeClassTask)
-  const generateTodayTasks = useClassTaskStore(s => s.generateTodayTasks)
   const addPoints = useStore(s => s.addPoints)
   const addPointRecord = useStore(s => s.addPointRecord)
 
@@ -53,6 +47,7 @@ export default function Quests({ onNavigate }: Props) {
       }
 
       showToast('验证官审查中...')
+      logger.info('checkin', `${task.subject} 课拍照打卡，等待 AI 验证`)
       const verifyResult = await verifyClassPhoto(image.base64String || '', task.subject)
 
       useClassTaskStore.getState().addVerifyRecord({
@@ -66,6 +61,7 @@ export default function Quests({ onNavigate }: Props) {
       })
 
       if (!verifyResult.passed) {
+        logger.warn('checkin', `${task.subject} 课打卡验证未通过`, { score: verifyResult.score, review: verifyResult.review })
         showToast(`验证未通过：${verifyResult.review}`)
         await reportToWarden(`${task.subject}课打卡未通过（${verifyResult.score}分）。${verifyResult.review}`)
         return
@@ -75,6 +71,7 @@ export default function Quests({ onNavigate }: Props) {
       if (reward > 0) {
         addPoints(reward)
         addPointRecord('earn', reward, '课程打卡完成')
+        logger.info('checkin', `${task.subject} 课打卡成功`, { reward, score: verifyResult.score })
         showToast(`验证通过！${verifyResult.score}分`)
         if (verifyResult.score >= 90) {
           await reportToWarden(`${task.subject}课打卡优秀！${verifyResult.score}分。${verifyResult.review}`)
@@ -82,6 +79,7 @@ export default function Quests({ onNavigate }: Props) {
       }
     } catch (e: any) {
       if (e.message !== 'User cancelled photos app') {
+        logger.error('checkin', '拍照打卡失败', { error: e?.message })
         showToast('拍照失败：' + (e.message || '未知错误'))
       }
     }
