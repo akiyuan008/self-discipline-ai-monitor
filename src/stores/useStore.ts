@@ -90,6 +90,11 @@ interface StoreState {
   dungeonActive: boolean
   dungeonDurationMin: number
   lastPointsChange: { amount: number; reason: string; time: number } | null
+  exp: number
+  totalExp: number
+  level: number
+  theme: 'default' | 'wandering'
+  unlockedThemes: string[]
 
   addPoints: (n: number) => void
   addXp: (n: number) => void
@@ -120,6 +125,9 @@ interface StoreState {
   syncUsage: (study: UsageStat[], ent: UsageStat[]) => void
   dailySettle: () => void
   addPointRecord: (type: 'earn' | 'spend', amount: number, reason: string) => void
+  addExp: (amount: number, reason: string) => void
+  setTheme: (theme: 'default' | 'wandering') => void
+  unlockTheme: (themeId: string) => void
   addCustomShopItem: (item: Omit<ShopItem, 'id'>) => void
   removeCustomShopItem: (id: string) => void
 }
@@ -184,6 +192,11 @@ export const useStore = create<StoreState>()(
       dungeonActive: false,
       dungeonDurationMin: 25,
       lastPointsChange: null,
+      exp: 0,
+      totalExp: 0,
+      level: 1,
+      theme: 'default',
+      unlockedThemes: ['default'],
 
       addPoints: (n) => set(s => ({ points: s.points + n })),
       addXp: (n) => set(s => ({ xp: s.xp + Math.max(0, Math.round(n)) })),
@@ -238,7 +251,12 @@ export const useStore = create<StoreState>()(
         set(s => ({ ownedItems: { ...s.ownedItems, [id]: (s.ownedItems[id] || 0) + 1 } }))
         switch (item.effect) {
 
-          case 'skin': break
+          case 'skin': {
+            if (item.id === 'theme_wandering') {
+              get().unlockTheme('wandering')
+            }
+            break
+          }
           case 'snack': break
         }
         return true
@@ -342,7 +360,12 @@ export const useStore = create<StoreState>()(
           dungeonRemainingSec: 0,
           dungeonActive: false,
           dungeonDurationMin: 25,
-          lastPointsChange: null
+          lastPointsChange: null,
+          exp: 0,
+          totalExp: 0,
+          level: 1,
+          theme: 'default',
+          unlockedThemes: ['default']
         }),
       setDungeon: (sec, active) => set({ dungeonRemainingSec: sec, dungeonActive: active }),
       setDungeonDuration: (min) => set({ dungeonDurationMin: min }),
