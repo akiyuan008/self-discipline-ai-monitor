@@ -16,7 +16,7 @@ interface StatusBarProps {
   onNavigateSettings?: () => void
 }
 
-const StatusBar = memo(function StatusBar({ onClearChat, onToggleHistory, showHistory, onBack, onNavigateSettings }: StatusBarProps) {
+const StatusBar = memo(function StatusBar({ onClearChat, onToggleHistory, showHistory, onNavigateSettings }: StatusBarProps) {
   const ai = useStore(s => s.ai)
   const points = useStore(s => s.points)
   const streak = useStore(s => s.streak)

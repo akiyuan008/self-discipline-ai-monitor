@@ -75,7 +75,7 @@ export default function Home({ onNavigate }: Props) {
   const xpLevel = Math.floor(Math.sqrt(xp / 100)) + 1
   const xpCurrentLevelXp = (xpLevel - 1) ** 2 * 100
   const xxpNextLevelXp = xpLevel ** 2 * 100
-  const xpProgress = Math.min(100, Math.round((xp - xpCurrentLevelXp) / (xpNextLevelXp - xpCurrentLevelXp) * 100))
+  const xpProgress = Math.min(100, Math.round((xp - xpCurrentLevelXp) / (xxpNextLevelXp - xpCurrentLevelXp) * 100))
   const focusHours = Math.floor(totalFocusMs / 3600_000)
   const studyMin = Math.floor(todayStudyMs / 60_000)
   const entMin = Math.floor(todayEntMs / 60_000)
