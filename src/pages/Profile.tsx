@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useStore, daysUntilGaokao } from '@/stores/useStore'
 import { useGaoKaoStore } from '@/stores/gaoKaoStore'
-import GaokaoProgress from '@/components/GaokaoProgress'
 
 interface ProfileProps {
   onNavigate?: (page: 'achievements' | 'settings' | 'chat') => void
@@ -33,17 +32,34 @@ export default function Profile({ onNavigate }: ProfileProps) {
         个人中心
       </h1>
 
-      {/* 学习档案入口 */}
+      {/* 学习档案入口（含薄弱点摘要） */}
       <div className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 12, cursor: 'pointer' }}
         onClick={() => onNavigate?.('classHistory' as any)}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(0,120,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>学习档案</div>
-            <div style={{ fontSize: 11, color: 'var(--muted)' }}>课程记录、打卡审查、使用监测</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)' }}>课程记录、打卡审查、薄弱项分析</div>
           </div>
           <div style={{ fontSize: 18, color: 'var(--muted)' }}>›</div>
         </div>
+        {profile.weakSubjects.length > 0 && (
+          <div style={{
+            marginTop: 10, paddingTop: 10,
+            borderTop: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap'
+          }}>
+            <span style={{ fontSize: 10, color: 'var(--danger)', fontFamily: 'DM Mono, monospace' }}>WEAK</span>
+            {profile.weakSubjects.map((w, i) => (
+              <span key={i} style={{
+                padding: '2px 8px', borderRadius: 100,
+                background: 'rgba(229,77,46,0.08)',
+                color: 'var(--danger)',
+                fontSize: 10, fontWeight: 500
+              }}>{w}</span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ═══ 档案馆内容提上来：绝密档案头 ═══ */}
@@ -217,31 +233,6 @@ export default function Profile({ onNavigate }: ProfileProps) {
           </div>
         )
       })}
-
-      {/* ═══ 薄弱点 ═══ */}
-      {profile.weakSubjects.length > 0 && (
-        <div className="card" style={{ padding: 12, borderRadius: 12, marginBottom: 12, marginTop: 6 }}>
-          <div style={{
-            fontSize: 11, color: 'var(--danger)',
-            fontFamily: 'DM Mono, monospace', marginBottom: 8
-          }}>
-            WEAK_POINTS
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {profile.weakSubjects.map((w, i) => (
-              <span key={i} style={{
-                padding: '4px 10px', borderRadius: 100,
-                background: 'rgba(229,77,46,0.08)',
-                color: 'var(--danger)',
-                fontSize: 11, fontWeight: 500
-              }}>{w}</span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 高考进度精简版 */}
-      <GaokaoProgress variant="compact" />
 
       {/* 列表 */}
       <ListRow
