@@ -48,20 +48,6 @@ const TOOLS = [
   {
     type: 'function',
     function: {
-      name: 'set_hp',
-      
-      parameters: {
-        type: 'object',
-        properties: {
-          value: { type: 'number', description: 'HP值 0-100' }
-        },
-        required: ['value']
-      }
-    }
-  },
-  {
-    type: 'function',
-    function: {
       name: 'add_quest',
       description: '添加新任务。用户说"加个任务"或"我想做XXX"时必须调用此工具。',
       parameters: {
@@ -270,13 +256,6 @@ async function executeTool(name: string, args: any): Promise<string> {
         s.addPointRecord(amt >= 0 ? 'earn' : 'spend', amt, String(args.reason || (amt >= 0 ? 'AI 奖励' : 'AI 惩罚')))
         const after = useStore.getState().points
         return JSON.stringify({ ok: true, before, after, msg: `积分从${before}变为${after}（${amt >= 0 ? '+' : ''}${amt}）` })
-      }
-      // set_hp 已移除 {
-        const val = Math.max(0, Math.min(100, Math.round(Number(args.value))))
-        if (isNaN(val)) {
-          return JSON.stringify({ ok: false, error: 'value不是有效数字' })
-        }
-
       }
       case 'add_quest': {
         const id = s.addCustomQuest({
