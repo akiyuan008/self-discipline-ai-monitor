@@ -16,6 +16,7 @@ import ClassHistory from '@/pages/ClassHistory'
 import DiagLogs from '@/pages/DiagLogs'
 import Dock from '@/components/Dock'
 import { checkUpdate } from '@/lib/update'
+import { ThemeProvider } from '@/components/ThemeToggle'
 
 function PointsToast() {
   const lastChange = useStore(s => s.lastPointsChange)
@@ -47,7 +48,7 @@ function PointsToast() {
       pointerEvents: 'none', whiteSpace: 'nowrap'
     }}>
       {isPositive ? '+' : ''}{display.amount} 积分 · {display.reason}
-    </div>
+    </div></ThemeProvider>
   )
 }
 
@@ -107,7 +108,7 @@ export default function App() {
   }
 
   return (
-    <div className="app-container">
+    <ThemeProvider><div className="app-container">
       <PointsToast />
       {currentPage === 'onboarding' && <Onboarding />}
       {currentPage === 'home' && <Home onNavigate={navigate} />}
@@ -124,6 +125,6 @@ export default function App() {
       {onboarded && currentPage !== 'onboarding' && currentPage !== 'dungeon' && currentPage !== 'classHistory' && (
         <Dock current={currentPage} onChange={navigate} />
       )}
-    </div>
+    </div></ThemeProvider>
   )
 }
