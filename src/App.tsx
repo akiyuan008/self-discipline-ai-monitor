@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { App as CapApp } from '@capacitor/app'
 import { useStore } from '@/stores/useStore'
 import type { PageId } from '@/stores/useStore'
 import Onboarding from '@/pages/Onboarding'
@@ -66,6 +67,23 @@ export default function App() {
   }, [onboarded, currentPage])
 
   useEffect(() => { checkUpdate() }, [])
+
+  // Android 物理返回键：子页面回 Home，Home 退出 App
+  const pageRef = useRef(currentPage)
+  pageRef.current = currentPage
+  useEffect(() => {
+    const sub = CapApp.addListener('backButton', ({ canGoBack }) => {
+      const page = pageRef.current
+      if (page === 'onboarding') return        // 引导页不响应
+      if (page === 'dungeon') { setCurrentPage('home'); return }
+      if (page !== 'home') {
+        setCurrentPage('home')                 // 子页面 → 回首页
+      } else {
+        if (!canGoBack) CapApp.exitApp()       // 首页 → 退出
+      }
+    })
+    return () => { sub.then(s => s.remove()) }
+  }, [])
 
   const navigate = (p: PageId) => setCurrentPage(p)
   const goHome = () => setCurrentPage('home')

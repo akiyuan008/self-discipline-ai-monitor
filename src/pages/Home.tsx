@@ -120,24 +120,45 @@ export default function Home({ onNavigate }: Props) {
         </div>
       )}
 
-      {/* 使用权限引导 */}
+      {/* 使用权限引导 — 重做版 */}
       {!hasAccess && (
         <div className="card" style={{
-          padding: 14, borderRadius: 12, marginBottom: 16,
-          background: 'rgba(229, 77, 46, 0.08)', border: '1px solid rgba(229, 77, 46, 0.2)'
+          padding: 20, borderRadius: 16, marginBottom: 16,
+          background: 'linear-gradient(135deg, rgba(229, 77, 46, 0.06) 0%, rgba(245, 158, 11, 0.04) 100%)',
+          border: '1px solid rgba(229, 77, 46, 0.15)'
         }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: '#E54D2E' }}>
-            缺少使用情况访问权限
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+              background: 'rgba(229, 77, 46, 0.12)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18
+            }}>🔒</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>
+                需要使用情况访问权限
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>
+                授权后监管者可以读取真实的学习和娱乐时长，这是整个自律系统的基础。
+              </div>
+            </div>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, marginBottom: 10 }}>
-            监管者需要此权限拉取真实学习/娱乐时长
+
+          <div style={{
+            padding: '10px 12px', borderRadius: 10,
+            background: 'var(--bg-alt)', marginBottom: 14,
+            fontSize: 11, color: 'var(--muted)', lineHeight: 1.8
+          }}>
+            <div style={{ fontWeight: 600, color: 'var(--fg)', marginBottom: 4 }}>操作步骤：</div>
+            ① 点击下方按钮跳转设置<br/>
+            ② 在列表中找到「自律养成」<br/>
+            ③ 点击进入并开启「允许使用情况访问」<br/>
+            ④ 返回 App，自动完成授权
           </div>
+
           <button
             onClick={async () => {
               try {
                 await openUsageAccessSettings()
-                showToast('已跳转到设置页面，授权后返回即可')
-                // 启动轮询，每2秒检测一次权限，直到授权成功
                 if (pollRef.current) clearInterval(pollRef.current)
                 pollRef.current = setInterval(() => {
                   hasUsageAccess().then(granted => {
@@ -145,7 +166,7 @@ export default function Home({ onNavigate }: Props) {
                     if (granted) {
                       if (pollRef.current) clearInterval(pollRef.current)
                       pollRef.current = null
-                      showToast('权限已获取！')
+                      showToast('授权成功！监管者已上线')
                       refresh()
                     }
                   }).catch(() => {})
@@ -155,12 +176,14 @@ export default function Home({ onNavigate }: Props) {
               }
             }}
             style={{
-              padding: '6px 12px', borderRadius: 100,
-              background: '#E54D2E', color: '#fff',
-              border: 'none', fontSize: 11, fontWeight: 600
+              width: '100%', padding: '12px', borderRadius: 100,
+              background: 'linear-gradient(135deg, var(--danger), #F59E0B)',
+              color: '#fff', border: 'none',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(229, 77, 46, 0.25)'
             }}
           >
-            去授权
+            前往授权 →
           </button>
         </div>
       )}

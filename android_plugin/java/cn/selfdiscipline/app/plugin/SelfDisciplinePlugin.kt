@@ -47,23 +47,28 @@ class SelfDisciplinePlugin : Plugin() {
   fun openUsageAccessSettings(call: PluginCall) {
     Log.d(TAG, "openUsageAccessSettings called")
     try {
-      // 使用 activity（不是 context）启动，不需要 NEW_TASK
-      val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-      activity.startActivity(intent)
-      Log.d(TAG, "Started ACTION_USAGE_ACCESS_SETTINGS via activity")
-      call.resolve()
+      val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      if (intent.resolveActivity(context.packageManager) != null) {
+        context.startActivity(intent)
+        Log.d(TAG, "Opened ACTION_USAGE_ACCESS_SETTINGS")
+        call.resolve()
+        return
+      }
+      throw Exception("ACTION_USAGE_ACCESS_SETTINGS not resolved")
     } catch (e: Exception) {
-      Log.e(TAG, "Failed to open usage access settings", e)
-      // fallback: 应用详情页
+      Log.w(TAG, "Usage access settings failed, trying app details", e)
       try {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-          data = android.net.Uri.parse("package:${activity.packageName}")
+          data = android.net.Uri.parse("package:${context.packageName}")
+          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-        activity.startActivity(intent)
-        Log.d(TAG, "Started APPLICATION_DETAILS_SETTINGS fallback")
+        context.startActivity(intent)
+        Log.d(TAG, "Opened APPLICATION_DETAILS_SETTINGS")
         call.resolve()
       } catch (e2: Exception) {
-        Log.e(TAG, "Fallback also failed", e2)
+        Log.e(TAG, "All settings intents failed", e2)
         call.reject("无法打开设置页面：${e2.message}")
       }
     }
