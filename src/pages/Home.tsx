@@ -23,45 +23,6 @@ export default function Home({ onNavigate }: Props) {
   const setDungeonDuration = useStore(s => s.setDungeonDuration)
   const dungeonDurationMin = useStore(s => s.dungeonDurationMin)
 
-      const task = todayTasks.find(t => t.id === taskId)
-      if (!task) return
-
-      showToast('验证官审查中...')
-
-      const verifyResult = await verifyClassPhoto(image.base64String || '', task.subject)
-
-      useClassTaskStore.getState().addVerifyRecord({
-        taskId,
-        date: today,
-        subject: task.subject,
-        photoUrl: image.base64String || '',
-        aiReview: verifyResult.review,
-        aiScore: verifyResult.score,
-        passed: verifyResult.passed
-      })
-
-      if (!verifyResult.passed) {
-        showToast(`验证未通过：${verifyResult.review}`)
-        await reportToWarden(`${task.subject}课打卡未通过（${verifyResult.score}分）。${verifyResult.review}`)
-        return
-      }
-
-      const reward = completeClassTask(taskId, image.base64String || undefined, verifyResult.review, verifyResult.score)
-      if (reward > 0) {
-        addPoints(reward)
-        addPointRecord('earn', reward, '课程打卡完成')
-        showToast(`验证通过！${verifyResult.score}分`)
-        if (verifyResult.score >= 90) {
-          await reportToWarden(`${task.subject}课打卡优秀！${verifyResult.score}分。${verifyResult.review}`)
-        }
-      }
-    } catch (e: any) {
-      if (e.message !== 'User cancelled photos app') {
-        showToast('拍照失败：' + (e.message || '未知错误'))
-      }
-    }
-  }
-
   const [entTop3, setEntTop3] = useState<{ label: string; ms: number }[]>([])
   const [hasAccess, setHasAccess] = useState(false)
   const [lateAlert, setLateAlert] = useState(false)
@@ -244,6 +205,16 @@ export default function Home({ onNavigate }: Props) {
         </div>
       </div>
 
+      {/* 娱乐 Top3 */}
+      {entTop3.length > 0 && (
+        <div className="card" style={{ padding: 16, borderRadius: 12, marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginBottom: 8 }}>
+            ENTERTAINMENT_TOP3
+          </div>
+          {entTop3.map((e, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 13 }}>{e.label}</span>
+              <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
                 {fmtMs(e.ms)}
               </div>
             </div>
