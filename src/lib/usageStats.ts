@@ -1,4 +1,6 @@
-import { Capacitor } from '@capacitor/core'
+import { Capacitor, registerPlugin } from '@capacitor/core'
+
+const SelfDisciplinePlugin = registerPlugin('SelfDiscipline')
 import type { UsageStat } from '@/stores/useStore'
 import { STUDY_PACKAGES, ENTERTAINMENT_PACKAGES, APP_LABELS } from '@/data/appClassification'
 
@@ -7,9 +9,8 @@ export async function fetchUsageStats(startTs: number, endTs: number): Promise<{
     return mockUsage()
   }
   try {
-    const SelfDiscipline = Capacitor.Plugins.SelfDiscipline as any
-    if (!SelfDiscipline) { return mockUsage() }
-    const res = await SelfDiscipline.getUsageStats({ startTs, endTs })
+        
+    const res = await SelfDisciplinePlugin.getUsageStats({ startTs, endTs })
     const stats: any[] = res?.stats ?? []
     const study: UsageStat[] = []
     const ent: UsageStat[] = []
@@ -36,9 +37,8 @@ export async function fetchUsageStats(startTs: number, endTs: number): Promise<{
 export async function hasUsageAccess(): Promise<boolean> {
   if (Capacitor.getPlatform() !== 'android') return true
   try {
-    const SelfDiscipline = Capacitor.Plugins.SelfDiscipline as any
-    if (!SelfDiscipline) { console.error("[UsageStats] plugin not found"); return false }
-    const r = await SelfDiscipline.hasUsageAccess()
+        
+    const r = await SelfDisciplinePlugin.hasUsageAccess()
     console.log('[UsageStats] hasUsageAccess response:', r)
     return !!r?.granted
   } catch (e) {
@@ -50,9 +50,8 @@ export async function hasUsageAccess(): Promise<boolean> {
 export async function openUsageAccessSettings(): Promise<void> {
   if (Capacitor.getPlatform() !== 'android') return
   try {
-    const SelfDiscipline = Capacitor.Plugins.SelfDiscipline as any
-    if (!SelfDiscipline) { throw new Error('SelfDiscipline 插件未注册') }
-    await SelfDiscipline.openUsageAccessSettings()
+        
+    await SelfDisciplinePlugin.openUsageAccessSettings()
   } catch (e: any) {
     console.error('[UsageStats] openUsageAccessSettings error:', e)
     throw new Error(e?.message || '无法打开设置页面')

@@ -3,6 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 const config: CapacitorConfig = {
   appId: 'cn.selfdiscipline.app',
   appName: '自律养成 · AI监工',
+  version: '1.1.0',
   webDir: 'dist',
   android: {
     allowMixedContent: false,

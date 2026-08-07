@@ -74,19 +74,36 @@ export default function App() {
   useEffect(() => {
     const sub = CapApp.addListener('backButton', ({ canGoBack }) => {
       const page = pageRef.current
-      if (page === 'onboarding') return        // 引导页不响应
-      if (page === 'dungeon') { setCurrentPage('home'); return }
+      if (page === 'onboarding') return
+      if (page === 'dungeon') { goHome(); return }
       if (page !== 'home') {
-        setCurrentPage('home')                 // 子页面 → 回首页
+        goBack()  // 返回上一个页面
       } else {
-        if (!canGoBack) CapApp.exitApp()       // 首页 → 退出
+        if (!canGoBack) CapApp.exitApp()
       }
     })
     return () => { sub.then(s => s.remove()) }
   }, [])
 
-  const navigate = (p: PageId) => setCurrentPage(p)
-  const goHome = () => setCurrentPage('home')
+  const pageStackRef = useRef<PageId[]>([page])
+  const navigate = (p: PageId) => {
+    pageStackRef.current = [...pageStackRef.current, p]
+    setCurrentPage(p)
+  }
+  const goHome = () => {
+    pageStackRef.current = ['home']
+    setCurrentPage('home')
+  }
+  const goBack = () => {
+    const stack = pageStackRef.current
+    if (stack.length <= 1) {
+      setCurrentPage('home')
+      return
+    }
+    const newStack = stack.slice(0, -1)
+    pageStackRef.current = newStack
+    setCurrentPage(newStack[newStack.length - 1])
+  }
 
   return (
     <div className="app-container">
@@ -98,10 +115,10 @@ export default function App() {
       {currentPage === 'shop' && <Shop onNavigate={navigate} />}
       {currentPage === 'profile' && <Profile onNavigate={navigate} />}
       {currentPage === 'chat' && <Chat onNavigateSettings={() => navigate('settings')} />}
-      {currentPage === 'achievements' && <Achievements onBack={goHome} />}
-      {currentPage === 'settings' && <Settings onBack={goHome} />}
-      {currentPage === 'pointsDetail' && <PointsDetail onBack={goHome} />}
-      {currentPage === 'classHistory' && <ClassHistory onBack={goHome} />}
+      {currentPage === 'achievements' && <Achievements onBack={goBack} />}
+      {currentPage === 'settings' && <Settings onBack={goBack} />}
+      {currentPage === 'pointsDetail' && <PointsDetail onBack={goBack} />}
+      {currentPage === 'classHistory' && <ClassHistory onBack={goBack} />}
       {onboarded && currentPage !== 'onboarding' && currentPage !== 'dungeon' && currentPage !== 'classHistory' && (
         <Dock current={currentPage} onChange={navigate} />
       )}
