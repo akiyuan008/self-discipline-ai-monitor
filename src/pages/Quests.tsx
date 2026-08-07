@@ -150,10 +150,10 @@ export default function Quests({ onNavigate }: Props) {
             border: '1px solid var(--border)'
           }}>
             {CATEGORY_TABS.map(c => (
-              <button key={c.key} onClick={() => setTaskTab(c.key as any)} style={{
+              <button key={c.id} onClick={() => setTaskTab(c.id as any)} style={{
                 flex: 1, padding: '6px 10px', borderRadius: 100,
-                background: taskTab === c.key ? 'var(--fg)' : 'transparent',
-                color: taskTab === c.key ? 'var(--bg)' : 'var(--muted)',
+                background: taskTab === c.id ? 'var(--fg)' : 'transparent',
+                color: taskTab === c.id ? 'var(--bg)' : 'var(--muted)',
                 border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer'
               }}>{c.label}</button>
             ))}

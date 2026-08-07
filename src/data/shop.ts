@@ -11,6 +11,7 @@ export interface ShopItem {
   effect: ShopEffect
   badge?: string
   lockLevel?: number
+  limit?: number
 }
 
 /* 积分体系：10 积分 = 1 元 */

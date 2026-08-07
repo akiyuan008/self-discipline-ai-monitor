@@ -14,6 +14,7 @@ export type PageId =
   | 'achievements'
   | 'settings'
   | 'pointsDetail'
+  | 'classHistory'
   | 'onboarding'
 
 export interface PointRecord {
