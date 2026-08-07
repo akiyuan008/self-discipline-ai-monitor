@@ -7,6 +7,7 @@ import android.app.Service
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -51,7 +52,11 @@ class MonitorService : Service() {
       .setSmallIcon(android.R.drawable.ic_menu_view)
       .setOngoing(true)
       .build()
-    startForeground(NOTIF_ID, notif)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+      startForeground(NOTIF_ID, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+    } else {
+      startForeground(NOTIF_ID, notif)
+    }
     handler.post(poller)
   }
 
@@ -83,8 +88,8 @@ class MonitorService : Service() {
     if (stats.isEmpty()) return
 
     // 找出当前最近使用的应用
-    val latest = stats.maxByOrNull { it.lastTimeUsed } ?: return
-    val pkg = latest.packageName
+    val latest = stats.maxByOrNull { it.value.lastTimeUsed } ?: return
+    val pkg = latest.key
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
 
     // 学习类 App：检测连续学习超 90 分钟
@@ -102,8 +107,8 @@ class MonitorService : Service() {
       }
       // 周末/通勤时段（17-22）娱乐类累计超 1 小时
       if (hour in 17..22) {
-        val totalMs = stats.filter { ENTERTAINMENT_PACKAGES.contains(it.packageName) }
-          .sumOf { it.totalTimeInForeground }
+        val totalMs = stats.filter { ENTERTAINMENT_PACKAGES.contains(it.key) }
+          .sumOf { it.value.totalTimeInForeground }
         if (totalMs > 60 * 60 * 1000L) {
           notifyCare("今日娱乐时长已超 1 小时，监督人格注意到了。")
         }

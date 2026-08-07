@@ -13,9 +13,13 @@ class MainActivity : BridgeActivity() {
     // 启用 WebView 文本选择和长按菜单（复制/剪切/粘贴）
     bridge.webView?.let { webView ->
       webView.isLongClickable = true
+      webView.isFocusable = true
+      webView.isFocusableInTouchMode = true
       webView.settings?.let {
         it.javaScriptEnabled = true
         it.domStorageEnabled = true
+        it.builtInZoomControls = true
+        it.displayZoomControls = false
       }
     }
   }

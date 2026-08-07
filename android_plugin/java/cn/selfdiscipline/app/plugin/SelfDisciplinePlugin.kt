@@ -175,7 +175,7 @@ class SelfDisciplinePlugin : Plugin() {
       val end = System.currentTimeMillis()
       val start = end - 24 * 60 * 60 * 1000
       val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end)
-      stats != null
+      stats.isNotEmpty()
     } catch (e: Exception) {
       false
     }
