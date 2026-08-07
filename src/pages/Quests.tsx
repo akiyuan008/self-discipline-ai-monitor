@@ -2,46 +2,40 @@ import { useState, useEffect } from 'react'
 import { useStore, type PageId } from '@/stores/useStore'
 import { useClassTaskStore } from '@/stores/classTaskStore'
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
-import { getPeriodTime, canStartClass, canCheckInClass, timeToMinutes, PERIODS } from '@/data/schedule'
+import { getPeriodTime, canStartClass, canCheckInClass, timeToMinutes } from '@/data/schedule'
 import { verifyClassPhoto, reportToWarden } from '@/lib/verifyAI'
 import { showToast } from '@/components/Toast'
-import { logger } from '@/lib/logger'
 
 interface Props {
   onNavigate?: (p: PageId) => void
 }
 
-function getCourseStatus(task: any) {
-  const now = new Date()
+function getCourseStatus(task: any, now: Date) {
   const nowMin = now.getHours() * 60 + now.getMinutes()
   const period = getPeriodTime(task.period)
-  if (!period) return { status: 'unknown', label: '未知', color: '#888' }
+  if (!period) return { status: 'unknown', label: 'UNKNOWN', color: '#888', blink: false }
 
   const startMin = timeToMinutes(period.startTime)
   const endMin = timeToMinutes(period.endTime)
 
-  // 用户已操作的状态优先
-  if (task.status === 'completed') return { status: 'completed', label: '已完成', color: '#16A34A', bg: 'rgba(22,163,74,0.1)' }
-  if (task.status === 'absent') return { status: 'absent', label: '缺课', color: '#E54D2E', bg: 'rgba(229,77,46,0.1)' }
-  if (task.status === 'overdue') return { status: 'overdue', label: '已逾期', color: '#E54D2E', bg: 'rgba(229,77,46,0.1)' }
-  if (task.status === 'started') return { status: 'started', label: '进行中', color: '#3B82F6', bg: 'rgba(59,130,246,0.1)' }
+  if (task.status === 'completed') return { status: 'completed', label: 'COMPLETE', color: '#45a29e', blink: false }
+  if (task.status === 'absent') return { status: 'absent', label: 'FAILED', color: '#ff4444', blink: false }
+  if (task.status === 'overdue') return { status: 'overdue', label: 'OVERDUE', color: '#ff4444', blink: false }
+  if (task.status === 'started') return { status: 'started', label: 'ACTIVE', color: '#ff4500', blink: true }
 
-  // 自动判断
   if (nowMin < startMin) {
     const minsLeft = startMin - nowMin
-    return { status: 'pending', label: `还有 ${minsLeft} 分钟`, color: '#8a8a8a', bg: 'rgba(0,0,0,0.03)' }
+    return { status: 'pending', label: `T-${minsLeft}MIN`, color: '#5a6a7a', blink: false }
   }
   if (nowMin >= startMin && nowMin <= endMin) {
-    return { status: 'ongoing', label: '正在上课', color: '#ff4500', bg: 'rgba(255,69,0,0.1)' }
+    return { status: 'ongoing', label: 'IGNITION', color: '#ff4500', blink: true }
   }
-  return { status: 'missed', label: '已错过', color: '#E54D2E', bg: 'rgba(229,77,46,0.1)' }
+  return { status: 'missed', label: 'MISSED', color: '#ff4444', blink: false }
 }
 
 export default function Quests({ onNavigate }: Props) {
   const points = useStore(s => s.points)
-  const theme = useStore(s => s.theme)
   const setDungeonDuration = useStore(s => s.setDungeonDuration)
-  const isWandering = true
 
   const classTasks = useClassTaskStore(s => s.classTasks)
   const currentTask = useClassTaskStore(s => s.currentTask)
@@ -60,19 +54,19 @@ export default function Quests({ onNavigate }: Props) {
   const today = now.toISOString().slice(0, 10)
   const todayTasks = classTasks.filter(t => t.date === today).sort((a, b) => a.period - b.period)
 
+  const completed = todayTasks.filter(t => t.status === 'completed').length
+  const pending = todayTasks.filter(t => t.status === 'pending' || t.status === 'started').length
+  const failed = todayTasks.filter(t => t.status === 'overdue' || t.status === 'absent').length
+
   async function handleTakePhoto(taskId: string) {
     try {
-      const image = await Camera.getPhoto({
-        quality: 80, allowEditing: false,
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Camera
-      })
+      const image = await Camera.getPhoto({ quality: 80, allowEditing: false, resultType: CameraResultType.Base64, source: CameraSource.Camera })
       const task = todayTasks.find(t => t.id === taskId)
       if (!task) return
       const check = canCheckInClass(task.period)
       if (!check.can) { showToast(check.reason || '无法打卡'); return }
 
-      showToast('验证官审查中...')
+      showToast('VERIFYING...')
       const verifyResult = await verifyClassPhoto(image.base64String || '', task.subject)
       useClassTaskStore.getState().addVerifyRecord({
         taskId, date: today, subject: task.subject,
@@ -83,236 +77,208 @@ export default function Quests({ onNavigate }: Props) {
       })
 
       if (!verifyResult.passed) {
-        showToast(`验证未通过：${verifyResult.review}`)
-        await reportToWarden(`${task.subject}课打卡未通过（${verifyResult.score}分）。${verifyResult.review}`)
+        showToast(`REJECTED: ${verifyResult.review}`)
+        await reportToWarden(`${task.subject} CHECK FAILED (${verifyResult.score}). ${verifyResult.review}`)
         return
       }
       const reward = completeClassTask(taskId, image.base64String || undefined, verifyResult.review, verifyResult.score)
       if (reward > 0) {
         addPoints(reward)
-        addPointRecord('earn', reward, '课程打卡完成')
-        showToast(`验证通过！${verifyResult.score}分`)
+        addPointRecord('earn', reward, 'COURSE COMPLETE')
+        showToast(`VERIFIED: ${verifyResult.score} PTS`)
         if (verifyResult.score >= 90) {
-          await reportToWarden(`${task.subject}课打卡优秀！${verifyResult.score}分。${verifyResult.review}`)
+          await reportToWarden(`${task.subject} EXCELLENT! ${verifyResult.score} PTS.`)
         }
       }
     } catch (e: any) {
-      if (e.message !== 'User cancelled photos app') {
-        showToast('拍照失败：' + (e.message || '未知错误'))
-      }
+      if (e.message !== 'User cancelled photos app') showToast('CAMERA ERROR')
     }
   }
 
   function enterAbyss(task: any) {
     const period = getPeriodTime(task.period)
     if (!period) return
-    const startMin = timeToMinutes(period.startTime)
-    const endMin = timeToMinutes(period.endTime)
     const nowMin = now.getHours() * 60 + now.getMinutes()
+    const endMin = timeToMinutes(period.endTime)
     const remainingMin = Math.max(1, endMin - nowMin)
-
     setDungeonDuration(remainingMin)
     startClassTask(task.id)
     onNavigate?.('dungeon')
   }
 
   return (
-    <div className="safe-top" style={{ padding: '24px 20px 140px', background: 'var(--bg)', minHeight: '100vh' }}>
-      {/* 头部 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+    <div className="safe-top" style={{ padding: '20px 16px 140px', background: 'var(--bg)', minHeight: '100vh' }}>
+      {/* 顶部 */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+        marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid rgba(69, 162, 158, 0.2)'
+      }}>
         <div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'DM Mono, monospace', letterSpacing: 1 }}>
-            {isWandering ? 'UEG QUEST CENTER' : 'QUEST_CENTER'}
+          <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 2 }}>
+            MISSION CONTROL
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, letterSpacing: -0.5, margin: '4px 0 0', fontFamily: isWandering ? 'Teko, sans-serif' : 'inherit' }}>
-            {isWandering ? 'MISSION CONTROL' : '任务中心'}
+          <h1 style={{ fontSize: 26, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 2, textTransform: 'uppercase', margin: 0 }}>
+            SCHEDULE
           </h1>
         </div>
-        <button onClick={() => onNavigate?.('pointsDetail')} style={{
-          background: 'var(--card-bg)', border: '1px solid var(--border)',
-          borderRadius: 100, padding: '6px 14px',
-          display: 'flex', alignItems: 'center', gap: 4,
-          cursor: 'pointer', color: 'var(--fg)'
-        }}>
-          <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'DM Mono, monospace' }}>{points}</span>
-          <span style={{ fontSize: 10, color: 'var(--muted)' }}>PTS ›</span>
-        </button>
-      </div>
-
-      {/* 今日概览 */}
-      {todayTasks.length > 0 && (
-        <div style={{
-          background: 'var(--card-bg)', border: '1px solid var(--border)',
-          borderRadius: 16, padding: '14px 16px', marginBottom: 16,
-          display: 'flex', justifyContent: 'space-around', textAlign: 'center'
-        }}>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--success)' }}>
-              {todayTasks.filter(t => t.status === 'completed').length}
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--muted)' }}>已完成</div>
-          </div>
-          <div style={{ width: 1, background: 'var(--border)' }} />
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--warning)' }}>
-              {todayTasks.filter(t => t.status === 'pending' || t.status === 'started').length}
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--muted)' }}>待完成</div>
-          </div>
-          <div style={{ width: 1, background: 'var(--border)' }} />
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--danger)' }}>
-              {todayTasks.filter(t => t.status === 'overdue' || t.status === 'absent').length}
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--muted)' }}>失败</div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>CREDITS</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: '#f59e0b', fontFamily: 'Teko, sans-serif' }}>
+            {points}
           </div>
         </div>
-      )}
+      </div>
+
+      {/* 概览面板 */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16
+      }}>
+        {[
+          { label: 'COMPLETE', value: completed, color: '#45a29e' },
+          { label: 'PENDING', value: pending, color: '#ff4500' },
+          { label: 'FAILED', value: failed, color: '#ff4444' },
+        ].map(item => (
+          <div key={item.label} style={{
+            background: 'var(--card-bg)', border: '1px solid var(--border)',
+            padding: '10px', textAlign: 'center', position: 'relative',
+            clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
+          }}>
+            <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 1 }}>{item.label}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: item.color, fontFamily: 'Teko, sans-serif' }}>{item.value}</div>
+          </div>
+        ))}
+      </div>
 
       {/* 课程列表 */}
       {todayTasks.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)' }}>
-          <div style={{ fontSize: 14, opacity: 0.4 }}>今日暂无课程</div>
-          <div style={{ fontSize: 12, marginTop: 8, opacity: 0.3 }}>好好休息，明天再战</div>
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>
+          <div style={{ fontSize: 14 }}>NO MISSIONS ASSIGNED</div>
+          <div style={{ fontSize: 11, marginTop: 8, opacity: 0.5 }}>SYSTEM IDLE</div>
         </div>
       )}
 
       {todayTasks.map(task => {
         const period = getPeriodTime(task.period)
         const timeStr = period ? `${period.startTime}-${period.endTime}` : ''
-        const statusInfo = getCourseStatus(task)
-        const isCurrent = currentTask?.id === task.id
-        const startCheck = canStartClass(task.period)
+        const status = getCourseStatus(task, now)
         const nowMin = now.getHours() * 60 + now.getMinutes()
+        const startMin = period ? timeToMinutes(period.startTime) : 0
         const endMin = period ? timeToMinutes(period.endTime) : 0
-        const progress = period && nowMin >= timeToMinutes(period.startTime) && nowMin <= endMin
-          ? ((nowMin - timeToMinutes(period.startTime)) / (endMin - timeToMinutes(period.startTime))) * 100
+        const progress = period && nowMin >= startMin && nowMin <= endMin
+          ? ((nowMin - startMin) / (endMin - startMin)) * 100
           : task.status === 'completed' ? 100 : 0
 
         return (
           <div key={task.id} style={{
             background: 'var(--card-bg)',
-            border: `2px solid ${statusInfo.status === 'ongoing' || statusInfo.status === 'started' ? statusInfo.color : 'var(--border)'}`,
-            borderRadius: 16, padding: 16, marginBottom: 12,
-            position: 'relative', overflow: 'hidden',
-            boxShadow: statusInfo.status === 'ongoing' || statusInfo.status === 'started'
-              ? `0 0 20px ${statusInfo.bg}` : 'none'
+            border: `1px solid ${status.blink ? status.color : 'var(--border)'}`,
+            padding: '14px', marginBottom: 10, position: 'relative',
+            clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)',
+            boxShadow: status.blink ? `0 0 15px ${status.color}30` : 'none'
           }}>
-            {/* 呼吸灯效果 - 进行中课程 */}
-            {(statusInfo.status === 'ongoing' || statusInfo.status === 'started') && (
+            <div className="corner-deco tl" style={{ width: 8, height: 8, borderWidth: 1, borderColor: status.color }} />
+            <div className="corner-deco tr" style={{ width: 8, height: 8, borderWidth: 1, borderColor: status.color }} />
+            <div className="corner-deco bl" style={{ width: 8, height: 8, borderWidth: 1, borderColor: status.color }} />
+            <div className="corner-deco br" style={{ width: 8, height: 8, borderWidth: 1, borderColor: status.color }} />
+
+            {/* 呼吸灯 */}
+            {status.blink && (
               <div style={{
-                position: 'absolute', top: 12, right: 12,
-                width: 8, height: 8, borderRadius: '50%',
-                background: statusInfo.color,
+                position: 'absolute', top: 10, right: 10,
+                width: 6, height: 6, borderRadius: '50%',
+                background: status.color,
                 animation: 'breathe 2s ease-in-out infinite',
-                boxShadow: `0 0 10px ${statusInfo.color}`
+                boxShadow: `0 0 8px ${status.color}`
               }} />
             )}
 
             {/* 进度条 */}
-            <div style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0,
-              height: 3, background: 'var(--bg-alt)', borderRadius: '0 0 14px 14px'
-            }}>
-              <div style={{
-                width: `${progress}%`, height: '100%',
-                background: statusInfo.color,
-                borderRadius: '0 0 14px 14px',
-                transition: 'width 1s linear'
-              }} />
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: 'var(--bg-alt)' }}>
+              <div style={{ width: `${progress}%`, height: '100%', background: status.color, transition: 'width 1s' }} />
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-              {/* 状态图标 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, position: 'relative', zIndex: 1 }}>
               <div style={{
-                width: 44, height: 44, borderRadius: 12,
-                background: statusInfo.bg,
+                width: 40, height: 40,
+                background: `${status.color}15`, border: `1px solid ${status.color}40`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20, flexShrink: 0
+                fontSize: 16, fontFamily: 'Share Tech Mono, monospace',
+                clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
               }}>
-                {task.status === 'completed' ? '✓' :
-                 task.status === 'absent' || task.status === 'overdue' ? '✕' :
-                 statusInfo.status === 'ongoing' || statusInfo.status === 'started' ? '▶' :
-                 '○'}
+                {task.status === 'completed' ? '✓' : task.status === 'absent' || task.status === 'overdue' ? '✕' : status.blink ? '▶' : '○'}
               </div>
-
               <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 16, fontWeight: 700 }}>{task.subject}</span>
-                  <span style={{
-                    fontSize: 10, fontWeight: 600, padding: '2px 8px',
-                    borderRadius: 100, background: statusInfo.bg, color: statusInfo.color
-                  }}>
-                    {statusInfo.label}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 15, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 1 }}>{task.subject.toUpperCase()}</span>
+                  <span style={{ fontSize: 9, fontFamily: 'Share Tech Mono, monospace', padding: '1px 6px', background: `${status.color}15`, color: status.color, border: `1px solid ${status.color}40` }}>
+                    {status.label}
                   </span>
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>
-                  {timeStr} · 第{task.period}节 · {task.difficulty === 'hard' ? '困难' : task.difficulty === 'medium' ? '中等' : '简单'}
+                <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginTop: 2 }}>
+                  {timeStr} // PERIOD {task.period} // DIFF: {task.difficulty === 'hard' ? 'HIGH' : task.difficulty === 'medium' ? 'MED' : 'LOW'}
                 </div>
               </div>
-
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--success)' }}>+{task.baseReward}</div>
-                {task.bonusReward > 0 && (
-                  <div style={{ fontSize: 10, color: 'var(--warning)' }}>+{task.bonusReward} bonus</div>
-                )}
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#f59e0b', fontFamily: 'Teko, sans-serif' }}>+{task.baseReward}</div>
+                {task.bonusReward > 0 && <div style={{ fontSize: 9, color: '#ff4500', fontFamily: 'Share Tech Mono, monospace' }}>+{task.bonusReward} BONUS</div>}
               </div>
             </div>
 
             {/* 操作按钮 */}
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(statusInfo.status === 'pending' || statusInfo.status === 'ongoing') && task.status !== 'started' && task.status !== 'completed' && (
+            <div style={{ display: 'flex', gap: 6, position: 'relative', zIndex: 1 }}>
+              {(status.status === 'pending' || status.status === 'ongoing') && task.status !== 'started' && task.status !== 'completed' && (
                 <button onClick={() => enterAbyss(task)} style={{
-                  flex: 1, padding: '10px', borderRadius: 10,
-                  background: isWandering ? 'rgba(255,69,0,0.15)' : 'var(--fg)',
-                  color: isWandering ? '#ff4500' : 'var(--bg)',
-                  border: isWandering ? '1px solid #ff4500' : 'none',
-                  fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                  fontFamily: isWandering ? 'Teko, sans-serif' : 'inherit',
-                  letterSpacing: 1, textTransform: 'uppercase',
-                  clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
+                  flex: 1, padding: '8px', background: 'rgba(255,69,0,0.1)',
+                  border: '1px solid #ff4500', color: '#ff4500',
+                  fontFamily: 'Teko, sans-serif', fontSize: 13, letterSpacing: 1,
+                  cursor: 'pointer', textTransform: 'uppercase',
+                  clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
                 }}>
-                  {isWandering ? 'ENTER ABYSS' : '进入深渊'}
+                  ENTER ABYSS
                 </button>
               )}
-
               {task.status === 'started' && (
                 <>
                   <button onClick={() => handleTakePhoto(task.id)} style={{
-                    flex: 1, padding: '10px', borderRadius: 10,
-                    background: 'var(--info)', color: '#fff',
-                    border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                    flex: 1, padding: '8px', background: 'rgba(69,162,158,0.1)',
+                    border: '1px solid #45a29e', color: '#45a29e',
+                    fontFamily: 'Share Tech Mono, monospace', fontSize: 11,
+                    cursor: 'pointer', letterSpacing: 1,
+                    clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
                   }}>
-                    拍照打卡
+                    VERIFY
                   </button>
                   <button onClick={() => onNavigate?.('dungeon')} style={{
-                    padding: '10px 14px', borderRadius: 10,
-                    background: 'var(--bg-alt)', color: 'var(--fg)',
-                    border: '1px solid var(--border)', fontSize: 13,
-                    fontWeight: 600, cursor: 'pointer'
+                    padding: '8px 12px', background: 'var(--bg-alt)',
+                    border: '1px solid var(--border)', color: 'var(--fg)',
+                    fontFamily: 'Share Tech Mono, monospace', fontSize: 11,
+                    cursor: 'pointer',
+                    clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
                   }}>
-                    返回深渊
+                    RETURN
                   </button>
                 </>
               )}
-
               {task.status === 'completed' && (
                 <div style={{
-                  flex: 1, padding: '10px', borderRadius: 10,
-                  background: 'rgba(22,163,74,0.1)', color: '#16A34A',
-                  textAlign: 'center', fontSize: 13, fontWeight: 600
+                  flex: 1, padding: '8px', background: 'rgba(69,162,158,0.08)',
+                  color: '#45a29e', textAlign: 'center',
+                  fontFamily: 'Share Tech Mono, monospace', fontSize: 11, letterSpacing: 1,
+                  border: '1px solid rgba(69,162,158,0.2)',
+                  clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
                 }}>
-                  ✓ 已完成 · {task.aiScore ?? '--'}分
+                  ✓ COMPLETE // {task.aiScore ?? '--'} PTS
                 </div>
               )}
-
               {(task.status === 'overdue' || task.status === 'absent') && (
                 <div style={{
-                  flex: 1, padding: '10px', borderRadius: 10,
-                  background: 'rgba(229,77,46,0.1)', color: '#E54D2E',
-                  textAlign: 'center', fontSize: 13, fontWeight: 600
+                  flex: 1, padding: '8px', background: 'rgba(255,68,68,0.08)',
+                  color: '#ff4444', textAlign: 'center',
+                  fontFamily: 'Share Tech Mono, monospace', fontSize: 11, letterSpacing: 1,
+                  border: '1px solid rgba(255,68,68,0.2)',
+                  clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
                 }}>
-                  ✕ {task.status === 'overdue' ? '已逾期' : '缺课'} · -{task.penalty}分
+                  ✕ {task.status === 'overdue' ? 'OVERDUE' : 'ABSENT'} // -{task.penalty}
                 </div>
               )}
             </div>

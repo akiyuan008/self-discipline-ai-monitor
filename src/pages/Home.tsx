@@ -11,8 +11,39 @@ interface Props {
   onNavigate?: (p: PageId) => void
 }
 
+function DataBlock({ label, value, unit, color = 'var(--success)' }: { label: string; value: string | number; unit?: string; color?: string }) {
+  return (
+    <div style={{
+      background: 'var(--card-bg)', border: '1px solid var(--border)',
+      padding: '12px 14px', position: 'relative',
+      clipPath: 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)'
+    }}>
+      <div className="corner-deco tl" style={{ width: 10, height: 10, borderWidth: 1 }} />
+      <div className="corner-deco tr" style={{ width: 10, height: 10, borderWidth: 1 }} />
+      <div className="corner-deco bl" style={{ width: 10, height: 10, borderWidth: 1 }} />
+      <div className="corner-deco br" style={{ width: 10, height: 10, borderWidth: 1 }} />
+      <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 1, textTransform: 'uppercase' }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 700, color, fontFamily: 'Teko, sans-serif', lineHeight: 1.1, marginTop: 2 }}>
+        {value}<span style={{ fontSize: 12, color: 'var(--muted)', marginLeft: 4 }}>{unit}</span>
+      </div>
+    </div>
+  )
+}
+
+function StatusLine({ label, status, ok }: { label: string; status: string; ok: boolean }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>{label}</span>
+      <span style={{ fontSize: 11, color: ok ? '#45a29e' : '#ff4500', fontFamily: 'Share Tech Mono, monospace' }}>
+        [{status}]
+      </span>
+    </div>
+  )
+}
+
 export default function Home({ onNavigate }: Props) {
-  const isWandering = true
   const points = useStore(s => s.points)
   const xp = useStore(s => s.xp)
   const streak = useStore(s => s.streak)
@@ -22,7 +53,8 @@ export default function Home({ onNavigate }: Props) {
   const todayStudyMs = useStore(s => s.todayStudyMs)
   const todayEntMs = useStore(s => s.todayEntMs)
   const setDungeonDuration = useStore(s => s.setDungeonDuration)
-  const dungeonDurationMin = useStore(s => s.dungeonDurationMin)
+  const level = useStore(s => s.level)
+  const exp = useStore(s => s.exp)
 
   const [entTop3, setEntTop3] = useState<{ label: string; ms: number }[]>([])
   const [hasAccess, setHasAccess] = useState(false)
@@ -30,329 +62,182 @@ export default function Home({ onNavigate }: Props) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    // 初始检测
     hasUsageAccess().then(setHasAccess).catch(() => setHasAccess(false))
     refresh()
     if (isLateNight()) setLateAlert(true)
+    const sub = App.addListener('resume', () => { hasUsageAccess().then(setHasAccess).catch(() => {}) })
+    return () => { sub.then(s => s.remove()) }
+  }, [])
 
-    // 监听 App 从后台回到前台
-    const sub = App.addListener('resume', () => {
-      hasUsageAccess().then(setHasAccess).catch(() => setHasAccess(false))
-      refresh()
-    })
-
-    // 每3秒轮询检测权限（直到授权成功）
-    const interval = setInterval(() => {
-      hasUsageAccess().then(granted => {
-        setHasAccess(granted)
-        if (granted) clearInterval(interval)
-      }).catch(() => {})
-    }, 3000)
-
-    return () => {
-      sub.then(s => s.remove())
-      clearInterval(interval)
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
+  useEffect(() => {
+    if (pollRef.current) clearInterval(pollRef.current)
+    pollRef.current = setInterval(refresh, 30000)
+    return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [])
 
   async function refresh() {
     try {
-      const now = Date.now()
-      const start = new Date()
-      start.setHours(0, 0, 0, 0)
-      const { study, ent } = await fetchUsageStats(start.getTime(), now)
-      useStore.getState().syncUsage(study, ent)
-      const top = [...ent].sort((a, b) => b.totalMs - a.totalMs).slice(0, 3)
-        .map(e => ({ label: e.label, ms: e.totalMs }))
-      setEntTop3(top)
-    } catch (err) {
-      console.warn('[Home] refresh failed', err)
-      showToast('使用情况刷新失败，请稍后重试')
-    }
+      const stats = await fetchUsageStats()
+      const ent = stats.filter(s => !s.isStudy).sort((a, b) => b.totalMs - a.totalMs).slice(0, 3)
+      setEntTop3(ent.map(e => ({ label: e.label, ms: e.totalMs })))
+    } catch (e) { logger.warn('home', 'refresh usage stats failed', { error: String(e) }) }
   }
 
-  const xpLevel = Math.floor(Math.sqrt(xp / 100)) + 1
-  const xpCurrentLevelXp = (xpLevel - 1) ** 2 * 100
-  const xpNextLevelXp = xpLevel ** 2 * 100
-  const xpProgress = Math.min(100, Math.round((xp - xpCurrentLevelXp) / (xpNextLevelXp - xpCurrentLevelXp) * 100))
-  const focusHours = Math.floor(totalFocusMs / 3600_000)
-  const studyMin = Math.floor(todayStudyMs / 60_000)
-  const mainProgress = Math.min(100, Math.round((todayStudyMs / (dailyGoalMin * 60_000)) * 100))
-
+  const studyPct = dailyGoalMin > 0 ? Math.min(100, Math.round((todayStudyMs / (dailyGoalMin * 60000)) * 100)) : 0
+  const thrust = Math.min(100, Math.floor((todayStudyMs / Math.max(1, dailyGoalMin * 60000)) * 100))
 
   return (
-    <div className="safe-top" style={{ padding: '24px 20px 140px' }}>
-      {/* 头部 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+    <div className="safe-top" style={{ padding: '20px 16px 140px', background: 'var(--bg)', minHeight: '100vh' }}>
+      {/* 顶部控制台标题 */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+        marginBottom: 20, paddingBottom: 10, borderBottom: '1px solid rgba(69, 162, 158, 0.2)'
+      }}>
         <div>
-          <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', color: 'var(--muted)' }}>
-            CYBER_SURVIVAL · {playerTag}
+          <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 2 }}>
+            UEG CONTROL SYSTEM
           </div>
-          <div style={{ fontSize: 14, fontWeight: 500, marginTop: 2 }}>
-            你已存活 <span style={{ color: 'var(--fg)' }}>{streak}</span> 天
+          <h1 style={{ fontSize: 28, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 2, textTransform: 'uppercase', margin: 0, color: 'var(--fg)' }}>
+            {playerTag}
+          </h1>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>THRUST</div>
+          <div className="thrust-text" style={{ fontSize: 24, fontWeight: 700, color: '#ff4500', fontFamily: 'Teko, sans-serif' }}>
+            {thrust}%
           </div>
         </div>
-        <button
-          onClick={() => onNavigate?.('chat')}
-          style={{
-            width: 40, height: 40, borderRadius: '50%',
-            background: 'var(--card-bg)', border: '1px solid var(--border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: 'var(--fg)'
-          }}
-          title="与监管者对话"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-          </svg>
-        </button>
       </div>
 
-      {/* 深夜提醒 */}
-      {lateAlert && (
-        <div className="card" style={{
-          padding: '12px 16px', borderRadius: 16, marginBottom: 12,
-          background: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.2)'
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--warning)' }}>
-            深夜了，监管者注意到你还在熬夜
+      {/* 主数据面板 */}
+      <div style={{
+        background: 'var(--card-bg)', border: '1px solid var(--border)',
+        padding: '16px', marginBottom: 16, position: 'relative',
+        clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)'
+      }}>
+        <div className="corner-deco tl" />
+        <div className="corner-deco tr" />
+        <div className="corner-deco bl" />
+        <div className="corner-deco br" />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, position: 'relative', zIndex: 1 }}>
+          <div style={{ fontSize: 12, fontFamily: 'Share Tech Mono, monospace', color: '#45a29e', letterSpacing: 1 }}>
+            SYSTEM STATUS
           </div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-            熬夜伤身，明日状态会变差
+          <div style={{
+            width: 8, height: 8, borderRadius: '50%', background: '#45a29e',
+            boxShadow: '0 0 8px #45a29e', animation: 'breathe 2s ease-in-out infinite'
+          }} />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, position: 'relative', zIndex: 1 }}>
+          <DataBlock label="LEVEL" value={level} />
+          <DataBlock label="EXP" value={exp % 1000} unit="/1000" />
+          <DataBlock label="STREAK" value={streak} unit="D" color="#45a29e" />
+          <DataBlock label="POINTS" value={points} color="#f59e0b" />
+        </div>
+
+        {/* 今日专注进度条 */}
+        <div style={{ marginTop: 14, position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+            <span style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>TODAY FOCUS</span>
+            <span style={{ fontSize: 10, color: '#ff4500', fontFamily: 'Share Tech Mono, monospace' }}>{fmtMs(todayStudyMs)} / {dailyGoalMin}min</span>
+          </div>
+          <div style={{ height: 6, background: '#1a2332', borderRadius: 3, overflow: 'hidden', position: 'relative' }}>
+            <div style={{
+              width: `${studyPct}%`, height: '100%',
+              background: 'linear-gradient(90deg, #ff4500, #f59e0b)',
+              borderRadius: 3, transition: 'width 0.5s',
+              boxShadow: '0 0 10px rgba(255,69,0,0.5)'
+            }} />
           </div>
         </div>
-      )}
+      </div>
 
-      {/* 使用权限引导 — 重做版 */}
-      {!hasAccess && (
-        <div className="card" style={{
-          padding: 20, borderRadius: 16, marginBottom: 16,
-          background: 'rgba(229, 77, 46, 0.04)',
-          border: '1px solid rgba(229, 77, 46, 0.15)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-              background: 'rgba(229, 77, 46, 0.08)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>
-                需要使用情况访问权限
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>
-                授权后监管者可以读取真实的学习和娱乐时长，这是整个自律系统的基础。
-              </div>
-            </div>
-          </div>
+      {/* 快捷操作面板 */}
+      <div style={{
+        background: 'var(--card-bg)', border: '1px solid var(--border)',
+        padding: '14px', marginBottom: 16, position: 'relative',
+        clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
+      }}>
+        <div className="corner-deco tl" style={{ width: 10, height: 10, borderWidth: 1 }} />
+        <div className="corner-deco tr" style={{ width: 10, height: 10, borderWidth: 1 }} />
+        <div className="corner-deco bl" style={{ width: 10, height: 10, borderWidth: 1 }} />
+        <div className="corner-deco br" style={{ width: 10, height: 10, borderWidth: 1 }} />
 
-          <button
-            onClick={async () => {
-              try {
-                await openUsageAccessSettings()
-                if (pollRef.current) clearInterval(pollRef.current)
-                pollRef.current = setInterval(() => {
-                  hasUsageAccess().then(granted => {
-                    setHasAccess(granted)
-                    if (granted) {
-                      if (pollRef.current) clearInterval(pollRef.current)
-                      pollRef.current = null
-                      logger.info('auth', '使用情况访问权限已获取')
-                      showToast('授权成功！监管者已上线')
-                      refresh()
-                    }
-                  }).catch(() => {})
-                }, 2000)
-              } catch (err: any) {
-                showToast(err?.message || '无法打开设置页面')
-              }
-            }}
-            style={{
-              width: '100%', padding: '12px', borderRadius: 100,
-              background: 'var(--danger)',
-              color: '#fff', border: 'none',
-              fontSize: 14, fontWeight: 700, cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-            }}
-          >
-            前往授权 →
+        <div style={{ fontSize: 11, color: '#45a29e', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 1, marginBottom: 10, position: 'relative', zIndex: 1 }}>
+          QUICK ACTIONS
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, position: 'relative', zIndex: 1 }}>
+          <button onClick={() => onNavigate?.('dungeon')} style={{
+            padding: '14px', background: 'rgba(255,69,0,0.1)',
+            border: '1px solid #ff4500', color: '#ff4500',
+            fontFamily: 'Teko, sans-serif', fontSize: 16, letterSpacing: 1,
+            cursor: 'pointer', textTransform: 'uppercase',
+            clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
+          }}>
+            <div style={{ fontSize: 20, marginBottom: 2 }}>▶</div>
+            IGNITION
+          </button>
+          <button onClick={() => onNavigate?.('quests')} style={{
+            padding: '14px', background: 'rgba(69,162,158,0.1)',
+            border: '1px solid #45a29e', color: '#45a29e',
+            fontFamily: 'Teko, sans-serif', fontSize: 16, letterSpacing: 1,
+            cursor: 'pointer', textTransform: 'uppercase',
+            clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
+          }}>
+            <div style={{ fontSize: 20, marginBottom: 2 }}>☰</div>
+            MISSIONS
+          </button>
+          <button onClick={() => onNavigate?.('chat')} style={{
+            padding: '12px', background: 'var(--bg-alt)',
+            border: '1px solid var(--border)', color: 'var(--fg)',
+            fontFamily: 'Share Tech Mono, monospace', fontSize: 11,
+            cursor: 'pointer', letterSpacing: 1,
+            clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
+          }}>
+            COMMS
+          </button>
+          <button onClick={() => onNavigate?.('shop')} style={{
+            padding: '12px', background: 'var(--bg-alt)',
+            border: '1px solid var(--border)', color: 'var(--fg)',
+            fontFamily: 'Share Tech Mono, monospace', fontSize: 11,
+            cursor: 'pointer', letterSpacing: 1,
+            clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
+          }}>
+            SUPPLY
           </button>
         </div>
-      )}
+      </div>
 
-      {/* 高考倒计时进度 */}
-      <GaokaoProgress variant="full" />
+      {/* 系统状态列表 */}
+      <div style={{
+        background: 'var(--card-bg)', border: '1px solid var(--border)',
+        padding: '14px 16px', position: 'relative',
+        clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
+      }}>
+        <div className="corner-deco tl" style={{ width: 10, height: 10, borderWidth: 1 }} />
+        <div className="corner-deco tr" style={{ width: 10, height: 10, borderWidth: 1 }} />
+        <div className="corner-deco bl" style={{ width: 10, height: 10, borderWidth: 1 }} />
+        <div className="corner-deco br" style={{ width: 10, height: 10, borderWidth: 1 }} />
 
-      {/* 学习进度环 */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 24, marginBottom: 24 }}>
-        <div style={{ position: 'relative', width: 220, height: 220 }}>
-          <svg width="220" height="220" viewBox="0 0 220 220">
-            <circle cx="110" cy="110" r="90" stroke="var(--border)" strokeWidth="4" fill="none" />
-            <circle
-              cx="110" cy="110" r="90"
-              stroke="var(--fg)" strokeWidth="4" fill="none"
-              strokeLinecap="round"
-              transform="rotate(-90 110 110)"
-              style={{ strokeDasharray: 2 * Math.PI * 90, strokeDashoffset: 2 * Math.PI * 90 - (Math.min(100, mainProgress) / 100) * 2 * Math.PI * 90, transition: 'stroke-dashoffset 0.8s ease' }}
-            />
-          </svg>
-          <div style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center'
-          }}>
-            <div style={{ fontSize: 64, fontWeight: 300, letterSpacing: -2, lineHeight: 1 }}>{mainProgress}%</div>
-            <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', letterSpacing: 1, marginTop: 4 }}>
-              DAILY_GOAL
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
-              今日进度
-            </div>
-          </div>
+        <div style={{ fontSize: 11, color: '#45a29e', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 1, marginBottom: 8, position: 'relative', zIndex: 1 }}>
+          SUBSYSTEMS
+        </div>
+
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <StatusLine label="USAGE ACCESS" status={hasAccess ? 'ONLINE' : 'OFFLINE'} ok={hasAccess} />
+          <StatusLine label="STUDY MODULE" status={todayStudyMs > 0 ? 'ACTIVE' : 'STANDBY'} ok={todayStudyMs > 0} />
+          <StatusLine label="ENT MONITOR" status={todayEntMs < 300000 ? 'NOMINAL' : 'WARNING'} ok={todayEntMs < 300000} />
+          <StatusLine label="LATE NIGHT" status={lateAlert ? 'ALERT' : 'NORMAL'} ok={!lateAlert} />
         </div>
       </div>
 
-      {/* 娱乐 Top3 */}
-      {entTop3.length > 0 && (
-        <div className="card" style={{ padding: 16, borderRadius: 16, marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginBottom: 8 }}>
-            ENTERTAINMENT_TOP3
-          </div>
-          {entTop3.map((e, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <span style={{ fontSize: 13 }}>{e.label}</span>
-              <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-                {fmtMs(e.ms)}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 主线进度 */}
-      <div className="card" style={{ padding: 16, borderRadius: 16, marginBottom: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>MAIN_QUEST</div>
-          <div style={{ fontSize: 12, fontWeight: 600 }}>{mainProgress}%</div>
-        </div>
-        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 10 }}>
-          每日学习目标 · {dailyGoalMin} 分钟
-        </div>
-        <div style={{ height: 6, background: 'var(--bg-alt)', borderRadius: 100, overflow: 'hidden' }}>
-          <div style={{
-            height: '100%', width: `${mainProgress}%`,
-            background: 'var(--fg)', transition: 'width 0.5s ease'
-          }} />
-        </div>
+      {/* 高考倒计时 */}
+      <div style={{ marginTop: 16 }}>
+        <GaokaoProgress />
       </div>
-
-      {/* 番茄钟时长选择 */}
-      <div className="card" style={{ padding: 14, borderRadius: 16, marginBottom: 8 }}>
-        <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginBottom: 8 }}>
-          DUNGEON_DURATION
-        </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {[5, 15, 25, 50].map(m => (
-            <button
-              key={m}
-              onClick={() => setDungeonDuration(m)}
-              style={{
-                flex: 1, padding: '8px',
-                borderRadius: 8,
-                background: dungeonDurationMin === m ? 'var(--fg)' : 'var(--bg-alt)',
-                color: dungeonDurationMin === m ? 'var(--bg)' : 'var(--muted)',
-                border: 'none', fontSize: 12, fontWeight: 600
-              }}
-            >
-              {m}min
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 操作 */}
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          onClick={() => onNavigate?.('dungeon')}
-          style={{
-            flex: 2, padding: '14px',
-            borderRadius: 12,
-            background: 'var(--fg)',
-            border: 'none',
-            color: 'var(--bg)',
-            fontSize: 14,
-            fontWeight: 600
-          }}
-        >
-          进入深渊 · {dungeonDurationMin}min
-        </button>
-      </div>
-
-      {/* XP 进度 */}
-      <div className="card" style={{ padding: 14, borderRadius: 16, marginBottom: 8, marginTop: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 600 }}>
-            Lv.{xpLevel}
-            <span style={{ fontSize: 10, color: 'var(--muted)', marginLeft: 6, fontFamily: 'DM Mono, monospace' }}>
-              {xp} XP
-            </span>
-          </div>
-          <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-            距 Lv.{xpLevel + 1} 还差 {Math.max(0, xpNextLevelXp - xp)} XP
-          </div>
-        </div>
-        <div style={{ height: 6, background: 'var(--bg-alt)', borderRadius: 100, overflow: 'hidden' }}>
-          <div style={{
-            height: '100%', width: `${xpProgress}%`,
-            background: 'var(--fg)',
-            borderRadius: 100, transition: 'width 0.5s ease'
-          }} />
-        </div>
-      </div>
-
-      {/* 状态摘要 */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <Stat label="积分" value={points.toString()} onClick={() => onNavigate?.('pointsDetail')} />
-        <Stat label="连签" value={`${streak}`} suffix="天" />
-      </div>
-    </div>
-  )
-}
-
-function Stat({ label, value, suffix, onClick }: { label: string; value: string; suffix?: string; onClick?: () => void }) {
-  return (
-    <div
-      className="card"
-      onClick={onClick}
-      style={{
-        padding: 14, borderRadius: 12, textAlign: 'center',
-        cursor: onClick ? 'pointer' : 'default',
-        position: 'relative'
-      }}
-    >
-      <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-        {label.toUpperCase()}
-      </div>
-      <div style={{ fontSize: 20, fontWeight: 500, marginTop: 4 }}>
-        {value}
-        {suffix && (
-          <span style={{ fontSize: 9, color: 'var(--muted)', marginLeft: 3, fontFamily: 'DM Mono, monospace' }}>
-            {suffix}
-          </span>
-        )}
-      </div>
-      {onClick && (
-        <div style={{
-          position: 'absolute', top: 6, right: 8,
-          fontSize: 10, color: 'var(--muted)', opacity: 0.5
-        }}>›</div>
-      )}
     </div>
   )
 }
