@@ -112,6 +112,12 @@ async function monitorUsage() {
     classStore.updateMonitorState(studyMs, entMs)
     mainStore.syncUsage(study, ent)
 
+    // 每5分钟学习奖励经验值
+    const studyMinutes = Math.floor(studyMs / 60000)
+    if (studyMinutes > 0) {
+      mainStore.addExp(studyMinutes, '专注学习')
+    }
+
     const monitor = classStore.monitorState
     if (monitor.isPunished && monitor.warningCount >= 2) {
       const lastChange = mainStore.lastPointsChange
@@ -156,6 +162,7 @@ function checkFullAttendance() {
   if (bonus > 0) {
     mainStore.addPoints(bonus)
     mainStore.addPointRecord('earn', bonus, `连续全勤奖励`)
+    mainStore.addExp(100, '全勤奖励')
   }
 }
 
