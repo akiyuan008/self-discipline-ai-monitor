@@ -12,6 +12,7 @@ interface Props {
 }
 
 export default function Home({ onNavigate }: Props) {
+  const isWandering = true
   const points = useStore(s => s.points)
   const xp = useStore(s => s.xp)
   const streak = useStore(s => s.streak)

@@ -27,12 +27,12 @@ function ExpPanel() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{
             width: 36, height: 36, borderRadius: 10,
-            background: theme === 'wandering' ? 'linear-gradient(135deg, #ff4500, #f59e0b)' : 'var(--bg-alt)',
+            background: true ? 'linear-gradient(135deg, #ff4500, #f59e0b)' : 'var(--bg-alt)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 16,
-            boxShadow: theme === 'wandering' ? '0 0 10px rgba(255, 69, 0, 0.3)' : 'none'
+            boxShadow: true ? '0 0 10px rgba(255, 69, 0, 0.3)' : 'none'
           }}>
-            {theme === 'wandering' ? '🚀' : '⭐'}
+            {true ? '🚀' : '⭐'}
           </div>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, fontFamily: 'Teko, sans-serif', letterSpacing: 1 }}>LVL.{level}</div>
@@ -46,7 +46,7 @@ function ExpPanel() {
         </div>
       </div>
 
-      <div className={theme === 'wandering' ? 'exp-bar-wandering' : ''} style={{
+      <div className={true ? 'exp-bar-wandering' : ''} style={{
         height: 6,
         borderRadius: 3,
         background: 'var(--bg-alt)',
@@ -55,10 +55,10 @@ function ExpPanel() {
         <div style={{
           height: '100%',
           width: `${expPercent}%`,
-          background: theme === 'wandering' ? 'linear-gradient(90deg, #ff4500, #f59e0b)' : 'var(--success)',
+          background: true ? 'linear-gradient(90deg, #ff4500, #f59e0b)' : 'var(--success)',
           borderRadius: 3,
           transition: 'width 0.5s ease',
-          boxShadow: theme === 'wandering' ? '0 0 10px rgba(255, 69, 0, 0.5)' : 'none'
+          boxShadow: true ? '0 0 10px rgba(255, 69, 0, 0.5)' : 'none'
         }} />
       </div>
 

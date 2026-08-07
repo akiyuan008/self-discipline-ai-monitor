@@ -41,7 +41,7 @@ export default function Quests({ onNavigate }: Props) {
   const points = useStore(s => s.points)
   const theme = useStore(s => s.theme)
   const setDungeonDuration = useStore(s => s.setDungeonDuration)
-  const isWandering = theme === 'wandering'
+  const isWandering = true
 
   const classTasks = useClassTaskStore(s => s.classTasks)
   const currentTask = useClassTaskStore(s => s.currentTask)
