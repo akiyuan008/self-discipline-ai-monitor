@@ -5,8 +5,6 @@ import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
 import { getPeriodTime, canStartClass, canCheckInClass } from '@/data/schedule'
 import { verifyClassPhoto, reportToWarden } from '@/lib/verifyAI'
 import { showToast } from '@/components/Toast'
-import { CATEGORY_TABS } from '@/data/quests'
-import GaokaoProgress from '@/components/GaokaoProgress'
 
 const ACCENT_COLOR: Record<string, string> = {
   success: 'var(--success)',
@@ -19,12 +17,8 @@ interface Props {
 }
 
 export default function Quests({ onNavigate }: Props) {
-  const [tab, setTab] = useState<'tasks' | 'classes'>('tasks')
-  const [taskTab, setTaskTab] = useState<'daily' | 'weekly' | 'main'>('daily')
 
   // 任务相关
-  const quests = useStore(s => s.quests)
-  const completeQuest = useStore(s => s.completeQuest)
   const points = useStore(s => s.points)
 
   // 课程相关
@@ -39,7 +33,6 @@ export default function Quests({ onNavigate }: Props) {
   const today = new Date().toISOString().slice(0, 10)
   const todayTasks = classTasks.filter(t => t.date === today).sort((a, b) => a.period - b.period)
 
-  const taskList = quests.filter(q => q.category === taskTab)
 
   async function handleTakePhoto(taskId: string) {
     try {
@@ -119,182 +112,77 @@ export default function Quests({ onNavigate }: Props) {
         </button>
       </div>
 
-      <GaokaoProgress variant="compact" />
-
-      {/* 主Tab：任务 / 课程 */}
-      <div style={{
-        display: 'flex', gap: 6, marginBottom: 16,
-        padding: 4, background: 'var(--card-bg)', borderRadius: 100,
-        border: '1px solid var(--border)'
-      }}>
-        <button onClick={() => setTab('tasks')} style={{
-          flex: 1, padding: '8px', borderRadius: 100,
-          background: tab === 'tasks' ? 'var(--fg)' : 'transparent',
-          color: tab === 'tasks' ? 'var(--bg)' : 'var(--muted)',
-          border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer'
-        }}>任务</button>
-        <button onClick={() => setTab('classes')} style={{
-          flex: 1, padding: '8px', borderRadius: 100,
-          background: tab === 'classes' ? 'var(--fg)' : 'transparent',
-          color: tab === 'classes' ? 'var(--bg)' : 'var(--muted)',
-          border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer'
-        }}>课程打卡</button>
-      </div>
-
-      {/* 任务列表 */}
-      {tab === 'tasks' && (
-        <>
-          <div style={{
-            display: 'flex', gap: 6, marginBottom: 12,
-            padding: 4, background: 'var(--card-bg)', borderRadius: 100,
-            border: '1px solid var(--border)'
-          }}>
-            {CATEGORY_TABS.map(c => (
-              <button key={c.id} onClick={() => setTaskTab(c.id as any)} style={{
-                flex: 1, padding: '6px 10px', borderRadius: 100,
-                background: taskTab === c.id ? 'var(--fg)' : 'transparent',
-                color: taskTab === c.id ? 'var(--bg)' : 'var(--muted)',
-                border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer'
-              }}>{c.label}</button>
-            ))}
-          </div>
-
-          {taskList.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted)' }}>
-              <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>📋</div>
-              <div style={{ fontSize: 14 }}>暂无{taskTab === 'daily' ? '每日' : taskTab === 'weekly' ? '每周' : '主线'}任务</div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>和监管者说"加个任务"来创建</div>
-            </div>
-          )}
-
-          {taskList.map(q => (
-            <div key={q.id} className="card" style={{
-              padding: 16, borderRadius: 16, marginBottom: 8,
-              borderLeft: `3px solid ${ACCENT_COLOR[q.accent] || 'var(--fg)'}`,
-              opacity: q.completed ? 0.6 : 1
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{q.title}</div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 8 }}>{q.desc}</div>
-                  <div style={{
-                    height: 4, borderRadius: 2, background: 'var(--bg-alt)', overflow: 'hidden'
-                  }}>
-                    <div style={{
-                      height: '100%', width: `${Math.min(100, (q.progress / q.total) * 100)}%`,
-                      background: ACCENT_COLOR[q.accent] || 'var(--fg)', borderRadius: 2,
-                      transition: 'width 0.3s ease'
-                    }} />
-                  </div>
-                  <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4, fontFamily: 'DM Mono, monospace' }}>
-                    {q.progress}/{q.total} · {q.reward} {q.rewardType}
-                  </div>
-                </div>
-                {!q.completed && (
-                  <button onClick={() => completeQuest(q.id)} style={{
-                    marginLeft: 10, padding: '6px 14px', borderRadius: 100,
-                    background: 'var(--fg)', color: 'var(--bg)',
-                    border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer'
-                  }}>完成</button>
-                )}
-                {q.completed && (
-                  <span style={{ marginLeft: 10, fontSize: 20 }}>✓</span>
-                )}
-              </div>
-            </div>
-          ))}
-        </>
-      )}
-
-      {/* 课程列表 */}
-      {tab === 'classes' && (
-        <div>
-          {todayTasks.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted)' }}>
-              <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>📚</div>
-              <div style={{ fontSize: 14 }}>今日暂无课程</div>
-            </div>
-          )}
-          {todayTasks.map(task => {
-            const period = getPeriodTime(task.period)
-            const timeStr = period ? `${period.startTime}-${period.endTime}` : ''
-            const isCurrent = currentTask?.id === task.id
-            const startCheck = canStartClass(task.period)
-
-            return (
-              <div key={task.id} className="card" style={{ padding: 16, borderRadius: 16, marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{
-                    padding: '4px 10px', borderRadius: 8,
-                    background: task.status === 'completed' ? 'rgba(22, 163, 74, 0.08)' :
-                      task.status === 'overdue' || task.status === 'absent' ? 'rgba(229, 77, 46, 0.08)' :
-                      isCurrent ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-alt)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 10, fontWeight: 600, fontFamily: 'DM Mono, monospace',
-                    color: task.status === 'completed' ? 'var(--success)' :
-                      task.status === 'overdue' || task.status === 'absent' ? 'var(--danger)' :
-                      isCurrent ? 'var(--info)' : 'var(--muted)',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    {timeStr || `第${task.period}节`}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{task.subject}</div>
-                    <div style={{ fontSize: 11, color: 'var(--muted)' }}>
-                      {timeStr} · {task.status === 'pending' ? '待开始' :
-                        task.status === 'started' ? '进行中' :
-                        task.status === 'completed' ? '已完成' :
-                        task.status === 'overdue' ? '已逾期' : '缺课'}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--success)' }}>+{task.baseReward}</div>
-                    {task.bonusReward > 0 && (
-                      <div style={{ fontSize: 10, color: 'var(--warning)' }}>+{task.bonusReward} bonus</div>
-                    )}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                  {task.status === 'pending' && (
-                    <button
-                      onClick={() => {
-                        if (!startCheck.can) {
-                          showToast(startCheck.reason || '无法开始')
-                          return
-                        }
-                        startClassTask(task.id)
-                      }}
-                      disabled={!startCheck.can}
-                      style={{
-                        flex: 1, padding: '8px', borderRadius: 8,
-                        background: startCheck.can ? 'var(--fg)' : 'var(--bg-alt)',
-                        color: startCheck.can ? 'var(--bg)' : 'var(--muted)',
-                        border: 'none', fontSize: 12, fontWeight: 600,
-                        cursor: startCheck.can ? 'pointer' : 'not-allowed'
-                      }}
-                    >
-                      {startCheck.can ? '开始上课' : startCheck.reason}
-                    </button>
-                  )}
-                  {task.status === 'started' && (
-                    <button
-                      onClick={() => handleTakePhoto(task.id)}
-                      style={{
-                        flex: 1, padding: '8px', borderRadius: 8,
-                        background: '#0078ff', color: '#fff',
-                        border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer'
-                      }}
-                    >
-                      拍照打卡
-                    </button>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+      {/* 今日课程 */}
+      {todayTasks.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted)' }}>
+          <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>📚</div>
+          <div style={{ fontSize: 14 }}>今日暂无课程</div>
         </div>
       )}
+      {todayTasks.map(task => {
+        const period = getPeriodTime(task.period)
+        const timeStr = period ? `${period.startTime}-${period.endTime}` : ''
+        const isCurrent = currentTask?.id === task.id
+        const startCheck = canStartClass(task.period)
+
+        return (
+          <div key={task.id} className="card" style={{ padding: 16, borderRadius: 16, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>{task.subject}</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>
+                  {timeStr} · {task.status === 'pending' ? '待开始' :
+                    task.status === 'started' ? '进行中' :
+                    task.status === 'completed' ? '✓ 已完成' :
+                    task.status === 'overdue' ? '已逾期' : '缺课'}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--success)' }}>+{task.baseReward}</div>
+                {task.bonusReward > 0 && (
+                  <div style={{ fontSize: 10, color: 'var(--warning)' }}>+{task.bonusReward} bonus</div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              {task.status === 'pending' && (
+                <button
+                  onClick={() => {
+                    if (!startCheck.can) {
+                      showToast(startCheck.reason || '无法开始')
+                      return
+                    }
+                    startClassTask(task.id)
+                  }}
+                  disabled={!startCheck.can}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: 10,
+                    background: startCheck.can ? 'var(--fg)' : 'var(--bg-alt)',
+                    color: startCheck.can ? 'var(--bg)' : 'var(--muted)',
+                    border: 'none', fontSize: 13, fontWeight: 600,
+                    cursor: startCheck.can ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  {startCheck.can ? '开始上课' : startCheck.reason}
+                </button>
+              )}
+              {task.status === 'started' && (
+                <button
+                  onClick={() => handleTakePhoto(task.id)}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: 10,
+                    background: 'var(--info)', color: '#fff',
+                    border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  📷 拍照打卡
+                </button>
+              )}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

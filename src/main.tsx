@@ -46,6 +46,7 @@ async function scheduleClassNotifications() {
     console.warn('[Notify] cancel failed', e)
   }
 
+  const notifSetting = useClassTaskStore.getState().notificationSetting
   const notifications: any[] = []
 
   for (const s of todaySchedule) {
@@ -69,7 +70,7 @@ async function scheduleClassNotifications() {
       body: `${s.subject} 还有4分钟开始（${period.startTime}），请做好准备`,
       id: notifyId,
       schedule: { at: remindDate, allowWhileIdle: true },
-      sound: 'default',
+      sound: notifSetting.sound ? 'default' : undefined,
       smallIcon: 'ic_notification',
       attachments: []
     })

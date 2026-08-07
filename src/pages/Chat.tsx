@@ -7,14 +7,12 @@ import { hasUsageAccess, openUsageAccessSettings } from '@/lib/usageStats'
 
 interface Props {
   onNavigateSettings?: () => void
-  onBack?: () => void
 }
 
 interface StatusBarProps {
   onClearChat?: () => void
   onToggleHistory?: () => void
   showHistory: boolean
-  onBack?: () => void
   onNavigateSettings?: () => void
 }
 
@@ -33,21 +31,6 @@ const StatusBar = memo(function StatusBar({ onClearChat, onToggleHistory, showHi
       flexShrink: 0
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {onBack && (
-          <button
-            onClick={onBack}
-            style={{
-              width: 36, height: 36, borderRadius: '50%',
-              background: 'var(--card-bg)', border: '1px solid var(--border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: 'var(--fg)'
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-        )}
         <div>
           <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{
@@ -278,7 +261,7 @@ function InputBar({ sending, onSend }: InputBarProps) {
   )
 }
 
-export default function Chat({ onNavigateSettings, onBack }: Props) {
+export default function Chat({ onNavigateSettings }: Props) {
   const messages = useStore(s => s.chat)
   const pushChat = useStore(s => s.pushChat)
   const clearChat = useStore(s => s.clearChat)
@@ -381,7 +364,6 @@ export default function Chat({ onNavigateSettings, onBack }: Props) {
         onClearChat={handleClearChat}
         onToggleHistory={() => setShowHistory(!showHistory)}
         showHistory={showHistory}
-        onBack={onBack}
         onNavigateSettings={onNavigateSettings}
       />
 

@@ -12,6 +12,7 @@ interface Props {
 
 export default function Home({ onNavigate }: Props) {
   const points = useStore(s => s.points)
+  const xp = useStore(s => s.xp)
   const streak = useStore(s => s.streak)
   const totalFocusMs = useStore(s => s.totalFocusMs)
   const dailyGoalMin = useStore(s => s.dailyGoalMin)
@@ -71,6 +72,10 @@ export default function Home({ onNavigate }: Props) {
     }
   }
 
+  const xpLevel = Math.floor(Math.sqrt(xp / 100)) + 1
+  const xpCurrentLevelXp = (xpLevel - 1) ** 2 * 100
+  const xxpNextLevelXp = xpLevel ** 2 * 100
+  const xpProgress = Math.min(100, Math.round((xp - xpCurrentLevelXp) / (xpNextLevelXp - xpCurrentLevelXp) * 100))
   const focusHours = Math.floor(totalFocusMs / 3600_000)
   const studyMin = Math.floor(todayStudyMs / 60_000)
   const entMin = Math.floor(todayEntMs / 60_000)
@@ -298,9 +303,9 @@ export default function Home({ onNavigate }: Props) {
 
       {/* 状态摘要 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 16 }}>
-        <Stat label="连签" value={`${streak}`} suffix="天" />
+        <Stat label="等级" value={`Lv.${xpLevel}`} suffix="" />
         <Stat label="积分" value={points.toString()} onClick={() => onNavigate?.('pointsDetail')} />
-        <Stat label="总专注" value={`${focusHours}`} suffix="HOURS" />
+        <Stat label="连签" value={`${streak}`} suffix="天" />
       </div>
     </div>
   )

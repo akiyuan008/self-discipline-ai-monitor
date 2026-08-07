@@ -57,6 +57,8 @@ export interface PointsChange {
 export interface NotificationSetting {
   enabled: boolean
   remindMinutes: number
+  sound: boolean
+  vibration: boolean
 }
 
 export interface MonitorState {
@@ -104,7 +106,7 @@ export const useClassTaskStore = create<ClassTaskState>()(
     (set, get) => ({
       classTasks: [],
       currentTask: null,
-      notificationSetting: { enabled: true, remindMinutes: 4 },
+      notificationSetting: { enabled: true, remindMinutes: 4, sound: true, vibration: true },
       monitorState: { lastCheckTime: 0, warningCount: 0, entertainmentMs: 0, studyMs: 0, isPunished: false },
       fullAttendanceDays: 0,
       lastAttendanceDate: '',
@@ -333,7 +335,7 @@ export const useClassTaskStore = create<ClassTaskState>()(
       reset: () => set({
         classTasks: [],
         currentTask: null,
-        notificationSetting: { enabled: true, remindMinutes: 4 },
+        notificationSetting: { enabled: true, remindMinutes: 4, sound: true, vibration: true },
         monitorState: { lastCheckTime: 0, warningCount: 0, entertainmentMs: 0, studyMs: 0, isPunished: false },
         fullAttendanceDays: 0,
         lastAttendanceDate: '',

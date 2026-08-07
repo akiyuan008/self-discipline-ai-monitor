@@ -3,6 +3,7 @@ import { useStore, PRESET_AI_CONFIG } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { testConnection } from '@/lib/ai'
 import { exportBackup, importBackup } from '@/lib/backup'
+import { useClassTaskStore } from '@/stores/classTaskStore'
 
 interface Props {
   onBack: () => void
@@ -13,6 +14,10 @@ export default function Settings({ onBack }: Props) {
   const toggleDark = useStore(s => s.toggleDark)
   const ai = useStore(s => s.ai)
   const setAI = useStore(s => s.setAI)
+  const ai2 = useStore(s => s.ai2)
+  const setAI2 = useStore(s => s.setAI2)
+  const aiMode = useStore(s => s.aiMode)
+  const setAIMode = useStore(s => s.setAIMode)
   const playerTag = useStore(s => s.playerTag)
   const reset = useStore(s => s.reset)
   const storedSystemPrompt = useStore(s => s.systemPrompt)
@@ -29,6 +34,9 @@ export default function Settings({ onBack }: Props) {
   const [apiKey, setApiKey] = useState(ai.apiKey || PRESET_AI_CONFIG.apiKey)
   const [endpoint, setEndpoint] = useState(ai.endpoint || PRESET_AI_CONFIG.endpoint)
   const [model, setModel] = useState(ai.model || PRESET_AI_CONFIG.model)
+  const [apiKey2, setApiKey2] = useState(ai2.apiKey || '')
+  const [endpoint2, setEndpoint2] = useState(ai2.endpoint || '')
+  const [model2, setModel2] = useState(ai2.model || '')
   const [systemPrompt, setSystemPromptLocal] = useState(storedSystemPrompt)
   const [testing, setTesting] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle')
   const [testMsg, setTestMsg] = useState('')
@@ -37,6 +45,8 @@ export default function Settings({ onBack }: Props) {
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
   const [modelSearch, setModelSearch] = useState('')
   const [importing, setImporting] = useState(false)
+  const notifSetting = useClassTaskStore(s => s.notificationSetting)
+  const setNotif = useClassTaskStore(s => s.setNotification)
   const fileRef = useRef<HTMLInputElement>(null)
   // 同步 store 的 ai 变化到本地 state（从其他页面返回或 rehydrate 时）
   useEffect(() => {
@@ -50,6 +60,7 @@ export default function Settings({ onBack }: Props) {
   // 测试失败只弹 Toast，绝对不清空表单
   function save() {
     setAI({ apiKey: apiKey.trim(), endpoint: endpoint.trim(), model: model.trim() })
+    setAI2({ apiKey: apiKey2.trim(), endpoint: endpoint2.trim(), model: model2.trim() })
     setSystemPrompt(systemPrompt)
     showToast('配置已保存')
   }
@@ -184,6 +195,22 @@ export default function Settings({ onBack }: Props) {
               onClick={toggleDark}
               role="switch"
               aria-checked={isDark}
+            />
+          </Row>
+        </Section>
+
+        {/* 通知设置 */}
+        <Section title="通知提醒">
+          <Row title="提醒铃声" desc="课程提醒时播放铃声">
+            <div
+              className={`switch ${notifSetting.sound ? 'on' : ''}`}
+              onClick={() => setNotif({ sound: !notifSetting.sound })}
+            />
+          </Row>
+          <Row title="震动" desc="课程提醒时震动">
+            <div
+              className={`switch ${notifSetting.vibration ? 'on' : ''}`}
+              onClick={() => setNotif({ vibration: !notifSetting.vibration })}
             />
           </Row>
         </Section>
@@ -525,6 +552,33 @@ export default function Settings({ onBack }: Props) {
               }}>
                 {testing === 'ok' ? '✓ ' : '✕ '}
                 {testMsg}
+              </div>
+            )}
+          </div>
+        </Section>
+
+        {/* AI 模式 */}
+        <Section title="AI 模式">
+          <div className="card" style={{ padding: 16, borderRadius: 12 }}>
+            <Row title="双 AI 模式" desc="开启后，二号AI用于课程打卡照片验证">
+              <div
+                className={`switch ${aiMode === 'dual' ? 'on' : ''}`}
+                onClick={() => setAIMode(aiMode === 'dual' ? 'single' : 'dual')}
+              />
+            </Row>
+            {aiMode === 'dual' && (
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6 }}>
+                  二号 AI 配置（用于照片验证）
+                </div>
+                <Field label="二号 API Key" placeholder="sk-..." value={apiKey2} onChange={setApiKey2} type="password" />
+                <Field label="二号 Base URL" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1" value={endpoint2} onChange={setEndpoint2} mono />
+                <Field label="二号 Model" placeholder="qwen-vl-plus" value={model2} onChange={setModel2} mono />
+                <button onClick={save} style={{
+                  width: '100%', padding: '10px', borderRadius: 8,
+                  background: 'var(--fg)', color: 'var(--bg)',
+                  border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                }}>保存二号AI配置</button>
               </div>
             )}
           </div>

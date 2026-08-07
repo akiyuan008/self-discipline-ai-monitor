@@ -36,8 +36,11 @@ const VERIFY_PROMPT = `你是一位严格的课程打卡验证官（二号AI）�
 - 如果照片明显是作弊（拍桌面、拍天花板等），直接给0分`;
 
 export async function verifyClassPhoto(photoBase64: string, subject: string): Promise<VerifyResult> {
-  const ai = useStore.getState().ai
-  if (!ai.apiKey?.trim()) {
+  const state = useStore.getState()
+  const ai = state.ai
+  // 双AI模式下优先使用二号AI做视觉验证
+  const verifyAI = state.aiMode === 'dual' && state.ai2.apiKey?.trim() ? state.ai2 : ai
+  if (!verifyAI.apiKey?.trim()) {
     return { passed: true, score: 85, review: 'AI验证官离线，自动通过', suggestion: '' }
   }
 
@@ -47,14 +50,14 @@ export async function verifyClassPhoto(photoBase64: string, subject: string): Pr
       { role: 'user', content: `请审查这张${subject}课的打卡照片。照片base64: ${photoBase64.slice(0, 500)}...` }
     ]
 
-    const resp = await fetch(ai.endpoint + '/chat/completions', {
+    const resp = await fetch(verifyAI.endpoint + '/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${ai.apiKey}`
+        'Authorization': `Bearer ${verifyAI.apiKey}`
       },
       body: JSON.stringify({
-        model: ai.model,
+        model: verifyAI.model,
         messages,
         temperature: 0.3,
         max_tokens: 300

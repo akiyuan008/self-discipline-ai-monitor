@@ -63,6 +63,7 @@ interface StoreState {
   playerTag: string
   dailyGoalMin: number
   points: number
+  xp: number
   streak: number
   totalFocusMs: number
   todayStudyMs: number
@@ -75,9 +76,12 @@ interface StoreState {
   quests: Quest[]
   achievements: Achievement[]
   ownedItems: Record<string, number>
+  customShopItems: ShopItem[]
   pointHistory: PointRecord[]
   isDark: boolean
   ai: AIConfig
+  ai2: AIConfig
+  aiMode: 'single' | 'dual'
   chat: ChatMessage[]
   systemPrompt: string
   modelList: string[]
@@ -87,11 +91,14 @@ interface StoreState {
   lastPointsChange: { amount: number; reason: string; time: number } | null
 
   addPoints: (n: number) => void
+  addXp: (n: number) => void
   spendPoints: (n: number) => boolean
   addStreak: (n: number) => void
   addFocusMs: (n: number) => void
   toggleDark: () => void
   setAI: (c: Partial<AIConfig>) => void
+  setAI2: (c: Partial<AIConfig>) => void
+  setAIMode: (mode: 'single' | 'dual') => void
   setSystemPrompt: (s: string) => void
   setModelList: (m: string[]) => void
   completeQuest: (id: string) => void
@@ -112,6 +119,8 @@ interface StoreState {
   syncUsage: (study: UsageStat[], ent: UsageStat[]) => void
   dailySettle: () => void
   addPointRecord: (type: 'earn' | 'spend', amount: number, reason: string) => void
+  addCustomShopItem: (item: Omit<ShopItem, 'id'>) => void
+  removeCustomShopItem: (id: string) => void
 }
 
 function todayStr(): string {
@@ -148,6 +157,7 @@ export const useStore = create<StoreState>()(
       playerTag: 'PLAYER_01',
       dailyGoalMin: 120,
       points: 0,
+      xp: 0,
       streak: 0,
       totalFocusMs: 0,
       todayStudyMs: 0,
@@ -160,9 +170,12 @@ export const useStore = create<StoreState>()(
       quests: [],
       achievements: [],
       ownedItems: {},
+      customShopItems: [],
       pointHistory: [],
       isDark: false,
       ai: { ...PRESET_AI_CONFIG },
+      ai2: { ...PRESET_AI_CONFIG },
+      aiMode: 'single',
       chat: [],
       systemPrompt: DEFAULT_SYSTEM_PROMPT,
       modelList: [...PRESET_MODEL_LIST],
@@ -172,10 +185,18 @@ export const useStore = create<StoreState>()(
       lastPointsChange: null,
 
       addPoints: (n) => set(s => ({ points: s.points + n })),
+      addXp: (n) => set(s => ({ xp: s.xp + Math.max(0, Math.round(n)) })),
       spendPoints: (cost) => {
         if (get().points < cost) return false
         set(s => ({ points: s.points - cost }))
         return true
+      },
+      addCustomShopItem: (item) => {
+        const id = `custom-${Date.now().toString(36)}`
+        set(s => ({ customShopItems: [...s.customShopItems, { ...item, id }] }))
+      },
+      removeCustomShopItem: (id) => {
+        set(s => ({ customShopItems: s.customShopItems.filter(i => i.id !== id) }))
       },
       addPointRecord: (type, amount, reason) =>
         set(s => ({
@@ -189,6 +210,8 @@ export const useStore = create<StoreState>()(
       addFocusMs: (n) => set(s => ({ totalFocusMs: s.totalFocusMs + n, todayStudyMs: s.todayStudyMs + n })),
       toggleDark: () => set(s => ({ isDark: !s.isDark })),
       setAI: (c) => set(s => ({ ai: { ...s.ai, ...c } })),
+      setAI2: (c) => set(s => ({ ai2: { ...s.ai2, ...c } })),
+      setAIMode: (mode) => set({ aiMode: mode }),
       setSystemPrompt: (s) => set({ systemPrompt: s }),
       setModelList: (m) => set({ modelList: m }),
       completeQuest: (id) => {
@@ -291,6 +314,8 @@ export const useStore = create<StoreState>()(
           playerTag: 'PLAYER_01',
           dailyGoalMin: 120,
               points: 0,
+          xp: 0,
+      xp: 0,
           streak: 0,
           totalFocusMs: 0,
           todayStudyMs: 0,
@@ -303,9 +328,15 @@ export const useStore = create<StoreState>()(
           quests: [],
           achievements: [],
           ownedItems: {},
+          customShopItems: [],
+      customShopItems: [],
           pointHistory: [],
           isDark: false,
           ai: { ...PRESET_AI_CONFIG },
+          ai2: { ...PRESET_AI_CONFIG },
+          aiMode: 'single',
+      ai2: { ...PRESET_AI_CONFIG },
+      aiMode: 'single',
           chat: [],
           systemPrompt: DEFAULT_SYSTEM_PROMPT,
           modelList: [...PRESET_MODEL_LIST],
