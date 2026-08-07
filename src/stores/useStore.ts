@@ -211,7 +211,7 @@ export const useStore = create<StoreState>()(
         get().addPointRecord('spend', item.cost, `购买：${item.name}`)
         set(s => ({ ownedItems: { ...s.ownedItems, [id]: (s.ownedItems[id] || 0) + 1 } }))
         switch (item.effect) {
-          case 'doubler': set({ doublerActive: true }); break
+
           case 'skin': break
           case 'snack': break
         }
@@ -343,11 +343,7 @@ export const useStore = create<StoreState>()(
         if (s.todayStudyMs >= dailyGoalMs) {
           set({ streak: s.streak + 1, lastSyncDay: today })
         } else {
-          if ((s.shields || 0) > 0) {
-            // shields 已移除，断签直接重置
-          } else {
-            set({ streak: 0, lastSyncDay: today })
-          }
+          set({ streak: 0, lastSyncDay: today })
         }
         set({ todayStudyMs: 0, todayEntMs: 0 })
       }
