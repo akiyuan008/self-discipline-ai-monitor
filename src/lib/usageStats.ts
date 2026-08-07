@@ -5,9 +5,15 @@ import { logger } from '@/lib/logger'
 
 // 惰性获取插件代理，避免模块加载时 Capacitor 未初始化
 let _plugin: any = null
+let _pluginLogged = false
 function getPlugin(): any {
   if (!_plugin) {
     _plugin = registerPlugin('SelfDiscipline') as any
+  }
+  if (!_pluginLogged) {
+    _pluginLogged = true
+    const isNative = Capacitor.isNativePlatform()
+    logger.info('usage', `SelfDiscipline 插件代理已创建`, { isNative, platform: Capacitor.getPlatform(), hasPlugin: !!_plugin })
   }
   return _plugin
 }
@@ -47,6 +53,7 @@ export async function hasUsageAccess(): Promise<boolean> {
   try {
         
     const r = await getPlugin().hasUsageAccess()
+    logger.debug('usage', 'hasUsageAccess 返回', { granted: r?.granted, mode: r?.mode })
     return !!r?.granted
   } catch (e) {
     logger.error('usage', 'hasUsageAccess 查询失败', { error: String(e) })

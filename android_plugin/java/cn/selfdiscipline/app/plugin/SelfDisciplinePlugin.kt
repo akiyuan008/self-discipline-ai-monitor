@@ -46,31 +46,40 @@ class SelfDisciplinePlugin : Plugin() {
   @PluginMethod
   fun openUsageAccessSettings(call: PluginCall) {
     Log.d(TAG, "openUsageAccessSettings called")
+    // 方式1: 用 Activity 上下文直接打开（最可靠，大多数 ROM 有效）
+    try {
+      val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+      activity.startActivity(intent)
+      Log.d(TAG, "Opened USAGE_ACCESS via activity")
+      call.resolve()
+      return
+    } catch (e: Exception) {
+      Log.w(TAG, "activity intent failed", e)
+    }
+    // 方式2: application context + NEW_TASK
     try {
       val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       }
-      if (intent.resolveActivity(context.packageManager) != null) {
-        context.startActivity(intent)
-        Log.d(TAG, "Opened ACTION_USAGE_ACCESS_SETTINGS")
-        call.resolve()
-        return
-      }
-      throw Exception("ACTION_USAGE_ACCESS_SETTINGS not resolved")
+      context.startActivity(intent)
+      Log.d(TAG, "Opened USAGE_ACCESS via context+NEW_TASK")
+      call.resolve()
+      return
     } catch (e: Exception) {
-      Log.w(TAG, "Usage access settings failed, trying app details", e)
-      try {
-        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-          data = android.net.Uri.parse("package:${context.packageName}")
-          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(intent)
-        Log.d(TAG, "Opened APPLICATION_DETAILS_SETTINGS")
-        call.resolve()
-      } catch (e2: Exception) {
-        Log.e(TAG, "All settings intents failed", e2)
-        call.reject("无法打开设置页面：${e2.message}")
+      Log.w(TAG, "context intent failed", e)
+    }
+    // 方式3: 降级到应用详情页
+    try {
+      val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+        data = android.net.Uri.parse("package:${context.packageName}")
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       }
+      context.startActivity(intent)
+      Log.d(TAG, "Opened APP_DETAILS as fallback")
+      call.resolve()
+    } catch (e: Exception) {
+      Log.e(TAG, "All settings intents failed", e)
+      call.reject("无法打开设置页面：${e.message}")
     }
   }
 

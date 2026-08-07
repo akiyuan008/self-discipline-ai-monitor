@@ -151,18 +151,6 @@ export default function Home({ onNavigate }: Props) {
             </div>
           </div>
 
-          <div style={{
-            padding: '10px 12px', borderRadius: 10,
-            background: 'var(--bg-alt)', marginBottom: 14,
-            fontSize: 11, color: 'var(--muted)', lineHeight: 1.8
-          }}>
-            <div style={{ fontWeight: 600, color: 'var(--fg)', marginBottom: 4 }}>操作步骤：</div>
-            ① 点击下方按钮跳转设置<br/>
-            ② 在列表中找到「自律养成」<br/>
-            ③ 点击进入并开启「允许使用情况访问」<br/>
-            ④ 返回 App，自动完成授权
-          </div>
-
           <button
             onClick={async () => {
               try {

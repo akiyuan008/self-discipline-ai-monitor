@@ -205,7 +205,8 @@ export const useStore = create<StoreState>()(
             { id: genId(), type, amount: Math.abs(amount), reason, ts: Date.now() },
             ...s.pointHistory
           ].slice(0, 200),
-          lastPointsChange: { amount: Math.abs(amount), reason, time: Date.now() }
+          // toast 需要带符号：spend 显示为负数
+          lastPointsChange: { amount: type === 'spend' ? -Math.abs(amount) : Math.abs(amount), reason, time: Date.now() }
         })),
       addStreak: (n) => set(s => ({ streak: Math.max(0, s.streak + n) })),
       addFocusMs: (n) => set(s => ({ totalFocusMs: s.totalFocusMs + n, todayStudyMs: s.todayStudyMs + n })),

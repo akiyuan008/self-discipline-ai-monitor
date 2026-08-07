@@ -47,23 +47,6 @@ export default function Profile({ onNavigate }: ProfileProps) {
           </div>
           <div style={{ fontSize: 18, color: 'var(--muted)' }}>›</div>
         </div>
-        {profile.weakSubjects.length > 0 && (
-          <div style={{
-            marginTop: 10, paddingTop: 10,
-            borderTop: '1px solid var(--border)',
-            display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap'
-          }}>
-            <span style={{ fontSize: 10, color: 'var(--danger)', fontFamily: 'DM Mono, monospace' }}>WEAK</span>
-            {profile.weakSubjects.map((w, i) => (
-              <span key={i} style={{
-                padding: '2px 8px', borderRadius: 100,
-                background: 'rgba(229,77,46,0.08)',
-                color: 'var(--danger)',
-                fontSize: 10, fontWeight: 500
-              }}>{w}</span>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* ═══ 档案馆内容提上来：绝密档案头 ═══ */}
