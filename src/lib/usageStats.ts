@@ -1,6 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
 
-const SelfDisciplinePlugin = registerPlugin('SelfDiscipline')
+const SelfDisciplinePlugin = registerPlugin('SelfDiscipline') as any
 import type { UsageStat } from '@/stores/useStore'
 import { STUDY_PACKAGES, ENTERTAINMENT_PACKAGES, APP_LABELS } from '@/data/appClassification'
 
