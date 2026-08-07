@@ -66,15 +66,26 @@ jobs:
           echo "=== res/values ==="
           ls -la "$RES_DIR"
 
-      - name: 🔧 Ensure dependencies in build.gradle
+      - name: 🔧 Ensure dependencies and signing in build.gradle
         run: |
           GRADLE_FILE=android/app/build.gradle
           if ! grep -q "androidx.appcompat:appcompat" "$GRADLE_FILE"; then
             sed -i '/dependencies {/a \    implementation "androidx.appcompat:appcompat:1.6.1"' "$GRADLE_FILE"
             echo "Added AppCompat dependency"
           fi
-          echo "=== build.gradle dependencies ==="
-          grep -A 30 "dependencies {" "$GRADLE_FILE" | head -35
+          # 配置统一签名（debug 和 release 共用同一 keystore，支持覆盖安装）
+          KEYSTORE_FILE=android_plugin/debug.keystore
+          if [ -f "$KEYSTORE_FILE" ]; then
+            cp "$KEYSTORE_FILE" android/app/debug.keystore
+            # 添加 signingConfigs 和 debug signingConfig
+            if ! grep -q "signingConfigs" "$GRADLE_FILE"; then
+              sed -i '/android {/a \    signingConfigs {\n        debug {\n            storeFile file("debug.keystore")\n            storePassword "android123"\n            keyAlias "debug-key"\n            keyPassword "android123"\n        }\n        release {\n            storeFile file("debug.keystore")\n            storePassword "android123"\n            keyAlias "debug-key"\n            keyPassword "android123"\n        }\n    }' "$GRADLE_FILE"
+              sed -i 's/buildTypes {/buildTypes {\n        debug {\n            signingConfig signingConfigs.debug\n        }\n        release {\n            signingConfig signingConfigs.release\n        }/' "$GRADLE_FILE"
+              echo "Added signing config"
+            fi
+          fi
+          echo "=== build.gradle (first 60 lines) ==="
+          head -60 "$GRADLE_FILE"
 
       - name: 🔨 Build Debug APK
         working-directory: android

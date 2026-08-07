@@ -1,4 +1,4 @@
-export type ShopEffect = 'potion' | 'shield' | 'doubler' | 'reset' | 'skin' | 'snack'
+export type ShopEffect = 'doubler' | 'skin' | 'snack'
 
 export interface ShopItem {
   id: string
@@ -18,26 +18,6 @@ export interface ShopItem {
 export const SHOP_ITEMS: ShopItem[] = [
   // ===== 功能性道具 =====
   {
-    id: 'potion',
-    name: '体力药水',
-    desc: '恢复 30 HP',
-    cost: 50,
-    iconBg: 'rgba(22, 163, 74, 0.1)',
-    iconColor: '#16a34a',
-    iconPath: 'M12 2C10.9 2 10 2.9 10 4V6H8C6.9 6 6 6.9 6 8V20C6 21.1 6.9 22 8 22H16C17.1 22 18 21.1 18 20V8C18 6.9 17.1 6 16 6H14V4C14 2.9 13.1 2 12 2Z',
-    effect: 'potion',
-  },
-  {
-    id: 'shield',
-    name: '免罚卡',
-    desc: '断签时抵消一次',
-    cost: 200,
-    iconBg: 'rgba(0, 120, 255, 0.1)',
-    iconColor: '#0078ff',
-    iconPath: 'M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z',
-    effect: 'shield',
-  },
-  {
     id: 'doubler',
     name: '双倍卡',
     desc: '下次积分翻倍',
@@ -46,16 +26,6 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconColor: '#f59e0b',
     iconPath: 'M12 2L2 7L12 12L22 7L12 2M2 17L12 22L22 17M2 12L12 17L22 12',
     effect: 'doubler',
-  },
-  {
-    id: 'reset',
-    name: '记忆重置',
-    desc: 'HP 恢复至 80',
-    cost: 150,
-    iconBg: 'rgba(139, 92, 246, 0.1)',
-    iconColor: '#8b5cf6',
-    iconPath: 'M12 5V1L7 6L12 11V7C15.31 7 18 9.69 18 13C18 16.31 15.31 19 12 19C8.69 19 6 16.31 6 13H4C4 17.42 7.58 21 12 21C16.42 21 20 17.42 20 13C20 8.58 16.42 5 12 5Z',
-    effect: 'reset',
   },
   {
     id: 'skin',

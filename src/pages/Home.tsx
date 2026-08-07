@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useStore, hpFromStudy } from '@/stores/useStore'
+import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { App } from '@capacitor/app'
 import { fetchUsageStats, hasUsageAccess, fmtMs, isLateNight, openUsageAccessSettings } from '@/lib/usageStats'
@@ -11,7 +11,6 @@ interface Props {
 }
 
 export default function Home({ onNavigate }: Props) {
-  const hp = useStore(s => s.hp)
   const points = useStore(s => s.points)
   const streak = useStore(s => s.streak)
   const totalFocusMs = useStore(s => s.totalFocusMs)
@@ -19,7 +18,6 @@ export default function Home({ onNavigate }: Props) {
   const playerTag = useStore(s => s.playerTag)
   const todayStudyMs = useStore(s => s.todayStudyMs)
   const todayEntMs = useStore(s => s.todayEntMs)
-  const setHp = useStore(s => s.setHp)
   const setDungeonDuration = useStore(s => s.setDungeonDuration)
   const dungeonDurationMin = useStore(s => s.dungeonDurationMin)
 
@@ -66,11 +64,7 @@ export default function Home({ onNavigate }: Props) {
         .map(e => ({ label: e.label, ms: e.totalMs }))
       setEntTop3(top)
       const s = useStore.getState()
-      // 仅在 HP 未被 AI 锁定时才根据学习时长自动设置
-      if (!s.hpLocked) {
-        setHp(hpFromStudy(s.todayStudyMs, s.dailyGoalMin * 60_000))
-        useStore.setState({ hpLocked: false })
-      }
+      // HP 系统已移除
     } catch (err) {
       console.warn('[Home] refresh failed', err)
       showToast('使用情况刷新失败，请稍后重试')
@@ -82,8 +76,6 @@ export default function Home({ onNavigate }: Props) {
   const entMin = Math.floor(todayEntMs / 60_000)
   const mainProgress = Math.min(100, Math.round((todayStudyMs / (dailyGoalMin * 60_000)) * 100))
 
-  const circumference = 2 * Math.PI * 90
-  const offset = circumference - (hp / 100) * circumference
 
   return (
     <div className="safe-top" style={{ padding: '24px 20px 140px' }}>
@@ -123,7 +115,7 @@ export default function Home({ onNavigate }: Props) {
             深夜了，监管者注意到你还在熬夜
           </div>
           <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-            熬夜会扣 HP，明日状态会变差
+            熬夜伤身，明日状态会变差
           </div>
         </div>
       )}
@@ -176,7 +168,7 @@ export default function Home({ onNavigate }: Props) {
       {/* 高考倒计时进度 */}
       <GaokaoProgress variant="full" />
 
-      {/* 精神力环 */}
+      {/* 学习进度环 */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 24, marginBottom: 24 }}>
         <div style={{ position: 'relative', width: 220, height: 220 }}>
           <svg width="220" height="220" viewBox="0 0 220 220">
@@ -186,7 +178,7 @@ export default function Home({ onNavigate }: Props) {
               stroke="var(--fg)" strokeWidth="4" fill="none"
               strokeLinecap="round"
               transform="rotate(-90 110 110)"
-              style={{ strokeDasharray: circumference, strokeDashoffset: offset, transition: 'stroke-dashoffset 0.8s ease' }}
+              style={{ strokeDasharray: 2 * Math.PI * 90, strokeDashoffset: 2 * Math.PI * 90 - (Math.min(100, mainProgress) / 100) * 2 * Math.PI * 90, transition: 'stroke-dashoffset 0.8s ease' }}
             />
           </svg>
           <div style={{
@@ -194,12 +186,12 @@ export default function Home({ onNavigate }: Props) {
             display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center'
           }}>
-            <div style={{ fontSize: 64, fontWeight: 300, letterSpacing: -2, lineHeight: 1 }}>{hp}</div>
+            <div style={{ fontSize: 64, fontWeight: 300, letterSpacing: -2, lineHeight: 1 }}>{mainProgress}%</div>
             <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', letterSpacing: 1, marginTop: 4 }}>
-              HP / 100
+              DAILY_GOAL
             </div>
             <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8 }}>
-              精神力
+              今日进度
             </div>
           </div>
         </div>
@@ -283,7 +275,7 @@ export default function Home({ onNavigate }: Props) {
 
       {/* 状态摘要 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 16 }}>
-        <Stat label="连胜" value={`${streak}`} suffix="DAYS" />
+        <Stat label="连签" value={`${streak}`} suffix="天" />
         <Stat label="积分" value={points.toString()} onClick={() => onNavigate?.('pointsDetail')} />
         <Stat label="总专注" value={`${focusHours}`} suffix="HOURS" />
       </div>

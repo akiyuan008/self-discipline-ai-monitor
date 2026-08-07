@@ -39,11 +39,10 @@ export const DEFAULT_SYSTEM_PROMPT = `你是用户的个人成长监督者（监
 - 当用户说"扣我积分"、"奖励我"、"加积分"时，必须调用 add_points 工具，不要只口头答应。
 - 当用户说"加个任务"、"我想做XXX"时，必须调用 add_quest 工具。
 - 当用户说"加个成就"、"我想挑战XXX"时，必须调用 add_achievement 工具。
-- 当用户说"设HP"、"扣HP"时，必须调用 set_hp 工具。
 - 当用户说"完成任务"时，必须调用 complete_quest 工具。
 - 当用户说"看看手机使用"、"我是不是在偷懒"时，必须调用 check_phone_usage 工具。
 - 调用工具后用一句话确认执行结果即可。
-- 涉及任何状态修改（积分、HP、任务、成就），都必须调用对应工具执行，绝对不能只口头说"已扣除"而不调工具。`
+- 涉及任何状态修改（积分、任务、成就），都必须调用对应工具执行，绝对不能只口头说"已扣除"而不调工具。`
 
 export interface ChatMessage {
   id: string
@@ -63,7 +62,6 @@ interface StoreState {
   onboarded: boolean
   playerTag: string
   dailyGoalMin: number
-  hp: number
   points: number
   streak: number
   totalFocusMs: number
@@ -83,16 +81,11 @@ interface StoreState {
   chat: ChatMessage[]
   systemPrompt: string
   modelList: string[]
-  hpLocked: boolean
-  shields: number
-  doublerActive: boolean
   dungeonRemainingSec: number
   dungeonActive: boolean
   dungeonDurationMin: number
   lastPointsChange: { amount: number; reason: string; time: number } | null
 
-  setHp: (n: number) => void
-  hitHp: (n: number) => void
   addPoints: (n: number) => void
   spendPoints: (n: number) => boolean
   addStreak: (n: number) => void
@@ -154,7 +147,6 @@ export const useStore = create<StoreState>()(
       onboarded: false,
       playerTag: 'PLAYER_01',
       dailyGoalMin: 120,
-      hp: 100,
       points: 0,
       streak: 0,
       totalFocusMs: 0,
@@ -174,16 +166,11 @@ export const useStore = create<StoreState>()(
       chat: [],
       systemPrompt: DEFAULT_SYSTEM_PROMPT,
       modelList: [...PRESET_MODEL_LIST],
-      hpLocked: false,
-      shields: 0,
-      doublerActive: false,
       dungeonRemainingSec: 0,
       dungeonActive: false,
       dungeonDurationMin: 25,
       lastPointsChange: null,
 
-      setHp: (n) => set(s => ({ hp: Math.max(0, Math.min(100, Math.round(n))), hpLocked: true })),
-      hitHp: (n) => set(s => ({ hp: Math.max(0, s.hp - n) })),
       addPoints: (n) => set(s => ({ points: s.points + n })),
       spendPoints: (cost) => {
         if (get().points < cost) return false
@@ -224,10 +211,7 @@ export const useStore = create<StoreState>()(
         get().addPointRecord('spend', item.cost, `购买：${item.name}`)
         set(s => ({ ownedItems: { ...s.ownedItems, [id]: (s.ownedItems[id] || 0) + 1 } }))
         switch (item.effect) {
-          case 'potion': get().setHp(get().hp + 30); break
-          case 'shield': set(s => ({ shields: s.shields + 1 })); break
           case 'doubler': set({ doublerActive: true }); break
-          case 'reset': get().setHp(80); break
           case 'skin': break
           case 'snack': break
         }
@@ -306,8 +290,7 @@ export const useStore = create<StoreState>()(
           onboarded: false,
           playerTag: 'PLAYER_01',
           dailyGoalMin: 120,
-          hp: 100,
-          points: 0,
+              points: 0,
           streak: 0,
           totalFocusMs: 0,
           todayStudyMs: 0,
@@ -326,10 +309,7 @@ export const useStore = create<StoreState>()(
           chat: [],
           systemPrompt: DEFAULT_SYSTEM_PROMPT,
           modelList: [...PRESET_MODEL_LIST],
-          hpLocked: false,
-          shields: 0,
-          doublerActive: false,
-          dungeonRemainingSec: 0,
+                      dungeonRemainingSec: 0,
           dungeonActive: false,
           dungeonDurationMin: 25,
           lastPointsChange: null
@@ -361,15 +341,15 @@ export const useStore = create<StoreState>()(
         if (s.lastSyncDay === today) return
         const dailyGoalMs = s.dailyGoalMin * 60_000
         if (s.todayStudyMs >= dailyGoalMs) {
-          set({ streak: s.streak + 1, lastSyncDay: today, hpLocked: false })
+          set({ streak: s.streak + 1, lastSyncDay: today })
         } else {
           if ((s.shields || 0) > 0) {
-            set({ shields: s.shields - 1, lastSyncDay: today, hpLocked: false })
+            // shields 已移除，断签直接重置
           } else {
-            set({ streak: 0, lastSyncDay: today, hpLocked: false })
+            set({ streak: 0, lastSyncDay: today })
           }
         }
-        set({ todayStudyMs: 0, todayEntMs: 0, doublerActive: false })
+        set({ todayStudyMs: 0, todayEntMs: 0 })
       }
     }),
     {
@@ -381,7 +361,6 @@ export const useStore = create<StoreState>()(
           persisted.quests = []
           persisted.achievements = []
           persisted.points = 0
-          persisted.hp = 100
           persisted.streak = 0
           persisted.totalFocusMs = 0
           persisted.pointHistory = []
@@ -404,12 +383,6 @@ export const useStore = create<StoreState>()(
     }
   )
 )
-
-export function hpFromStudy(studyMs: number, goalMs: number): number {
-  if (goalMs <= 0) return 0
-  const ratio = studyMs / goalMs
-  return Math.round(Math.min(100, 30 + ratio * 70))
-}
 
 export function calcGaokaoScore(state: {
   gaokaoBaseScore: number

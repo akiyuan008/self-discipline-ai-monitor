@@ -10,7 +10,6 @@ export default function Profile({ onNavigate }: ProfileProps) {
   const playerTag = useStore(s => s.playerTag)
   const streak = useStore(s => s.streak)
   const points = useStore(s => s.points)
-  const hp = useStore(s => s.hp)
   const gaokaoDate = useStore(s => s.gaokaoDate)
 
   const profile = useGaoKaoStore(s => s.profile)
@@ -21,7 +20,7 @@ export default function Profile({ onNavigate }: ProfileProps) {
 
   const days = daysUntilGaokao(gaokaoDate)
   const scoreGap = profile.targetTotalScore - profile.currentTotalScore
-  const syncRate = Math.min(100, Math.round(hp * 0.8 + streak * 1.5))
+  const syncRate = Math.min(100, Math.round(streak * 5))
 
   return (
     <div className="safe-top" style={{ padding: '24px 20px 140px' }}>
@@ -139,11 +138,10 @@ export default function Profile({ onNavigate }: ProfileProps) {
             borderTop: '1px solid var(--border)',
             paddingTop: 8, marginTop: 4
           }}>
-            <MiniStat label="连胜" value={`${streak}天`} />
-            <Divider />
+            <MiniStat label="连签" value={`${streak}天`} />
             <MiniStat label="积分" value={`${points}`} />
             <Divider />
-            <MiniStat label="HP" value={`${hp}`} />
+            
             <Divider />
             <MiniStat label="同步率" value={`${syncRate}%`} />
           </div>

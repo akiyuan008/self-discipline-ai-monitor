@@ -169,7 +169,7 @@ export default function Quests({ onNavigate }: Props) {
 
           {taskList.map(q => (
             <div key={q.id} className="card" style={{
-              padding: 14, borderRadius: 12, marginBottom: 10,
+              padding: 16, borderRadius: 16, marginBottom: 8,
               borderLeft: `3px solid ${ACCENT_COLOR[q.accent] || 'var(--fg)'}`,
               opacity: q.completed ? 0.6 : 1
             }}>
@@ -222,20 +222,21 @@ export default function Quests({ onNavigate }: Props) {
             const startCheck = canStartClass(task.period)
 
             return (
-              <div key={task.id} className="card" style={{ padding: 14, borderRadius: 12, marginBottom: 12 }}>
+              <div key={task.id} className="card" style={{ padding: 16, borderRadius: 16, marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
-                    width: 32, height: 32, borderRadius: 8,
-                    background: task.status === 'completed' ? 'rgba(22, 163, 74, 0.1)' :
-                      task.status === 'overdue' || task.status === 'absent' ? 'rgba(229, 77, 46, 0.1)' :
-                      isCurrent ? 'rgba(0, 120, 255, 0.1)' : 'var(--bg-alt)',
+                    padding: '4px 10px', borderRadius: 8,
+                    background: task.status === 'completed' ? 'rgba(22, 163, 74, 0.08)' :
+                      task.status === 'overdue' || task.status === 'absent' ? 'rgba(229, 77, 46, 0.08)' :
+                      isCurrent ? 'rgba(59, 130, 246, 0.08)' : 'var(--bg-alt)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, fontWeight: 700,
+                    fontSize: 10, fontWeight: 600, fontFamily: 'DM Mono, monospace',
                     color: task.status === 'completed' ? 'var(--success)' :
                       task.status === 'overdue' || task.status === 'absent' ? 'var(--danger)' :
-                      isCurrent ? '#0078ff' : 'var(--muted)'
+                      isCurrent ? 'var(--info)' : 'var(--muted)',
+                    whiteSpace: 'nowrap'
                   }}>
-                    {task.period}
+                    {timeStr || `第${task.period}节`}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{task.subject}</div>

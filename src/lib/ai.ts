@@ -21,11 +21,10 @@ const SYSTEM_PROMPT = `你是用户的个人成长监督者（监管者）。
 - 当用户说"扣我积分"、"奖励我"、"加积分"时，必须调用 add_points 工具，不要只口头答应。
 - 当用户说"加个任务"、"我想做XXX"时，必须调用 add_quest 工具。
 - 当用户说"加个成就"、"我想挑战XXX"时，必须调用 add_achievement 工具。
-- 当用户说"设HP"、"扣HP"时，必须调用 set_hp 工具。
 - 当用户说"完成任务"时，必须调用 complete_quest 工具。
 - 当用户说"看看手机使用"、"我是不是在偷懒"时，必须调用 check_phone_usage 工具。
 - 调用工具后用一句话确认执行结果即可。
-- 涉及任何状态修改（积分、HP、任务、成就），都必须调用对应工具执行，绝对不能只口头说"已扣除"而不调工具。`
+- 涉及任何状态修改（积分、任务、成就），都必须调用对应工具执行，绝对不能只口头说"已扣除"而不调工具。`
 
 // ═══════════════════════════════════════════════════════════
 // 工具定义（OpenAI 兼容 function calling）
@@ -50,7 +49,7 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'set_hp',
-      description: '设置精神力HP值（0-100）。用户要求修改HP时必须调用此工具。低于30为惩罚，70+为奖励。',
+      
       parameters: {
         type: 'object',
         properties: {
@@ -272,14 +271,12 @@ async function executeTool(name: string, args: any): Promise<string> {
         const after = useStore.getState().points
         return JSON.stringify({ ok: true, before, after, msg: `积分从${before}变为${after}（${amt >= 0 ? '+' : ''}${amt}）` })
       }
-      case 'set_hp': {
+      // set_hp 已移除 {
         const val = Math.max(0, Math.min(100, Math.round(Number(args.value))))
         if (isNaN(val)) {
           return JSON.stringify({ ok: false, error: 'value不是有效数字' })
         }
-        s.setHp(val)
-        useStore.setState({ hpLocked: true })
-        return JSON.stringify({ ok: true, hp: useStore.getState().hp, msg: `HP已设为${useStore.getState().hp}` })
+
       }
       case 'add_quest': {
         const id = s.addCustomQuest({
@@ -775,7 +772,7 @@ function buildContext(state: any): string {
   return `${SYSTEM_PROMPT}
 
 【当前状态】
-代号:${state.playerTag} HP:${state.hp}/100 积分:${state.points} 连胜:${state.streak}天
+代号:${state.playerTag} 积分:${state.points} 连签:${state.streak}天
 学习:${studyMin}min/${dailyGoalMin}min(${ratio}%) 娱乐:${entMin}min 总专注:${Math.floor(state.totalFocusMs / 3600_000)}h
 时间:${new Date().toLocaleString('zh-CN', { hour12: false })} ${isLate ? '[深夜]' : ''}
 

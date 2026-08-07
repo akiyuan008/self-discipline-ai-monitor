@@ -9,12 +9,10 @@ interface Props {
 export default function Dungeon({ onExit }: Props) {
   const dungeonDurationMin = useStore(s => s.dungeonDurationMin)
   const setDungeon = useStore(s => s.setDungeon)
-  const setHp = useStore(s => s.setHp)
   const addPoints = useStore(s => s.addPoints)
   const completeQuest = useStore(s => s.completeQuest)
   const unlockAchievement = useStore(s => s.unlockAchievement)
   const addFocusMs = useStore(s => s.addFocusMs)
-  const hp = useStore(s => s.hp)
 
   const totalSec = dungeonDurationMin * 60
   const [remaining, setRemaining] = useState(totalSec)
@@ -124,9 +122,10 @@ export default function Dungeon({ onExit }: Props) {
         <button
           onClick={() => {
             window.clearInterval(timerRef.current)
-            const penalty = Math.min(hp, 30)
-            setHp(Math.max(0, hp - 30))
-            showToast(`放弃挑战 -${penalty} HP`)
+            const penalty = 30
+            useStore.getState().addPoints(-penalty)
+            useStore.getState().addPointRecord('spend', penalty, '放弃深渊挑战')
+            showToast(`放弃挑战 -${penalty} 积分`)
             onExit()
           }}
           style={{

@@ -20,8 +20,8 @@ interface StatusBarProps {
 
 const StatusBar = memo(function StatusBar({ onClearChat, onToggleHistory, showHistory, onBack, onNavigateSettings }: StatusBarProps) {
   const ai = useStore(s => s.ai)
-  const hp = useStore(s => s.hp)
   const points = useStore(s => s.points)
+  const streak = useStore(s => s.streak)
   const messages = useStore(s => s.chat)
 
   return (
@@ -59,7 +59,7 @@ const StatusBar = memo(function StatusBar({ onClearChat, onToggleHistory, showHi
           </div>
           <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5, margin: 0 }}>监管者</h1>
           <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
-            HP {hp} · {points} PTS
+            {points} PTS · 连签 {streak}天
           </div>
         </div>
       </div>
@@ -326,10 +326,10 @@ export default function Chat({ onNavigateSettings, onBack }: Props) {
       const state = useStore.getState()
       const studyMin = Math.floor(state.todayStudyMs / 60_000)
       const goalPct = state.dailyGoalMin > 0 ? Math.min(100, Math.round(studyMin / state.dailyGoalMin * 100)) : 0
-      let greeting = `HP ${state.hp}，今日学习 ${studyMin} 分钟，达成 ${goalPct}%。连胜 ${state.streak} 天。进度有点慢，说吧。`
-      if (state.hp < 30) greeting = `状态拉响：HP ${state.hp}，精神力告急。今日学习 ${studyMin} 分钟，达成 ${goalPct}%。连胜 ${state.streak} 天——别断在这里。`
-      else if (goalPct >= 100) greeting = `今日目标已达成，HP ${state.hp}。连胜 ${state.streak} 天。状态不错，有什么打算？`
-      else if (goalPct >= 50) greeting = `HP ${state.hp}，今日学习 ${studyMin} 分钟（${goalPct}%）。势头还行，继续推。`
+      let greeting = `今日学习 ${studyMin} 分钟，达成 ${goalPct}%。连签 ${state.streak} 天。进度有点慢，说吧。`
+      if (goalPct < 30) greeting = `状态拉响：今日学习仅 ${studyMin} 分钟，达成 ${goalPct}%。连签 ${state.streak} 天——别断在这里。`
+      else if (goalPct >= 100) greeting = `今日目标已达成。连签 ${state.streak} 天。状态不错，有什么打算？`
+      else if (goalPct >= 50) greeting = `今日学习 ${studyMin} 分钟（${goalPct}%）。连签 ${state.streak} 天。势头还行，继续推。`
       pushChat({ role: 'assistant', text: greeting })
     }
     scrollToBottom()

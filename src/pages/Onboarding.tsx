@@ -42,7 +42,7 @@ export default function Onboarding() {
             Cyber Survival
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 40 }}>
-            在这个赛博自律世界里，你的精神力即是 HP，深渊挑战是学习时段，AI 监管者会守护你的进度曲线。
+            在这个赛博自律世界里，积分是你的财富，深渊挑战是学习时段，AI 监管者会守护你的进度曲线。
           </p>
 
           <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>玩家代号</label>
@@ -94,7 +94,7 @@ export default function Onboarding() {
             每日目标
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 32 }}>
-            系统会根据目标时长判断你的 HP 走势，未达 60% 视为「精神力流失」。
+            系统会根据目标时长判断你的学习进度，每日打卡完成任务即可增长连签天数。
           </p>
 
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>

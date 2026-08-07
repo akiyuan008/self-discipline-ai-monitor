@@ -163,7 +163,7 @@ export default function GaokaoProgress({ variant = 'full' }: Props) {
           <Divider />
           <Stat label="累计娱乐" value={`${entHours}h`} color="var(--danger)" />
           <Divider />
-          <Stat label="连胜" value={`${streak}天`} color="var(--fg)" />
+          <Stat label="连签" value={`${streak}天`} color="var(--fg)" />
           <Divider />
           <Stat
             label="完成任务"
