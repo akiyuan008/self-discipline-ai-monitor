@@ -240,7 +240,7 @@ export default function Home({ onNavigate }: Props) {
           }}>
             <Icon.Play size={20} color="#ff4500" /> 启动引擎
           </button>
-          <button onClick={() => onNavigate?.('legacy')} style={{
+          <button onClick={() => onNavigate?.('classHistory')} style={{
             padding: '14px', background: 'rgba(245,158,11,0.08)',
             border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b',
             fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: 1,
@@ -248,7 +248,7 @@ export default function Home({ onNavigate }: Props) {
             clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
           }}>
-            <Icon.Book size={18} color="#f59e0b" /> 航迹档案
+            <Icon.Book size={18} color="#f59e0b" /> 学习档案
           </button>
         </div>
       </div>

@@ -139,7 +139,7 @@ export default function Profile({ onNavigate, onNavigateStats }: ProfileProps) {
         </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 14, fontWeight: 600 }}>学习档案</div>
-            <div style={{ fontSize: 11, color: 'var(--muted)' }}>课程记录、打卡审查、薄弱项分析</div>
+            <div style={{ fontSize: 11, color: 'var(--muted)' }}>课程记录、打卡照片、深渊远征、回响、监测、勋章</div>
           </div>
           <div style={{ fontSize: 18, color: 'var(--muted)' }}>›</div>
         </div>
