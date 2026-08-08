@@ -5,7 +5,41 @@
 @tailwind utilities;
 
 @layer base {
+  /* 默认主题：APK 旧版本简洁风格 */
   :root, [data-theme="light"] {
+    --bg: #F4F3F0;
+    --bg-alt: #E0DED9;
+    --fg: #1a1a1a;
+    --muted: #8a8a8a;
+    --card-bg: rgba(255, 255, 255, 0.95);
+    --card-gradient: linear-gradient(135deg, #ffffff 0%, #f8f8f8 100%);
+    --border: rgba(0, 0, 0, 0.05);
+    --danger: #E54D2E;
+    --success: #16A34A;
+    --warning: #F59E0B;
+    --info: #3B82F6;
+    --accent: #3B82F6;
+    --accent-dim: rgba(59, 130, 246, 0.12);
+  }
+
+  [data-theme="dark"] {
+    --bg: #000000;
+    --bg-alt: #1A1A1A;
+    --fg: #FFFFFF;
+    --muted: #6B6B6B;
+    --card-bg: #1F1F1F;
+    --card-gradient: linear-gradient(135deg, #1F1F1F 0%, #151515 100%);
+    --border: rgba(255, 255, 255, 0.1);
+    --danger: #ef4444;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --info: #38bdf8;
+    --accent: #60a5fa;
+    --accent-dim: rgba(96, 165, 250, 0.15);
+  }
+
+  /* 流浪地球主题：原项目 default 极简风格 */
+  [data-theme="wandering"] {
     --bg: #f8fafc;
     --bg-alt: #f1f5f9;
     --fg: #0f172a;
@@ -21,7 +55,7 @@
     --accent-dim: rgba(37, 99, 235, 0.1);
   }
 
-  [data-theme="dark"] {
+  html.dark [data-theme="wandering"] {
     --bg: #0f172a;
     --bg-alt: #1e293b;
     --fg: #f8fafc;
@@ -37,21 +71,6 @@
     --accent-dim: rgba(56, 189, 248, 0.15);
   }
 
-  [data-theme="wandering"] {
-    --bg: #07090e;
-    --bg-alt: #0d1b2a;
-    --fg: #f1f5f9;
-    --muted: #8b9bb4;
-    --card-bg: #0f172a;
-    --card-gradient: linear-gradient(135deg, #0d1b2a 0%, #080c14 100%);
-    --border: #1e293b;
-    --danger: #ff4500;
-    --success: #00e5ff;
-    --warning: #f59e0b;
-    --info: #00e5ff;
-    --accent: #00e5ff;
-    --accent-dim: rgba(0, 229, 255, 0.12);
-  }
   html, body, #root {
     height: 100%;
     margin: 0;
@@ -89,37 +108,33 @@
 @layer components {
   .card {
     background: var(--card-gradient, var(--card-bg));
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border-radius: 20px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
     border: 1px solid var(--border);
     color: var(--fg);
-    clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
     transition: all 0.3s;
   }
   .card:hover {
-    border-color: var(--accent);
-    box-shadow: 0 0 20px var(--accent-dim);
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.08);
   }
   .btn-primary {
-    background: rgba(255, 69, 0, 0.15);
-    color: #ff4500;
+    background: var(--accent-dim);
+    color: var(--accent);
     padding: 12px 24px;
-    border-radius: 0;
+    border-radius: 12px;
     font-weight: 600;
-    border: 1px solid #ff4500;
+    border: 1px solid var(--accent);
     cursor: pointer;
-    font-family: 'Teko', sans-serif;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
     transition: all 0.2s;
   }
   .btn-primary:active {
     transform: scale(0.98);
   }
   .btn-primary:hover {
-    background: rgba(255, 69, 0, 0.3);
-    box-shadow: 0 0 15px rgba(255, 69, 0, 0.3);
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 15px var(--accent-dim);
   }
   .view {
     position: fixed;
@@ -149,16 +164,15 @@
     transition: all 0.2s;
   }
   .dock-btn.active {
-    background: rgba(255, 69, 0, 0.2);
-    color: #ff4500;
-    box-shadow: 0 0 10px rgba(255, 69, 0, 0.3);
+    background: var(--fg);
+    color: var(--bg);
   }
   .dock-btn.main {
     width: 64px;
     height: 64px;
-    background: rgba(255, 69, 0, 0.2);
-    color: #ff4500;
-    box-shadow: 0 0 15px rgba(255, 69, 0, 0.3);
+    background: var(--fg);
+    color: var(--bg);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   }
   .achieve-icon-box {
     width: 60px;
@@ -168,7 +182,6 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
   }
   .achieve-icon-box.locked {
     background: var(--bg-alt);
@@ -185,33 +198,33 @@
     height: 100%;
     border-radius: 3px;
     transition: width 0.5s ease;
-    background: linear-gradient(90deg, #ff4500, #f59e0b);
-    box-shadow: 0 0 8px rgba(255, 69, 0, 0.4);
+    background: linear-gradient(90deg, var(--accent), var(--info));
+    box-shadow: 0 0 8px var(--accent-dim);
   }
   .switch {
     width: 44px;
     height: 24px;
-    background: #1a2332;
+    background: #ddd;
     border-radius: 12px;
     position: relative;
     cursor: pointer;
     transition: background 0.2s;
-    border: 1px solid #2a3342;
+    border: 1px solid transparent;
   }
   .switch::after {
     content: '';
     position: absolute;
     width: 20px;
     height: 20px;
-    background: #ff4500;
+    background: #fff;
     border-radius: 50%;
     top: 1px;
     left: 1px;
     transition: transform 0.2s;
-    box-shadow: 0 0 6px rgba(255, 69, 0, 0.5);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   }
   .switch.on {
-    background: rgba(255, 69, 0, 0.3);
+    background: var(--accent);
   }
   .switch.on::after {
     transform: translateX(20px);
@@ -236,6 +249,12 @@
   }
   .scrollbar-hide {
     scrollbar-width: none;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
   }
 }
 
@@ -269,9 +288,9 @@
 }
 
 @keyframes pulseRing {
-  0% { box-shadow: 0 0 0 0 rgba(255, 69, 0, 0.3); }
-  70% { box-shadow: 0 0 0 6px rgba(255, 69, 0, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 69, 0, 0); }
+  0% { box-shadow: 0 0 0 0 var(--accent-dim); }
+  70% { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
 }
 .pulse-ring {
   animation: pulseRing 2s ease-out infinite;
@@ -290,86 +309,21 @@
   to { transform: translateX(-50%) translateY(0); opacity: 1; }
 }
 
-/* 扫描线效果 */
-.app-container::before {
-  content: '';
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(69, 162, 158, 0.02) 2px,
-    rgba(69, 162, 158, 0.02) 4px
-  );
-  pointer-events: none;
-  z-index: 9998;
-}
-
-/* 发动机脉冲 */
-@keyframes enginePulse {
-  0%, 100% { box-shadow: 0 0 5px rgba(255, 69, 0, 0.3); }
-  50% { box-shadow: 0 0 25px rgba(255, 69, 0, 0.6), 0 0 50px rgba(255, 69, 0, 0.2); }
-}
-
-@keyframes turbineSpin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-@keyframes turbineSpinReverse {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(-360deg); }
-}
-
-@keyframes scanlineMove {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100vh); }
-}
-
-@keyframes thrustFlicker {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-/* 流浪地球按钮 */
-button {
-  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
-}
-
-button:hover {
-  border-color: var(--success);
-  text-shadow: 0 0 5px var(--success);
-}
-
-/* 经验条 */
-.exp-bar-wandering {
+/* 通用经验条 */
+.exp-bar {
   height: 6px;
   border-radius: 3px;
-  background: #1a2332;
+  background: var(--border);
   overflow: hidden;
   position: relative;
 }
 
-.exp-bar-wandering::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent,
-    transparent 4px,
-    rgba(69, 162, 158, 0.1) 4px,
-    rgba(69, 162, 158, 0.1) 5px
-  );
-}
-
-.exp-bar-wandering .fill {
+.exp-bar .fill {
   height: 100%;
-  background: linear-gradient(90deg, #ff4500, #f59e0b);
+  background: linear-gradient(90deg, var(--accent), var(--info));
   border-radius: 3px;
   transition: width 0.5s ease;
-  box-shadow: 0 0 10px rgba(255, 69, 0, 0.5);
+  box-shadow: 0 0 8px var(--accent-dim);
 }
 
 /* 等级徽章 */
@@ -382,10 +336,9 @@ button:hover {
   font-size: 11px;
   font-weight: 700;
   font-family: 'Share Tech Mono', monospace;
-  background: linear-gradient(135deg, #1a2332, #0d1b2a);
-  border: 1px solid #ff4500;
-  color: #ff4500;
-  text-shadow: 0 0 8px rgba(255, 69, 0, 0.4);
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  color: var(--accent);
 }
 
 /* 角标装饰 */
@@ -393,7 +346,7 @@ button:hover {
   position: absolute;
   width: 16px;
   height: 16px;
-  border: 2px solid var(--success);
+  border: 2px solid var(--accent);
   z-index: 20;
   pointer-events: none;
 }
@@ -402,7 +355,7 @@ button:hover {
 .corner-deco.bl { bottom: 4px; left: 4px; border-right: none; border-top: none; }
 .corner-deco.br { bottom: 4px; right: 4px; border-left: none; border-top: none; }
 
-/* 涡轮环 */
+/* 涡轮环 - 仅用于深渊模式 */
 .turbine-ring {
   position: absolute;
   width: 100%;
@@ -435,44 +388,36 @@ button:hover {
   font-family: 'Share Tech Mono', monospace;
   font-size: 0.8rem;
   letter-spacing: 3px;
-  color: var(--success);
+  color: var(--accent);
   background: var(--card-bg);
   padding: 2px 8px;
-  border: 1px solid var(--success);
+  border: 1px solid var(--accent);
 }
 
-/* 工业字体覆盖 */
-h1, h2, h3 {
-  font-family: 'Teko', sans-serif;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+/* 发动机脉冲 */
+@keyframes enginePulse {
+  0%, 100% { box-shadow: 0 0 5px rgba(255, 69, 0, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(255, 69, 0, 0.6), 0 0 50px rgba(255, 69, 0, 0.2); }
 }
 
-.dm-mono,
-[style*="DM Mono"] {
-  font-family: 'Share Tech Mono', monospace !important;
+@keyframes turbineSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-/* 解锁遮罩 */
-.skin-locked {
-  position: relative;
-  overflow: hidden;
+@keyframes turbineSpinReverse {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
 }
 
-.skin-locked::after {
-  content: '🔒 LOCKED';
-  position: absolute;
-  inset: 0;
-  background: rgba(10, 14, 26, 0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  backdrop-filter: blur(2px);
-  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+@keyframes scanlineMove {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes thrustFlicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 /* 全屏闪烁 */
@@ -494,7 +439,7 @@ h1, h2, h3 {
   animation: flashScreen 0.15s ease-out forwards;
 }
 
-/* 背景网格 */
+/* 背景网格 - 仅用于深渊模式 */
 .grid-bg {
   position: absolute;
   inset: 0;
@@ -504,8 +449,4 @@ h1, h2, h3 {
   background-size: 40px 40px;
   z-index: 0;
   pointer-events: none;
-}
-
-[data-theme="wandering"] body {
-  font-family: 'Share Tech Mono', 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', monospace;
 }

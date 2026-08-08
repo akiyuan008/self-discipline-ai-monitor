@@ -4,13 +4,13 @@ import { showToast } from '@/components/Toast'
 import { useClassTaskStore } from '@/stores/classTaskStore'
 
 const ABYSS_QUOTES = [
-  '正在深渊重载中，行星发动机全功率输出！',
-  '专注即力量，分心即毁灭 — UEG核心法则',
-  '地表温度-84℃，内部反应堆保持全效运行',
-  '放弃幻想，坚守岗位，准备冲出重围',
-  '每一秒专注都在为地球提供推力',
+  '正在深渊重载中，反应堆全功率输出！',
+  '专注即力量，分心即毁灭 — 核心法则',
   '系统锁定深渊模式，禁止中断',
   '你的未来正在此刻通过铁血纪律构建',
+  '放弃幻想，坚守岗位',
+  '每一秒专注都在积累突破能量',
+  '深渊模式：高压下的绝对专注',
 ]
 
 interface Props {
@@ -26,7 +26,6 @@ const MODES = [
 ]
 
 export default function Dungeon({ onExit }: Props) {
-  const theme = useStore(s => s.theme)
   const addFocusMs = useStore(s => s.addFocusMs)
   const addExp = useStore(s => s.addExp)
   const addPoints = useStore(s => s.addPoints)
@@ -52,7 +51,6 @@ export default function Dungeon({ onExit }: Props) {
   const currentTask = useClassTaskStore(s => s.currentTask)
   const addAbyssRecord = useClassTaskStore(s => s.addAbyssRecord)
 
-  const isWandering = theme === 'wandering'
   const isAbyssMode = mode === 'abyss'
 
   const circumference = 2 * Math.PI * 100
@@ -204,9 +202,9 @@ export default function Dungeon({ onExit }: Props) {
   const displayTime = mode === 'free' ? freeTime : timeLeft
 
   const btnBase: React.CSSProperties = {
-    background: isWandering ? '#0f172a' : 'var(--bg-alt)',
-    border: `1px solid ${isWandering ? '#00e5ff' : 'var(--border)'}`,
-    color: isWandering ? '#f8fafc' : 'var(--fg)',
+    background: true ? '#0f172a' : 'var(--bg-alt)',
+    border: `1px solid ${true ? '#00e5ff' : 'var(--border)'}`,
+    color: true ? '#f8fafc' : 'var(--fg)',
     padding: '10px 16px',
     fontFamily: 'inherit',
     fontSize: '0.95rem',
@@ -224,23 +222,23 @@ export default function Dungeon({ onExit }: Props) {
     ...btnBase,
     flexGrow: 1,
     justifyContent: 'center',
-    background: isRunning ? (isAbyssMode ? '#ff3344' : '#ff4500') : (isWandering ? 'rgba(0,229,255,0.18)' : 'var(--accent-dim)'),
-    borderColor: isRunning ? (isAbyssMode ? '#ff3344' : '#ff4500') : (isWandering ? '#00e5ff' : 'var(--accent)'),
-    color: isRunning ? '#ffffff' : (isWandering ? '#00e5ff' : 'var(--accent)'),
+    background: isRunning ? (isAbyssMode ? '#ff3344' : '#ff4500') : (true ? 'rgba(0,229,255,0.18)' : 'var(--accent-dim)'),
+    borderColor: isRunning ? (isAbyssMode ? '#ff3344' : '#ff4500') : (true ? '#00e5ff' : 'var(--accent)'),
+    color: isRunning ? '#ffffff' : (true ? '#00e5ff' : 'var(--accent)'),
     fontSize: '1.05rem',
     fontWeight: 700,
-    boxShadow: isRunning ? `0 0 25px ${isAbyssMode ? 'rgba(255,51,68,0.6)' : 'rgba(255,69,0,0.6)'}` : (isWandering ? '0 0 12px rgba(0,229,255,0.2)' : 'none'),
+    boxShadow: isRunning ? `0 0 25px ${isAbyssMode ? 'rgba(255,51,68,0.6)' : 'rgba(255,69,0,0.6)'}` : (true ? '0 0 12px rgba(0,229,255,0.2)' : 'none'),
   }
 
   return (
     <div className="safe-top safe-bottom" style={{
       position: 'fixed', inset: 0,
-      background: isWandering ? '#07090e' : 'var(--bg)',
+      background: true ? '#07090e' : 'var(--bg)',
       zIndex: 600, display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
     }}>
       {/* 背景网格 - 仅流浪地球主题 */}
-      {isWandering && (
+      {true && (
         <div style={{
           position: 'absolute', inset: 0,
           backgroundImage: `linear-gradient(rgba(255, 69, 0, 0.06) 1px, transparent 1px),
@@ -251,7 +249,7 @@ export default function Dungeon({ onExit }: Props) {
       )}
 
       {/* 扫描线 */}
-      {isWandering && (
+      {true && (
         <div style={{
           position: 'absolute', inset: 0,
           background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 229, 255, 0.03) 2px, rgba(0, 229, 255, 0.03) 4px)',
@@ -262,7 +260,7 @@ export default function Dungeon({ onExit }: Props) {
       {/* 全屏闪烁 */}
       <div className={flash ? 'flash-overlay active' : 'flash-overlay'} style={{
         position: 'fixed', inset: 0,
-        background: isWandering ? '#ff4500' : 'var(--success)',
+        background: true ? '#ff4500' : 'var(--success)',
         opacity: 0, pointerEvents: 'none', zIndex: 9999
       }} />
 
@@ -306,7 +304,7 @@ export default function Dungeon({ onExit }: Props) {
         padding: '24px 20px', background: 'var(--card-bg)',
         border: `2px solid ${isAbyssMode ? '#ff3344' : 'var(--border)'}`,
         clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
-        boxShadow: isWandering ? '0 0 50px rgba(0,0,0,0.9)' : '0 10px 30px rgba(0,0,0,0.1)'
+        boxShadow: true ? '0 0 50px rgba(0,0,0,0.9)' : '0 10px 30px rgba(0,0,0,0.1)'
       }}>
         <div className="corner-deco tl" />
         <div className="corner-deco tr" />
@@ -317,34 +315,34 @@ export default function Dungeon({ onExit }: Props) {
         <div style={{
           width: '100%', display: 'flex', justifyContent: 'space-between',
           alignItems: 'flex-end', marginBottom: 20, paddingBottom: 10,
-          borderBottom: `1px solid ${isWandering ? 'rgba(0, 229, 255, 0.25)' : 'var(--border)'}`
+          borderBottom: `1px solid ${true ? 'rgba(0, 229, 255, 0.25)' : 'var(--border)'}`
         }}>
           <div>
             <div style={{
-              fontFamily: isWandering ? 'Teko, sans-serif' : 'inherit',
+              fontFamily: true ? 'Teko, sans-serif' : 'inherit',
               fontSize: '1.8rem', letterSpacing: 2,
               color: isAbyssMode ? '#ff3344' : 'var(--fg)', textTransform: 'uppercase', margin: 0,
               fontWeight: 700, lineHeight: 1
             }}>
-              {isAbyssMode ? 'ABYSS REACTOR' : (isWandering ? 'UEG CONTROL' : '专注模式')}
+              {isAbyssMode ? 'ABYSS REACTOR' : (true ? 'UEG CONTROL' : '专注模式')}
             </div>
             <span style={{
               fontSize: '0.7rem', color: 'var(--muted)',
-              fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'inherit'
+              fontFamily: true ? 'Share Tech Mono, monospace' : 'inherit'
             }}>
-              {isAbyssMode ? 'ABYSS LOCKOUT // HIGH GRAVITY' : (isWandering ? 'UNIT: CN-171-11 // ENGINE' : 'SELF-DISCIPLINE')}
+              {isAbyssMode ? 'ABYSS LOCKOUT // HIGH GRAVITY' : (true ? 'UNIT: CN-171-11 // ENGINE' : 'SELF-DISCIPLINE')}
             </span>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{
               fontSize: '0.7rem', color: 'var(--muted)',
-              fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'inherit'
+              fontFamily: true ? 'Share Tech Mono, monospace' : 'inherit'
             }}>
-              {isWandering ? 'THRUST' : '进度'}
+              {true ? 'THRUST' : '进度'}
             </div>
-            <div className={isWandering ? 'thrust-text' : ''} style={{
-              color: isAbyssMode ? '#ff3344' : (isWandering ? '#ff4500' : 'var(--accent)'), fontWeight: 'bold',
-              fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'inherit',
+            <div className={true ? 'thrust-text' : ''} style={{
+              color: isAbyssMode ? '#ff3344' : (true ? '#ff4500' : 'var(--accent)'), fontWeight: 'bold',
+              fontFamily: true ? 'Share Tech Mono, monospace' : 'inherit',
               fontSize: '1.2rem'
             }}>
               {thrust}%
@@ -361,7 +359,7 @@ export default function Dungeon({ onExit }: Props) {
           {/* 涡轮环 */}
           <div style={{
             position: 'absolute', width: '100%', height: '100%',
-            border: `3px dashed ${isAbyssMode ? 'rgba(255,51,68,0.3)' : (isWandering ? 'rgba(0,229,255,0.2)' : 'rgba(128,128,128,0.2)')}`,
+            border: `3px dashed ${isAbyssMode ? 'rgba(255,51,68,0.3)' : (true ? 'rgba(0,229,255,0.2)' : 'rgba(128,128,128,0.2)')}`,
             borderRadius: '50%',
             animation: 'turbineSpinReverse 30s linear infinite'
           }}>
@@ -369,7 +367,7 @@ export default function Dungeon({ onExit }: Props) {
               position: 'absolute', top: '50%', left: '50%',
               transform: 'translate(-50%, -50%)',
               width: '88%', height: '88%',
-              border: `2px solid ${isAbyssMode ? '#ff3344' : (isWandering ? '#ff4500' : 'rgba(128,128,128,0.15)')}`,
+              border: `2px solid ${isAbyssMode ? '#ff3344' : (true ? '#ff4500' : 'rgba(128,128,128,0.15)')}`,
               borderLeftColor: 'transparent',
               borderRightColor: 'transparent',
               borderRadius: '50%',
@@ -383,16 +381,16 @@ export default function Dungeon({ onExit }: Props) {
             transform: 'rotate(-90deg)'
           }} viewBox="0 0 220 220">
             <circle cx="110" cy="110" r="100" fill="none"
-              stroke={isWandering ? 'rgba(255,255,255,0.05)' : 'var(--bg-alt)'}
+              stroke={true ? 'rgba(255,255,255,0.05)' : 'var(--bg-alt)'}
               strokeWidth={14} />
             <circle cx="110" cy="110" r="100" fill="none"
-              stroke={isAbyssMode ? '#ff3344' : (isWandering ? '#ff4500' : 'var(--accent)')} strokeWidth={14}
+              stroke={isAbyssMode ? '#ff3344' : (true ? '#ff4500' : 'var(--accent)')} strokeWidth={14}
               strokeLinecap="butt"
               strokeDasharray={circumference}
               strokeDashoffset={strokeOffset}
               style={{
                 transition: 'stroke-dashoffset 1s linear, stroke 0.3s',
-                filter: isWandering && isRunning
+                filter: true && isRunning
                   ? `drop-shadow(0 0 18px ${isAbyssMode ? 'rgba(255,51,68,0.9)' : 'rgba(255,69,0,0.8)'})`
                   : 'none'
               }} />
@@ -400,10 +398,10 @@ export default function Dungeon({ onExit }: Props) {
 
           {/* 时间显示 */}
           <div style={{
-            fontFamily: isWandering ? 'Teko, sans-serif' : 'DM Mono, monospace',
+            fontFamily: true ? 'Teko, sans-serif' : 'DM Mono, monospace',
             fontSize: '4.2rem', lineHeight: 1, color: isAbyssMode ? '#ff3344' : 'var(--fg)',
             zIndex: 5,
-            textShadow: isWandering ? `0 0 20px ${isAbyssMode ? 'rgba(255,51,68,0.6)' : 'rgba(255,69,0,0.5)'}` : 'none',
+            textShadow: true ? `0 0 20px ${isAbyssMode ? 'rgba(255,51,68,0.6)' : 'rgba(255,69,0,0.5)'}` : 'none',
             textAlign: 'center'
           }}>
             {formatTime(displayTime)}
@@ -417,9 +415,9 @@ export default function Dungeon({ onExit }: Props) {
             background: 'var(--card-bg)',
             padding: '2px 10px',
             border: `1px solid ${isRunning ? (isAbyssMode ? '#ff3344' : '#00e5ff') : 'var(--muted)'}`,
-            fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'inherit'
+            fontFamily: true ? 'Share Tech Mono, monospace' : 'inherit'
           }}>
-            {isRunning ? (isAbyssMode ? 'ABYSS ENGAGED' : (isWandering ? 'IGNITION' : '专注中')) : (isWandering ? 'STANDBY' : '待机')}
+            {isRunning ? (isAbyssMode ? 'ABYSS ENGAGED' : (true ? 'IGNITION' : '专注中')) : (true ? 'STANDBY' : '待机')}
           </div>
 
           {/* 励志名言 */}
@@ -450,12 +448,12 @@ export default function Dungeon({ onExit }: Props) {
         <div style={{
           marginTop: 20, width: '100%', display: 'grid',
           gridTemplateColumns: 'repeat(5, 1fr)', gap: 4,
-          borderTop: `1px solid ${isWandering ? 'rgba(0,229,255,0.2)' : 'var(--border)'}`,
+          borderTop: `1px solid ${true ? 'rgba(0,229,255,0.2)' : 'var(--border)'}`,
           paddingTop: 12
         }}>
           {MODES.map(m => (
             <button key={m.key} onClick={() => setModeHandler(m.key)} style={{
-              background: mode === m.key ? (m.key === 'abyss' ? 'rgba(255,51,68,0.15)' : (isWandering ? 'rgba(0,229,255,0.15)' : 'var(--accent-dim)')) : 'transparent',
+              background: mode === m.key ? (m.key === 'abyss' ? 'rgba(255,51,68,0.15)' : (true ? 'rgba(0,229,255,0.15)' : 'var(--accent-dim)')) : 'transparent',
               border: 'none',
               borderBottom: mode === m.key ? `2px solid ${m.key === 'abyss' ? '#ff3344' : 'var(--accent)'}` : '2px solid transparent',
               color: mode === m.key ? (m.key === 'abyss' ? '#ff3344' : 'var(--accent)') : 'var(--muted)',
@@ -532,17 +530,17 @@ export default function Dungeon({ onExit }: Props) {
             clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)'
           }} onClick={e => e.stopPropagation()}>
             <h3 style={{
-              fontFamily: isWandering ? 'Teko, sans-serif' : 'inherit',
+              fontFamily: true ? 'Teko, sans-serif' : 'inherit',
               color: 'var(--accent)', fontSize: '1.5rem',
               marginBottom: 15, textTransform: 'uppercase'
             }}>
-              {isWandering ? 'SET DURATION' : '设置时长'}
+              {true ? 'SET DURATION' : '设置时长'}
             </h3>
             <input type="number" value={setMin} onChange={e => setSetMin(parseInt(e.target.value) || 1)}
               style={{
                 width: '100%', background: 'var(--bg-alt)',
                 border: '1px solid var(--border)', color: 'var(--accent)',
-                padding: 10, fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'inherit',
+                padding: 10, fontFamily: true ? 'Share Tech Mono, monospace' : 'inherit',
                 fontSize: '1.2rem', marginBottom: 20, boxSizing: 'border-box'
               }} />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
@@ -550,13 +548,13 @@ export default function Dungeon({ onExit }: Props) {
                 background: 'transparent', border: 'none',
                 color: 'var(--muted)', padding: '8px 14px', cursor: 'pointer'
               }}>
-                {isWandering ? 'CANCEL' : '取消'}
+                {true ? 'CANCEL' : '取消'}
               </button>
               <button onClick={saveSettings} style={{
                 background: 'var(--accent)', border: 'none',
                 color: '#fff', padding: '8px 14px', cursor: 'pointer', fontWeight: 600
               }}>
-                {isWandering ? 'CONFIRM' : '确认'}
+                {true ? 'CONFIRM' : '确认'}
               </button>
             </div>
           </div>

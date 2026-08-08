@@ -1,7 +1,7 @@
 {
-  "version": "2.1.0",
-  "versionCode": 11,
-  "changelog": "v2.0 正式发布：新增行星发动机主题皮肤（800积分解锁），任务中心UI重构，禁用自动更新弹窗",
+  "version": "2.2.0",
+  "versionCode": 12,
+  "changelog": "皮肤系统重构：默认皮肤回归经典简洁风格，原默认皮肤升级为流浪地球主题，删除行星发动机兑换皮肤",
   "downloadUrl": "https://github.com/akiyuan008/self-discipline-ai-monitor/releases/latest/download/app-release.apk",
   "force": false
 }

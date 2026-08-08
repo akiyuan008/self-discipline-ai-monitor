@@ -27,29 +27,6 @@ export const SHOP_ITEMS: ShopItem[] = [
     iconPath: 'M12 2L2 7L12 12L22 7L12 2M2 17L12 22L22 17M2 12L12 17L22 12',
     effect: 'doubler',
   },
-  {
-    id: 'skin',
-    name: '神秘皮肤',
-    desc: '解锁隐藏外观',
-    cost: 500,
-    iconBg: 'rgba(236, 72, 153, 0.1)',
-    iconColor: '#ec4899',
-    iconPath: 'M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20ZM12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z',
-    effect: 'skin',
-    lockLevel: 7,
-  },
-  {
-    id: 'theme_wandering',
-    name: '行星发动机皮肤',
-    desc: '流浪地球主题 - UEG控制台风格',
-    cost: 800,
-    iconBg: 'rgba(255, 69, 0, 0.1)',
-    iconColor: '#ff4500',
-    iconPath: 'M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2ZM12 20C7.58 20 4 16.42 4 12S7.58 4 12 4 20 7.58 20 12 16.42 20 12 20ZM12 6C9 6 7 8.5 7 11C7 13.5 8.5 15.5 11 16.5V18H13V16.5C15.5 15.5 17 13.5 17 11C17 8.5 15 6 12 6Z',
-    effect: 'skin',
-    badge: '限定',
-  },
-
   // ===== 零食兑换 =====
   {
     id: 'snack_spite',

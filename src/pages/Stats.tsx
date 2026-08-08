@@ -11,7 +11,6 @@ const DAYS = ['日', '一', '二', '三', '四', '五', '六']
 
 export default function Stats({ onBack }: Props) {
   const [view, setView] = useState<'day' | 'week' | 'month' | 'abyss' | 'heatmap'>('day')
-  const theme = useStore(s => s.theme)
   const totalFocusMs = useStore(s => s.totalFocusMs)
   const todayStudyMs = useStore(s => s.todayStudyMs)
   const level = useStore(s => s.level)
@@ -22,7 +21,7 @@ export default function Stats({ onBack }: Props) {
   const abyssRecords = useClassTaskStore(s => s.abyssRecords)
   const verifyHistory = useClassTaskStore(s => s.verifyHistory)
 
-  const isWandering = theme === 'wandering'
+  const isWandering = false
 
   // 按科目统计专注时长
   const subjectStats = useMemo(() => {

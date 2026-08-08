@@ -96,7 +96,6 @@ interface StoreState {
   totalExp: number
   level: number
   theme: 'default' | 'wandering'
-  unlockedThemes: string[]
 
   addPoints: (n: number) => void
   addXp: (n: number) => void
@@ -130,7 +129,6 @@ interface StoreState {
   addPointRecord: (type: 'earn' | 'spend', amount: number, reason: string) => void
   addExp: (amount: number, reason: string) => void
   setTheme: (theme: 'default' | 'wandering') => void
-  unlockTheme: (themeId: string) => void
   addCustomShopItem: (item: Omit<ShopItem, 'id'>) => void
   removeCustomShopItem: (id: string) => void
 }
@@ -161,8 +159,6 @@ export const PRESET_MODEL_LIST = [
   'qwen3.7-plus',
   'qwen-long'
 ]
-
-export const WANDERING_THEME_UNLOCK_EXP = 1000
 
 export const useStore = create<StoreState>()(
   persist(
@@ -202,7 +198,6 @@ export const useStore = create<StoreState>()(
       totalExp: 0,
       level: 1,
       theme: 'default',
-      unlockedThemes: ['default'],
 
       addPoints: (n) => set(s => ({ points: s.points + n })),
       addXp: (n) => get().addExp(n, '任务及学习经验'),
@@ -257,13 +252,7 @@ export const useStore = create<StoreState>()(
         get().addPointRecord('spend', item.cost, `购买：${item.name}`)
         set(s => ({ ownedItems: { ...s.ownedItems, [id]: (s.ownedItems[id] || 0) + 1 } }))
         switch (item.effect) {
-
-          case 'skin': {
-            if (item.id === 'theme_wandering') {
-              get().unlockTheme('wandering')
-            }
-            break
-          }
+          case 'skin': break
           case 'snack': break
         }
         return true
@@ -371,8 +360,7 @@ export const useStore = create<StoreState>()(
           exp: 0,
           totalExp: 0,
           level: 1,
-          theme: 'default',
-          unlockedThemes: ['default']
+          theme: 'default'
         }),
       setDungeon: (sec, active) => set({ dungeonRemainingSec: sec, dungeonActive: active }),
       setDungeonDuration: (min) => set({ dungeonDurationMin: min }),
@@ -413,26 +401,15 @@ export const useStore = create<StoreState>()(
           const newExp = s.exp + xpGain
           const newTotalExp = s.totalExp + xpGain
           const newLevel = Math.floor(newExp / 1000) + 1
-          const canUnlockWandering = newExp >= WANDERING_THEME_UNLOCK_EXP || newTotalExp >= WANDERING_THEME_UNLOCK_EXP || newLevel >= 2
-          const unlockedThemes = canUnlockWandering && !s.unlockedThemes.includes('wandering')
-            ? [...s.unlockedThemes, 'wandering']
-            : s.unlockedThemes
           return {
             exp: newExp,
             totalExp: newTotalExp,
             level: newLevel > s.level ? newLevel : s.level,
-            xp: s.xp + xpGain,
-            unlockedThemes
+            xp: s.xp + xpGain
           }
         })
       },
       setTheme: (theme) => set({ theme }),
-      unlockTheme: (themeId) =>
-        set(s => ({
-          unlockedThemes: s.unlockedThemes.includes(themeId)
-            ? s.unlockedThemes
-            : [...s.unlockedThemes, themeId]
-        })),
     }),
     {
       name: 'cyber-survival-store',
