@@ -15,6 +15,15 @@ interface Props {
 const CLIP = 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
 const CLIP_SM = 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
 
+// 分钟 → 小时+分钟 显示
+function fmtDur(mins: number): string {
+  const m = Math.max(0, Math.round(mins))
+  if (m < 60) return `${m}分钟`
+  const h = Math.floor(m / 60)
+  const rem = m % 60
+  return rem > 0 ? `${h}小时${rem}分` : `${h}小时`
+}
+
 export default function Quests({ onNavigate }: Props) {
   const points = useStore(s => s.points)
   const setDungeonDuration = useStore(s => s.setDungeonDuration)
@@ -233,17 +242,17 @@ function MissionCard({ task, r, verifying, onAbyss, onVerify }: {
   } else if (r.state === 'LOCKED') {
     primaryBtn = (
       <div style={{ textAlign: 'center', padding: '10px', color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', fontSize: 12 }}>
-        <Icon.Clock size={14} color="var(--muted)" /> 距开始还有 {r.minsUntilStart} 分钟
+        <Icon.Clock size={14} color="var(--muted)" /> 距开始还有 {fmtDur(r.minsUntilStart)}
       </div>
     )
   }
 
   // 状态副信息
   let subInfo = ''
-  if (r.state === 'LIVE') subInfo = `进行中 · 距打卡截止 ${Math.max(0, r.minsUntilDeadline)}min · 完成 +${task.baseReward}`
+  if (r.state === 'LIVE') subInfo = `进行中 · 距打卡截止 ${fmtDur(r.minsUntilDeadline)} · 完成 +${task.baseReward}`
   else if (r.state === 'VERIFY') subInfo = `已专注 · 待拍照核验 · 完成 +${task.baseReward}`
-  else if (r.state === 'GRACE') subInfo = `宽限期剩 ${Math.max(0, r.minsUntilDeadline)}min · 抓紧核验`
-  else if (r.state === 'READY') subInfo = `${r.minsUntilStart} 分钟后开始 · PERIOD ${task.period}`
+  else if (r.state === 'GRACE') subInfo = `宽限期剩 ${fmtDur(r.minsUntilDeadline)} · 抓紧核验`
+  else if (r.state === 'READY') subInfo = `${fmtDur(r.minsUntilStart)}后开始 · PERIOD ${task.period}`
   else if (r.state === 'LOCKED') subInfo = `${timeStr} · PERIOD ${task.period}`
 
   return (

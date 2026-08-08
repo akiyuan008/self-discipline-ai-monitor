@@ -79,12 +79,40 @@ export default function Profile({ onNavigate, onNavigateStats }: ProfileProps) {
   const streak = useStore(s => s.streak)
   const points = useStore(s => s.points)
   const gaokaoDate = useStore(s => s.gaokaoDate)
+  const setGaokaoDate = useStore(s => s.setGaokaoDate)
 
   const profile = useGaoKaoStore(s => s.profile)
   const updateSubject = useGaoKaoStore(s => s.updateSubject)
   const updateProfile = useGaoKaoStore(s => s.updateProfile)
 
   const [editingSubject, setEditingSubject] = useState<string | null>(null)
+
+  // ── 考生档案编辑 ──
+  const [editingProfile, setEditingProfile] = useState(false)
+  const [pNickname, setPNickname] = useState(profile.nickname)
+  const [pUniversity, setPUniversity] = useState(profile.targetUniversity)
+  const [pCurrentScore, setPCurrentScore] = useState(String(profile.currentTotalScore))
+  const [pTargetScore, setPTargetScore] = useState(String(profile.targetTotalScore))
+  const [pGaokaoDate, setPGaokaoDate] = useState(gaokaoDate)
+
+  function openProfileEdit() {
+    setPNickname(profile.nickname)
+    setPUniversity(profile.targetUniversity)
+    setPCurrentScore(String(profile.currentTotalScore))
+    setPTargetScore(String(profile.targetTotalScore))
+    setPGaokaoDate(gaokaoDate)
+    setEditingProfile(true)
+  }
+  function saveProfile() {
+    updateProfile({
+      nickname: pNickname.trim() || '考生',
+      targetUniversity: pUniversity.trim() || '目标大学',
+      currentTotalScore: Math.max(0, Math.min(750, Number(pCurrentScore) || 0)),
+      targetTotalScore: Math.max(0, Math.min(750, Number(pTargetScore) || 0)),
+    })
+    if (pGaokaoDate) setGaokaoDate(pGaokaoDate)
+    setEditingProfile(false)
+  }
 
   const days = daysUntilGaokao(gaokaoDate)
   const scoreGap = profile.targetTotalScore - profile.currentTotalScore
@@ -141,16 +169,82 @@ export default function Profile({ onNavigate, onNavigateStats }: ProfileProps) {
                 目标：{profile.targetUniversity}
               </div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{
-                fontSize: 28, fontWeight: 700, lineHeight: 1,
-                color: days <= 100 ? 'var(--danger)' : 'var(--fg)'
-              }}>
-                {days}
+            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+              <button
+                onClick={() => editingProfile ? saveProfile() : openProfileEdit()}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '4px 10px', borderRadius: 100,
+                  background: editingProfile ? 'rgba(34,197,94,0.12)' : 'var(--bg-alt)',
+                  border: `1px solid ${editingProfile ? '#22c55e' : 'var(--border)'}`,
+                  color: editingProfile ? '#22c55e' : 'var(--muted)',
+                  fontSize: 11, cursor: 'pointer',
+                  fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                }}
+              >
+                {editingProfile ? <Icon.Check size={12} color="#22c55e" /> : <Icon.Gear size={12} color="var(--muted)" />}
+                {editingProfile ? '保存' : '编辑'}
+              </button>
+              <div>
+                <div style={{
+                  fontSize: 28, fontWeight: 700, lineHeight: 1,
+                  color: days <= 100 ? 'var(--danger)' : 'var(--fg)'
+                }}>
+                  {days}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--muted)' }}>天后高考</div>
               </div>
-              <div style={{ fontSize: 10, color: 'var(--muted)' }}>天后高考</div>
             </div>
           </div>
+
+          {/* 编辑表单 */}
+          {editingProfile && (
+            <div style={{
+              background: 'var(--bg-alt)', border: '1px solid var(--border)',
+              borderRadius: 12, padding: 14, marginBottom: 12
+            }}>
+              <FieldRow label="昵称">
+                <input value={pNickname} onChange={e => setPNickname(e.target.value)}
+                  placeholder="考生" style={profileInputStyle} />
+              </FieldRow>
+              <FieldRow label="目标大学">
+                <input value={pUniversity} onChange={e => setPUniversity(e.target.value)}
+                  placeholder="目标大学" style={profileInputStyle} />
+              </FieldRow>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ flex: 1 }}>
+                  <FieldRow label="当前分数">
+                    <input type="number" value={pCurrentScore} onChange={e => setPCurrentScore(e.target.value)}
+                      placeholder="460" style={profileInputStyle} />
+                  </FieldRow>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <FieldRow label="目标分数">
+                    <input type="number" value={pTargetScore} onChange={e => setPTargetScore(e.target.value)}
+                      placeholder="680" style={profileInputStyle} />
+                  </FieldRow>
+                </div>
+              </div>
+              <FieldRow label="高考日期">
+                <input type="date" value={pGaokaoDate} onChange={e => setPGaokaoDate(e.target.value)}
+                  style={profileInputStyle} />
+              </FieldRow>
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button onClick={saveProfile} style={{
+                  flex: 1, padding: '9px', borderRadius: 8,
+                  background: '#22c55e', color: '#fff', border: 'none',
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                }}>保存</button>
+                <button onClick={() => setEditingProfile(false)} style={{
+                  flex: 1, padding: '9px', borderRadius: 8,
+                  background: 'var(--bg)', color: 'var(--muted)', border: '1px solid var(--border)',
+                  fontSize: 13, cursor: 'pointer',
+                  fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+                }}>取消</button>
+              </div>
+            </div>
+          )}
 
           {/* 分数对比 */}
           <div style={{
@@ -337,5 +431,25 @@ function ListRow({ title, desc, onClick }: { title: string; desc: string; onClic
         <path d="M9 18l6-6-6-6" />
       </svg>
     </button>
+  )
+}
+
+const profileInputStyle: React.CSSProperties = {
+  width: '100%', padding: '9px 11px',
+  background: 'var(--card-bg)', color: 'var(--fg)',
+  border: '1px solid var(--border)', borderRadius: 8,
+  fontSize: 13, outline: 'none', boxSizing: 'border-box',
+  fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+}
+
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{
+        fontSize: 11, color: 'var(--muted)', marginBottom: 5,
+        fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+      }}>{label}</div>
+      {children}
+    </div>
   )
 }
