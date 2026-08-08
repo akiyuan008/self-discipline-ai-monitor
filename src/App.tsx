@@ -15,6 +15,7 @@ import PointsDetail from '@/pages/PointsDetail'
 import ClassHistory from '@/pages/ClassHistory'
 import DiagLogs from '@/pages/DiagLogs'
 import Stats from '@/pages/Stats'
+import Legacy from '@/pages/Legacy'
 import Dock from '@/components/Dock'
 import Toast from '@/components/Toast'
 import { checkUpdate } from '@/lib/update'
@@ -119,6 +120,7 @@ export default function App() {
       {currentPage === 'classHistory' && <ClassHistory onBack={goBack} />}
       {currentPage === 'diagLogs' && <DiagLogs onBack={goBack} />}
         {currentPage === 'stats' && <Stats onBack={goBack} />}
+      {currentPage === 'legacy' && <Legacy onBack={goBack} />}
       {onboarded && currentPage !== 'onboarding' && currentPage !== 'dungeon' && currentPage !== 'classHistory' && (
         <Dock current={currentPage} onChange={navigate} />
       )}

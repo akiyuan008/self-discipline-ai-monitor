@@ -238,3 +238,106 @@ export function canCheckInClass(period: number): { can: boolean; reason?: string
   }
   return { can: true }
 }
+
+// ═══════════════════════════════════════════════════════════
+// 统一状态机：单一事实来源，根治「双状态源死卡」问题
+// ═══════════════════════════════════════════════════════════
+
+/** 课程在 UI 上的 7 个互斥状态 */
+export type TaskUIState =
+  | 'LOCKED'   // 太早，还没到预热窗口
+  | 'READY'    // 开课前 15 分钟内，可准备
+  | 'LIVE'     // 上课中
+  | 'GRACE'    // 已结束但仍在打卡宽限期（课后 30 分钟内）
+  | 'VERIFY'   // 已专注(started)，等待拍照核验
+  | 'DONE'     // 已完成
+  | 'MISSED'   // 逾期未完成
+
+export interface ResolvedTask {
+  state: TaskUIState
+  label: string
+  color: string
+  blink: boolean
+  startMin: number
+  endMin: number
+  /** 距开始还剩多少分钟（LOCKED/READY 用） */
+  minsUntilStart: number
+  /** 距打卡截止还剩多少分钟（LIVE/GRACE/VERIFY 用） */
+  minsUntilDeadline: number
+  /** 课中进度 0-100（LIVE 用） */
+  liveProgress: number
+}
+
+const STATE_META: Record<TaskUIState, { label: string; color: string; blink: boolean }> = {
+  LOCKED: { label: 'STANDBY', color: '#5a6a7a', blink: false },
+  READY:  { label: 'READY',   color: '#45a29e', blink: true },
+  LIVE:   { label: 'LIVE',    color: '#ff4500', blink: true },
+  GRACE:  { label: 'GRACE',   color: '#f59e0b', blink: true },
+  VERIFY: { label: 'VERIFY',  color: '#45a29e', blink: true },
+  DONE:   { label: 'DONE',    color: '#22c55e', blink: false },
+  MISSED: { label: 'MISSED',  color: '#ff4444', blink: false },
+}
+
+/**
+ * 核心状态解析：给定任务与当前时间，输出唯一 UI 状态。
+ * 这是页面显示与按钮渲染的唯一依据，杜绝死卡。
+ */
+export function resolveTaskState(
+  task: { status: string; period: number },
+  now: Date = new Date()
+): ResolvedTask {
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+  const p = getPeriodTime(task.period)
+  const startMin = p ? timeToMinutes(p.startTime) : nowMin
+  const endMin = p ? timeToMinutes(p.endTime) : nowMin
+
+  const base = {
+    startMin, endMin,
+    minsUntilStart: startMin - nowMin,
+    minsUntilDeadline: endMin + 30 - nowMin,
+    liveProgress: 0,
+  }
+
+  const meta = (s: TaskUIState) => ({ ...base, state: s, ...STATE_META[s] })
+
+  // 终态（来自持久化 store，优先级最高）
+  if (task.status === 'completed') return meta('DONE')
+  if (task.status === 'overdue' || task.status === 'absent') return meta('MISSED')
+
+  // 已专注、待核验
+  if (task.status === 'started') {
+    if (nowMin <= endMin + 30) return meta('VERIFY')
+    return meta('MISSED') // 超时未核验
+  }
+
+  // pending：按时间推导
+  if (nowMin < startMin - 15) return meta('LOCKED')
+  if (nowMin < startMin) return meta('READY')
+  if (nowMin <= endMin) {
+    const prog = endMin > startMin ? ((nowMin - startMin) / (endMin - startMin)) * 100 : 0
+    return { ...meta('LIVE'), liveProgress: Math.min(100, Math.max(0, prog)) }
+  }
+  if (nowMin <= endMin + 30) return meta('GRACE')
+  return meta('MISSED')
+}
+
+/**
+ * 对账：把已过点但仍是 pending 的任务就地标记为 overdue。
+ * 在页面渲染时调用，替代依赖 main.tsx 前台轮询，根除僵尸态。
+ * 返回被标记逾期的任务 id 列表（供调用方扣分）。
+ */
+export function reconcileOverdue(
+  tasks: Array<{ id: string; status: string; period: number }>,
+  now: Date = new Date()
+): string[] {
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+  const overdueIds: string[] = []
+  for (const t of tasks) {
+    if (t.status !== 'pending') continue
+    const p = getPeriodTime(t.period)
+    if (!p) continue
+    const endMin = timeToMinutes(p.endTime)
+    if (nowMin > endMin + 30) overdueIds.push(t.id)
+  }
+  return overdueIds
+}

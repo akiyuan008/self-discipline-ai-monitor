@@ -268,6 +268,17 @@ export default function Home({ onNavigate }: Props) {
           }}>
             补给大楼
           </button>
+          <button onClick={() => onNavigate?.('legacy')} style={{
+            gridColumn: '1 / -1',
+            padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            background: 'rgba(245,158,11,0.08)',
+            border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b',
+            fontFamily: 'Share Tech Mono, monospace', fontSize: 12, fontWeight: 600,
+            cursor: 'pointer', letterSpacing: 1,
+            clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
+          }}>
+            <Icon.Book size={14} color="#f59e0b" /> 航迹档案 · 努力的痕迹
+          </button>
         </div>
       </div>
 

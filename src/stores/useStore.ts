@@ -17,6 +17,7 @@ export type PageId =
   | 'classHistory'
   | 'diagLogs'
   | 'stats'
+  | 'legacy'
   | 'onboarding'
 
 export interface PointRecord {
