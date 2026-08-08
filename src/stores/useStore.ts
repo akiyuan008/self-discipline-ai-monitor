@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { type Quest } from '@/data/quests'
 import { SHOP_ITEMS, type ShopItem } from '@/data/shop'
-import { type Achievement } from '@/data/achievements'
+import { type Achievement, ALL_ACHIEVEMENTS } from '@/data/achievements'
 
 export type PageId =
   | 'home'
@@ -116,6 +116,7 @@ interface StoreState {
   updateAchievementProgress: (id: string, progress: number) => void
   addCustomQuest: (q: { title: string; desc: string; reward: number; category: 'daily' | 'weekly' | 'main' }) => string
   addCustomAchievement: (a: { name: string; desc: string; total: number }) => string
+  checkAchievements: () => void
   init: (tag: string, goal: number, ai?: AIConfig) => void
   reset: () => void
   setDungeon: (sec: number, active: boolean) => void
@@ -182,7 +183,7 @@ export const useStore = create<StoreState>()(
       gaokaoTargetScore: 680,
       gaokaoBaseScore: 400,
       quests: [],
-      achievements: [],
+      achievements: [...ALL_ACHIEVEMENTS],
       ownedItems: {},
       customShopItems: [],
       pointHistory: [],
@@ -304,6 +305,47 @@ export const useStore = create<StoreState>()(
         }))
         return id
       },
+      checkAchievements: () => {
+        const s = get()
+        const studyHours = s.totalFocusMs / 3600000
+        const todayStudyMin = Math.floor(s.todayStudyMs / 60000)
+        const updated = s.achievements.map(a => {
+          if (a.unlocked) return a
+          let progress = a.progress
+          let unlocked = false
+          switch (a.id) {
+            case 'st_1h': case 'st_4h': case 'st_8h': case 'st_12h': case 'st_16h':
+              progress = Math.min(a.total, todayStudyMin)
+              if (todayStudyMin >= a.total) unlocked = true
+              break
+            case 'st_500h':
+              progress = Math.min(a.total, Math.floor(studyHours * 60))
+              if (studyHours >= 500) unlocked = true
+              break
+            case 'st_3000h':
+              progress = Math.min(a.total, Math.floor(studyHours * 60))
+              if (studyHours >= 3000) unlocked = true
+              break
+            case 'st_10000h':
+              progress = Math.min(a.total, Math.floor(studyHours * 60))
+              if (studyHours >= 10000) unlocked = true
+              break
+            case 'streak_3': case 'streak_7': case 'streak_15': case 'streak_30': case 'streak_100': case 'streak_365':
+              progress = s.streak
+              if (s.streak >= a.total) unlocked = true
+              break
+            case 'streak_first':
+              if (s.streak > 0 || s.totalFocusMs > 0) { progress = 1; unlocked = true }
+              break
+          }
+          if (unlocked && !a.unlocked) {
+            s.addExp(200, a.name)
+            s.addPointRecord('earn', 200, '\u89e3\u9501\u6210\u5c31\uff1a' + a.name)
+          }
+          return { ...a, progress, unlocked }
+        })
+        set({ achievements: updated })
+      },
       addCustomAchievement: ({ name, desc, total }) => {
         const id = `a-ai-${Date.now().toString(36)}`
         set(s => ({
@@ -314,21 +356,23 @@ export const useStore = create<StoreState>()(
               progress: 0,
               total: Math.max(1, Math.min(999, Math.round(total))),
               unlocked: false,
-              iconColor: '#FFFFFF',
-              iconBg: '#1a1a1a',
-              iconPath: 'M5 13l4 4L19 7'
+              category: 'special',
+              rarity: 'bronze',
+              iconPath: 'M5 13l4 4L19 7',
+              redeemed: null
             }
           ]
         }))
         return id
       },
       init: (tag, goal, ai) =>
-        set({
+        set(s => ({
           onboarded: true,
           playerTag: tag || 'PLAYER_01',
           dailyGoalMin: goal,
-          ai: ai?.apiKey?.trim() ? ai : { ...PRESET_AI_CONFIG }
-        }),
+          ai: ai?.apiKey?.trim() ? ai : { ...PRESET_AI_CONFIG },
+          achievements: s.achievements.length > 0 ? s.achievements : [...ALL_ACHIEVEMENTS]
+        })),
       reset: () =>
         set({
           onboarded: false,
@@ -346,7 +390,7 @@ export const useStore = create<StoreState>()(
           gaokaoTargetScore: 680,
           gaokaoBaseScore: 400,
           quests: [],
-          achievements: [],
+          achievements: [...ALL_ACHIEVEMENTS],
           ownedItems: {},
           customShopItems: [],
           pointHistory: [],

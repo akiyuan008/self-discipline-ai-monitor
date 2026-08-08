@@ -1,156 +1,237 @@
 import { useState } from 'react'
 import { useStore } from '@/stores/useStore'
-import { ACHIEVEMENT_TABS } from '@/data/achievements'
+import { RARITY_ORDER, RARITY_META, CATEGORY_LABELS, type Rarity, type AchievementCategory } from '@/data/achievements'
+import type { Achievement } from '@/data/achievements'
+import Icon from '@/components/Icons'
 
 interface Props {
   onBack: () => void
 }
 
-export default function Achievements({ onBack }: Props) {
-  const [tab, setTab] = useState<'all' | 'unlocked' | 'locked'>('all')
-  const achievements = useStore(s => s.achievements)
+const CLIP = 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
+const CLIP_SM = 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
 
-  const list = achievements.filter(a => {
-    if (tab === 'unlocked') return a.unlocked
-    if (tab === 'locked') return !a.unlocked
-    return true
-  })
+export default function Achievements({ onBack }: Props) {
+  const achievements = useStore(s => s.achievements)
+  const [filter, setFilter] = useState<AchievementCategory | 'all'>('all')
+  const [showNegative, setShowNegative] = useState(false)
+
+  // 按稀有度分组
+  const byRarity = (rarity: Rarity) => {
+    let list = achievements.filter(a => a.rarity === rarity)
+    if (filter !== 'all') list = list.filter(a => a.category === filter)
+    return list
+  }
+
+  const unlockedCount = achievements.filter(a => a.unlocked).length
+  const totalCount = achievements.length
 
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0,
-        background: 'var(--bg)',
-        zIndex: 500,
-        overflow: 'auto'
-      }}
-      className="safe-top safe-bottom animate-in"
-    >
-      <div style={{ padding: '16px 20px 32px' }}>
-        <Header onBack={onBack} title="成就殿堂" subtitle="ACHIEVEMENTS" />
-
-        {/* AI 管理提示 */}
-        <div className="card" style={{
-          padding: '12px 16px', borderRadius: 16, marginBottom: 8,
-          display: 'flex', alignItems: 'center', gap: 10,
-          background: 'var(--bg-alt)'
-        }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: '50%',
-            background: 'var(--card-bg)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
-              <path d="M9 12l2 2 4-4" />
-            </svg>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 12, fontWeight: 500 }}>AI 动态管理</div>
-            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
-              与 MOSS 对话时，AI 会根据你的表现添加和更新成就
-            </div>
-          </div>
-        </div>
-
-        {/* tabs */}
+    <div className="safe-top safe-bottom" style={{
+      position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 500, overflow: 'auto'
+    }}>
+      <div style={{ padding: '16px 16px 32px' }}>
+        {/* 头部 */}
         <div style={{
-          display: 'flex', gap: 6, padding: 4,
-          background: 'var(--bg-alt)', borderRadius: 100, marginBottom: 16
+          display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 16,
+          paddingBottom: 10, borderBottom: '1px solid rgba(69,162,158,0.2)'
         }}>
-          {ACHIEVEMENT_TABS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              style={{
-                flex: 1, padding: '8px 12px',
-                borderRadius: 100,
-                background: tab === t.id ? 'var(--fg)' : 'transparent',
-                color: tab === t.id ? 'var(--bg)' : 'var(--muted)',
-                border: 'none', fontSize: 12, fontWeight: 500
-              }}
-            >
-              {t.label}
-            </button>
+          <button onClick={onBack} style={{
+            width: 34, height: 34, background: 'var(--bg-alt)', border: '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--fg)',
+            clipPath: CLIP_SM
+          }}>
+            <Icon.Back size={16} />
+          </button>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 2 }}>
+              ACHIEVEMENT WALL
+            </div>
+            <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif" }}>
+              成就墙
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#f59e0b', fontFamily: 'Teko, sans-serif' }}>
+              {unlockedCount}/{totalCount}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>UNLOCKED</div>
+          </div>
+        </div>
+
+        {/* 分类筛选 */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 16, overflowX: 'auto' }} className="scrollbar-hide">
+          {([
+            { id: 'all' as const, label: '全部' },
+            { id: 'abyss' as const, label: '深渊' },
+            { id: 'study-time' as const, label: '学习时长' },
+            { id: 'streak' as const, label: '打卡' },
+            { id: 'special' as const, label: '彩蛋' },
+          ] as const).map(cat => (
+            <button key={cat.id} onClick={() => setFilter(cat.id)} style={{
+              padding: '6px 12px', whiteSpace: 'nowrap',
+              background: filter === cat.id ? 'rgba(69,162,158,0.15)' : 'var(--bg-alt)',
+              border: `1px solid ${filter === cat.id ? '#45a29e' : 'var(--border)'}`,
+              color: filter === cat.id ? '#45a29e' : 'var(--muted)',
+              fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif",
+              fontSize: 12, cursor: 'pointer', clipPath: CLIP_SM
+            }}>{cat.label}</button>
           ))}
         </div>
 
-        {/* 列表 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {list.map(a => (
-            <div
-              key={a.id}
-              className="card"
-              style={{
-                padding: 14, borderRadius: 16,
-                display: 'flex', gap: 12, alignItems: 'center',
-                opacity: a.unlocked ? 1 : 0.7
-              }}
-            >
-              <div style={{
-                width: 44, height: 44, borderRadius: 16,
-                background: a.iconBg, color: a.iconColor,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d={a.iconPath} />
-                </svg>
+        {/* 成就墙：按稀有度从上到下 */}
+        {RARITY_ORDER.filter(r => r !== 'negative').map(rarity => {
+          const list = byRarity(rarity)
+          if (list.length === 0) return null
+          const meta = RARITY_META[rarity]
+          return (
+            <div key={rarity} style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <div style={{ width: 3, height: 16, background: meta.iconColor }} />
+                <div style={{
+                  fontSize: 13, fontWeight: 600, color: meta.color,
+                  fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", letterSpacing: 1
+                }}>
+                  {meta.label}级
+                </div>
+                <div style={{ flex: 1, height: 1, background: `${meta.iconColor}30` }} />
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>{a.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>{a.desc}</div>
-                {!a.unlocked && (
-                  <div style={{
-                    height: 3, background: 'var(--bg-alt)',
-                    borderRadius: 100, marginTop: 8, overflow: 'hidden'
-                  }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${(a.progress / a.total) * 100}%`,
-                      background: 'var(--fg)', borderRadius: 100
-                    }} />
-                  </div>
-                )}
-              </div>
-              <div style={{
-                fontSize: 10, fontFamily: 'DM Mono, monospace',
-                color: a.unlocked ? 'var(--success)' : 'var(--muted)',
-                whiteSpace: 'nowrap'
-              }}>
-                {a.unlocked ? '已解锁' : `${a.progress}/${a.total}`}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {list.map(a => <AchievementCard key={a.id} achievement={a} />)}
               </div>
             </div>
-          ))}
-        </div>
+          )
+        })}
+
+        {/* 负面成就区（默认折叠） */}
+        {(() => {
+          const negList = byRarity('negative')
+          if (negList.length === 0) return null
+          return (
+            <div>
+              <button onClick={() => setShowNegative(!showNegative)} style={{
+                width: '100%', padding: '12px 14px', marginBottom: 10,
+                background: 'rgba(97,97,97,0.08)', border: '1px solid rgba(97,97,97,0.3)',
+                color: '#9e9e9e', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                cursor: 'pointer', clipPath: CLIP_SM,
+                fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", fontSize: 13
+              }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Icon.Warning size={14} color="#9e9e9e" />
+                  航行事故记录 ({negList.filter(a => a.unlocked).length}/{negList.length})
+                </span>
+                <span style={{ fontSize: 10, color: 'var(--muted)' }}>{showNegative ? '收起 ▲' : '展开 ▼'}</span>
+              </button>
+              {showNegative && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {negList.map(a => <AchievementCard key={a.id} achievement={a} />)}
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </div>
     </div>
   )
 }
 
-function Header({ onBack, title, subtitle }: { onBack: () => void; title: string; subtitle: string }) {
+function AchievementCard({ achievement: a }: { achievement: Achievement }) {
+  const meta = RARITY_META[a.rarity]
+  const isNegative = a.rarity === 'negative'
+  const isLocked = !a.unlocked
+  const isDiamond = a.rarity === 'diamond'
+  const isRedeemed = !!(a as any).redeemed
+
+  // 钻石级未解锁也显示名称和提示
+  const showNameHint = !isLocked || isDiamond || isNegative
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-      <button
-        onClick={onBack}
-        style={{
-          width: 36, height: 36, borderRadius: '50%',
-          background: 'var(--card-bg)', border: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', color: 'var(--fg)'
-        }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M15 18l-6-6 6-6" />
+    <div style={{
+      background: a.unlocked ? `${meta.iconBg}` : 'var(--bg-alt)',
+      border: `1px solid ${a.unlocked ? `${meta.iconColor}40` : 'var(--border)'}`,
+      padding: '12px 10px', position: 'relative', clipPath: CLIP_SM,
+      opacity: isLocked && !isDiamond ? 0.5 : 1,
+      filter: isLocked && !showNameHint ? 'brightness(0.4)' : 'none'
+    }}>
+      {/* 钻石发光 */}
+      {a.unlocked && a.rarity === 'diamond' && (
+        <div style={{
+          position: 'absolute', top: 4, right: 4, width: 6, height: 6, borderRadius: '50%',
+          background: meta.iconColor, boxShadow: meta.glow,
+          animation: 'breathe 3s infinite'
+        }} />
+      )}
+
+      {/* 图标 */}
+      <div style={{
+        width: 40, height: 40, margin: '0 auto 8px',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: a.unlocked ? meta.iconBg : 'transparent',
+        border: `1px solid ${a.unlocked ? `${meta.iconColor}40` : 'var(--border)'}`,
+        clipPath: CLIP_SM, position: 'relative'
+      }}>
+        {/* 负面成就裂纹效果 */}
+        {isNegative && a.unlocked && (
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(0,0,0,0.1) 3px, rgba(0,0,0,0.1) 4px)',
+            pointerEvents: 'none'
+          }} />
+        )}
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+          stroke={a.unlocked ? (isRedeemed ? '#9e9e9e' : meta.iconColor) : 'var(--muted)'}
+          strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d={a.iconPath} />
         </svg>
-      </button>
-      <div>
-        <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-          {subtitle}
-        </div>
-        <div style={{ fontSize: 22, fontWeight: 700 }}>{title}</div>
       </div>
+
+      {/* 名称 */}
+      {showNameHint && (
+        <div style={{
+          fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 2,
+          fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif",
+          color: a.unlocked ? (isRedeemed ? '#9e9e9e' : meta.color) : (isDiamond ? meta.color : 'var(--muted)')
+        }}>
+          {a.name}
+        </div>
+      )}
+
+      {/* 描述 */}
+      {(a.unlocked || isDiamond || isNegative) && (
+        <div style={{
+          fontSize: 10, color: 'var(--muted)', textAlign: 'center', lineHeight: 1.4, marginBottom: 4,
+          fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif"
+        }}>
+          {a.unlocked ? a.desc : (a.hint || a.desc)}
+        </div>
+      )}
+
+      {/* 洗白标注 */}
+      {isRedeemed && (
+        <div style={{
+          fontSize: 9, textAlign: 'center', padding: '1px 6px', marginTop: 4,
+          background: 'rgba(34,197,94,0.12)', border: '1px solid #22c55e40',
+          color: '#22c55e', borderRadius: 4,
+          fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif"
+        }}>
+          {(a as any).redeemed}
+        </div>
+      )}
+
+      {/* 进度 */}
+      {isLocked && a.total > 1 && !isNegative && (
+        <div style={{ marginTop: 4 }}>
+          <div style={{ height: 3, background: 'var(--bg)', borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{
+              width: `${Math.min(100, (a.progress / a.total) * 100)}%`,
+              height: '100%', background: meta.iconColor, opacity: 0.6
+            }} />
+          </div>
+          <div style={{ fontSize: 9, color: 'var(--muted)', textAlign: 'center', marginTop: 2, fontFamily: 'Share Tech Mono, monospace' }}>
+            {a.progress}/{a.total}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
