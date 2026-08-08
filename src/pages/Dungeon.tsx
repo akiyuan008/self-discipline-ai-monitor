@@ -210,9 +210,9 @@ export default function Dungeon({ onExit }: Props) {
   const displayTime = mode === 'free' ? freeTime : timeLeft
 
   const btnBase: React.CSSProperties = {
-    background: true ? '#0f172a' : 'var(--bg-alt)',
-    border: `1px solid ${true ? '#00e5ff' : 'var(--border)'}`,
-    color: true ? '#f8fafc' : 'var(--fg)',
+    background: 'var(--bg-alt)',
+    border: '1px solid var(--border)',
+    color: 'var(--fg)',
     padding: '10px 16px',
     fontFamily: 'inherit',
     fontSize: '0.95rem',
@@ -230,12 +230,12 @@ export default function Dungeon({ onExit }: Props) {
     ...btnBase,
     flexGrow: 1,
     justifyContent: 'center',
-    background: isRunning ? (isAbyssMode ? '#ff3344' : '#ff4500') : (true ? 'rgba(0,229,255,0.18)' : 'var(--accent-dim)'),
-    borderColor: isRunning ? (isAbyssMode ? '#ff3344' : '#ff4500') : (true ? '#00e5ff' : 'var(--accent)'),
-    color: isRunning ? '#ffffff' : (true ? '#00e5ff' : 'var(--accent)'),
+    background: isRunning ? (isAbyssMode ? '#ff3344' : '#ff4500') : 'rgba(255,69,0,0.12)',
+    borderColor: isRunning ? (isAbyssMode ? '#ff3344' : '#ff4500') : '#ff4500',
+    color: isRunning ? '#fff' : '#ff4500',
     fontSize: '1.05rem',
     fontWeight: 700,
-    boxShadow: isRunning ? `0 0 25px ${isAbyssMode ? 'rgba(255,51,68,0.6)' : 'rgba(255,69,0,0.6)'}` : (true ? '0 0 12px rgba(0,229,255,0.2)' : 'none'),
+    boxShadow: isRunning ? `0 0 20px ${isAbyssMode ? 'rgba(255,51,68,0.4)' : 'rgba(255,69,0,0.4)'}` : 'none',
   }
 
   return (
@@ -288,7 +288,7 @@ export default function Dungeon({ onExit }: Props) {
         cursor: 'pointer', fontFamily: 'inherit',
         clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
       }}>
-        <Icon.Back size={14} /> 退出引擎
+        <Icon.Back size={14} color="var(--fg)" /> 退出引擎
       </button>
 
       {/* 深渊模式特制警告横幅 */}
@@ -297,7 +297,7 @@ export default function Dungeon({ onExit }: Props) {
           position: 'absolute', top: 16, right: 16, zIndex: 10,
           background: 'rgba(255,51,68,0.15)', border: '1px solid #ff3344',
           color: '#ff3344', padding: '6px 12px', borderRadius: 4,
-          fontSize: 10, fontWeight: 700, fontFamily: 'Share Tech Mono, monospace',
+          fontSize: 10, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif",
           display: 'flex', alignItems: 'center', gap: 6,
           boxShadow: '0 0 12px rgba(255,51,68,0.3)'
         }}>
@@ -327,7 +327,7 @@ export default function Dungeon({ onExit }: Props) {
         }}>
           <div>
             <div style={{
-              fontFamily: true ? 'Teko, sans-serif' : 'inherit',
+              fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif",
               fontSize: '1.8rem', letterSpacing: 2,
               color: isAbyssMode ? '#ff3344' : 'var(--fg)', textTransform: 'uppercase', margin: 0,
               fontWeight: 700, lineHeight: 1
@@ -336,7 +336,7 @@ export default function Dungeon({ onExit }: Props) {
             </div>
             <span style={{
               fontSize: '0.7rem', color: 'var(--muted)',
-              fontFamily: true ? 'Share Tech Mono, monospace' : 'inherit'
+              fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif"
             }}>
               {isAbyssMode ? 'ABYSS LOCKOUT // HIGH GRAVITY' : (true ? 'UNIT: CN-171-11 // ENGINE' : 'SELF-DISCIPLINE')}
             </span>
@@ -344,13 +344,13 @@ export default function Dungeon({ onExit }: Props) {
           <div style={{ textAlign: 'right' }}>
             <div style={{
               fontSize: '0.7rem', color: 'var(--muted)',
-              fontFamily: true ? 'Share Tech Mono, monospace' : 'inherit'
+              fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif"
             }}>
               {true ? 'THRUST' : '进度'}
             </div>
             <div className={true ? 'thrust-text' : ''} style={{
               color: isAbyssMode ? '#ff3344' : (true ? '#ff4500' : 'var(--accent)'), fontWeight: 'bold',
-              fontFamily: true ? 'Share Tech Mono, monospace' : 'inherit',
+              fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif",
               fontSize: '1.2rem'
             }}>
               {thrust}%
@@ -423,7 +423,7 @@ export default function Dungeon({ onExit }: Props) {
             background: 'var(--card-bg)',
             padding: '2px 10px',
             border: `1px solid ${isRunning ? (isAbyssMode ? '#ff3344' : '#00e5ff') : 'var(--muted)'}`,
-            fontFamily: true ? 'Share Tech Mono, monospace' : 'inherit'
+            fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif"
           }}>
             {isRunning ? (isAbyssMode ? 'ABYSS ENGAGED' : (true ? 'IGNITION' : '专注中')) : (true ? 'STANDBY' : '待机')}
           </div>
@@ -431,7 +431,7 @@ export default function Dungeon({ onExit }: Props) {
           {/* 励志名言 */}
           <div style={{
             position: 'absolute', top: -32, width: '100%', textAlign: 'center',
-            fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace',
+            fontSize: 10, color: 'var(--muted)', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif",
             letterSpacing: 1, opacity: 0.85
           }}>
             {quote}
@@ -496,7 +496,7 @@ export default function Dungeon({ onExit }: Props) {
             clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)',
             boxShadow: '0 0 30px rgba(255,51,68,0.5)'
           }}>
-            <div style={{ fontSize: 11, color: '#ff3344', fontFamily: 'Share Tech Mono, monospace', marginBottom: 4 }}>
+            <div style={{ fontSize: 11, color: '#ff3344', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 4 }}>
               [ABYSS INTERRUPT WARNING]
             </div>
             <h3 style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", color: '#ff3344', margin: '0 0 10px' }}>
@@ -518,14 +518,14 @@ export default function Dungeon({ onExit }: Props) {
               <button onClick={() => setShowQuitConfirm(false)} style={{
                 flex: 1, padding: '10px', background: '#ff3344', color: '#fff',
                 border: 'none', fontWeight: 700, cursor: 'pointer',
-                fontFamily: 'Share Tech Mono, monospace'
+                fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif"
               }}>
                 继续坚守
               </button>
               <button onClick={confirmQuitAbyss} style={{
                 flex: 1, padding: '10px', background: 'transparent', color: 'var(--muted)',
                 border: '1px solid var(--border)', cursor: 'pointer',
-                fontFamily: 'Share Tech Mono, monospace'
+                fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif"
               }}>
                 确认中断
               </button>
@@ -546,17 +546,17 @@ export default function Dungeon({ onExit }: Props) {
             clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)'
           }} onClick={e => e.stopPropagation()}>
             <h3 style={{
-              fontFamily: true ? 'Teko, sans-serif' : 'inherit',
+              fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif",
               color: 'var(--accent)', fontSize: '1.5rem',
               marginBottom: 15, textTransform: 'uppercase'
             }}>
-              {true ? 'SET DURATION' : '设置时长'}
+              设置时长
             </h3>
             <input type="number" value={setMin} onChange={e => setSetMin(parseInt(e.target.value) || 1)}
               style={{
                 width: '100%', background: 'var(--bg-alt)',
                 border: '1px solid var(--border)', color: 'var(--accent)',
-                padding: 10, fontFamily: true ? 'Share Tech Mono, monospace' : 'inherit',
+                padding: 10, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif",
                 fontSize: '1.2rem', marginBottom: 20, boxSizing: 'border-box'
               }} />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
@@ -564,13 +564,13 @@ export default function Dungeon({ onExit }: Props) {
                 background: 'transparent', border: 'none',
                 color: 'var(--muted)', padding: '8px 14px', cursor: 'pointer'
               }}>
-                {true ? 'CANCEL' : '取消'}
+                取消
               </button>
               <button onClick={saveSettings} style={{
                 background: 'var(--accent)', border: 'none',
                 color: '#fff', padding: '8px 14px', cursor: 'pointer', fontWeight: 600
               }}>
-                {true ? 'CONFIRM' : '确认'}
+                确认
               </button>
             </div>
           </div>

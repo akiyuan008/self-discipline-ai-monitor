@@ -233,51 +233,22 @@ export default function Home({ onNavigate }: Props) {
           <button onClick={() => onNavigate?.('dungeon')} style={{
             padding: '14px', background: 'rgba(255,69,0,0.1)',
             border: '1px solid #ff4500', color: '#ff4500',
-            fontFamily: 'Teko, sans-serif', fontSize: 16, letterSpacing: 1,
-            cursor: 'pointer', textTransform: 'uppercase',
-            clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
+            fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: 1,
+            cursor: 'pointer',
+            clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
           }}>
-            <div style={{ marginBottom: 4, display: 'flex', justifyContent: 'center' }}><Icon.Play size={20} color="#ff4500" /></div>
-            启动引擎
-          </button>
-          <button onClick={() => onNavigate?.('quests')} style={{
-            padding: '14px', background: 'rgba(69,162,158,0.1)',
-            border: '1px solid #45a29e', color: '#45a29e',
-            fontFamily: 'Teko, sans-serif', fontSize: 16, letterSpacing: 1,
-            cursor: 'pointer', textTransform: 'uppercase',
-            clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
-          }}>
-            <div style={{ marginBottom: 4, display: 'flex', justifyContent: 'center' }}><Icon.Menu size={20} color="#45a29e" /></div>
-            任务列表
-          </button>
-          <button onClick={() => onNavigate?.('chat')} style={{
-            padding: '12px', background: 'var(--bg-alt)',
-            border: '1px solid var(--border)', color: 'var(--fg)',
-            fontFamily: 'Share Tech Mono, monospace', fontSize: 12, fontWeight: 600,
-            cursor: 'pointer', letterSpacing: 1,
-            clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
-          }}>
-            通讯终端
-          </button>
-          <button onClick={() => onNavigate?.('shop')} style={{
-            padding: '12px', background: 'var(--bg-alt)',
-            border: '1px solid var(--border)', color: 'var(--fg)',
-            fontFamily: 'Share Tech Mono, monospace', fontSize: 12, fontWeight: 600,
-            cursor: 'pointer', letterSpacing: 1,
-            clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
-          }}>
-            补给大楼
+            <Icon.Play size={20} color="#ff4500" /> 启动引擎
           </button>
           <button onClick={() => onNavigate?.('legacy')} style={{
-            gridColumn: '1 / -1',
-            padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            background: 'rgba(245,158,11,0.08)',
+            padding: '14px', background: 'rgba(245,158,11,0.08)',
             border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b',
-            fontFamily: 'Share Tech Mono, monospace', fontSize: 12, fontWeight: 600,
-            cursor: 'pointer', letterSpacing: 1,
-            clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
+            fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: 1,
+            cursor: 'pointer',
+            clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
           }}>
-            <Icon.Book size={14} color="#f59e0b" /> 航迹档案 · 努力的痕迹
+            <Icon.Book size={18} color="#f59e0b" /> 航迹档案
           </button>
         </div>
       </div>

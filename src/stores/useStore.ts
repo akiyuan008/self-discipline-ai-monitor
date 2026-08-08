@@ -463,7 +463,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'cyber-survival-store',
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => localStorage),
       migrate: (persisted: any, version: number) => {
         if (version < 3 && persisted) {
@@ -482,10 +482,14 @@ export const useStore = create<StoreState>()(
         const defaultAI = c.ai || { ...PRESET_AI_CONFIG }
         const persistedAI = p.ai || {}
         const ai = { ...defaultAI, ...persistedAI }
+        const achievements = (p.achievements && p.achievements.length > 0)
+          ? p.achievements
+          : c.achievements
         return {
           ...c,
           ...p,
           ai,
+          achievements,
           modelList: (p.modelList && p.modelList.length > 0) ? p.modelList : c.modelList
         }
       }
