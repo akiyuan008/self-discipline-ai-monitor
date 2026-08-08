@@ -330,42 +330,7 @@ export default function Stats({ onBack }: Props) {
           </div>
         )}
 
-        {/* 成就系统 */}
-        <div style={{
-          background: 'var(--card-bg)', border: '1px solid var(--border)',
-          padding: '16px', marginTop: 16, position: 'relative',
-          clipPath: 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
-        }}>
-          <div className="corner-deco tl" style={{ width: 10, height: 10, borderWidth: 1 }} />
-          <div className="corner-deco tr" style={{ width: 10, height: 10, borderWidth: 1 }} />
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 12, fontFamily: isWandering ? 'Teko, sans-serif' : 'inherit', letterSpacing: 1 }}>
-            {isWandering ? 'MEDALS' : '成就勋章'}
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {[
-              { id: 'physics', name: '物理达人', desc: '物理专注满10小时', check: () => (subjectStats.find(([s]) => s === '物理')?.[1] ?? 0) >= 10 },
-              { id: 'early', name: '早起鸟', desc: '连续一周完成早八课程', check: () => streak >= 7 },
-              { id: 'abyss30', name: '深渊行者', desc: '连续30天无失败记录', check: () => streak >= 30 },
-              { id: 'focus100', name: '百小时专注', desc: '累计专注100小时', check: () => totalFocusMs >= 360000000 },
-              { id: 'level10', name: '十级学者', desc: '等级达到10级', check: () => level >= 10 },
-            ].map(medal => {
-              const unlocked = medal.check()
-              return (
-                <div key={medal.id} style={{
-                  width: 'calc(50% - 4px)', padding: '12px',
-                  background: unlocked ? 'rgba(255,69,0,0.08)' : 'var(--bg-alt)',
-                  border: `1px solid ${unlocked ? '#ff4500' : 'var(--border)'}`,
-                  opacity: unlocked ? 1 : 0.5,
-                  clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
-                }}>
-                  <div style={{ marginBottom: 4, display: 'flex', justifyContent: 'center' }}>{unlocked ? <Icon.Trophy size={20} color="#ff4500" /> : <Icon.Lock size={20} color="var(--muted)" />}</div>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: unlocked ? '#ff4500' : 'var(--fg)' }}>{medal.name}</div>
-                  <div style={{ fontSize: 10, color: 'var(--muted)' }}>{medal.desc}</div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
+
       </div>
     </div>
   )

@@ -4,7 +4,6 @@ import { useClassTaskStore } from '@/stores/classTaskStore'
 import { useEchoStore } from '@/stores/echoStore'
 import { readVoiceBase64, type EchoRecord } from '@/lib/echoStorage'
 import { getPeriodTime } from '@/data/schedule'
-import { RARITY_META } from '@/data/achievements'
 import { fmtMs } from '@/lib/usageStats'
 import { showToast } from '@/components/Toast'
 import Icon from '@/components/Icons'
@@ -17,7 +16,7 @@ const CLIP = 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 
 const CLIP_SM = 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
 const BODY = "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif"
 
-type Tab = 'tasks' | 'photos' | 'abyss' | 'echoes' | 'monitor' | 'medals'
+type Tab = 'tasks' | 'photos' | 'abyss' | 'echoes' | 'monitor'
 
 export default function ClassHistory({ onBack }: Props) {
   const [tab, setTab] = useState<Tab>('tasks')
@@ -31,14 +30,12 @@ export default function ClassHistory({ onBack }: Props) {
   const streak = useStore(s => s.streak)
   const totalFocusMs = useStore(s => s.totalFocusMs)
   const points = useStore(s => s.points)
-  const achievements = useStore(s => s.achievements)
 
   const echoInit = useEchoStore(s => s.init)
   const echoes = useEchoStore(s => s.echoes)
   useEffect(() => { echoInit() }, [echoInit])
 
   const totalCheckins = verifyHistory.filter(v => v.passed).length
-  const unlockedCount = achievements.filter(a => a.unlocked).length
 
   const sortedHistory = useMemo(() => [...taskHistory].sort((a, b) => b.date.localeCompare(a.date)), [taskHistory])
   const moments = useMemo(() => [...verifyHistory].sort((a, b) => b.verifiedAt - a.verifiedAt), [verifyHistory])
@@ -50,7 +47,6 @@ export default function ClassHistory({ onBack }: Props) {
     { id: 'abyss', label: '深渊', icon: <Icon.Flame size={13} />, count: abyss.length },
     { id: 'echoes', label: '回响', icon: <Icon.Chat size={13} />, count: echoes.length },
     { id: 'monitor', label: '监测', icon: <Icon.Radar size={13} />, count: monitorHistory.length },
-    { id: 'medals', label: '勋章', icon: <Icon.Medal size={13} />, count: unlockedCount },
   ]
 
   return (
@@ -88,10 +84,6 @@ export default function ClassHistory({ onBack }: Props) {
             <div style={{ color: '#45a29e', fontWeight: 700, fontSize: 14, fontFamily: 'Teko, sans-serif' }}>{streak}D</div>
             <div style={{ color: 'var(--muted)', fontSize: 9 }}>STREAK</div>
           </div>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ color: '#f59e0b', fontWeight: 700, fontSize: 14, fontFamily: 'Teko, sans-serif' }}>{unlockedCount}</div>
-            <div style={{ color: 'var(--muted)', fontSize: 9 }}>MEDALS</div>
-          </div>
         </div>
       </div>
 
@@ -115,7 +107,6 @@ export default function ClassHistory({ onBack }: Props) {
         {tab === 'abyss' && <AbyssTab data={abyss} />}
         {tab === 'echoes' && <EchoesTab echoes={echoes} />}
         {tab === 'monitor' && <MonitorTab data={monitorHistory} />}
-        {tab === 'medals' && <MedalsTab achievements={achievements} />}
       </div>
 
       {/* 照片预览 */}
@@ -374,53 +365,6 @@ function MonitorTab({ data }: { data: any[] }) {
           </div>
         </div>
       ))}
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════════
-// 勋章
-// ═══════════════════════════════════════════════════════════
-function MedalsTab({ achievements }: { achievements: any[] }) {
-  const unlocked = achievements.filter(a => a.unlocked)
-  const locked = achievements.filter(a => !a.unlocked)
-  if (achievements.length === 0) return <Empty text="还没有勋章" sub="完成任务、坚持打卡会解锁勋章" />
-  return (
-    <div>
-      {unlocked.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 11, color: '#f59e0b', fontFamily: BODY, fontWeight: 600, marginBottom: 8 }}>已解锁 · {unlocked.length}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {unlocked.map((a, i) => <MedalCard key={i} a={a} unlocked />)}
-          </div>
-        </div>
-      )}
-      {locked.length > 0 && (
-        <div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: BODY, fontWeight: 600, marginBottom: 8 }}>未解锁 · {locked.length}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {locked.map((a, i) => <MedalCard key={i} a={a} unlocked={false} />)}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function MedalCard({ a, unlocked }: { a: any; unlocked: boolean }) {
-  const meta = (RARITY_META as any)[a.rarity] || RARITY_META.bronze
-  return (
-    <div style={{
-      background: unlocked ? meta.iconBg : 'var(--bg-alt)',
-      border: `1px solid ${unlocked ? `${meta.iconColor}40` : 'var(--border)'}`,
-      padding: '12px', clipPath: CLIP_SM, opacity: unlocked ? 1 : 0.5, textAlign: 'center'
-    }}>
-      <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'center' }}>
-        {unlocked ? <Icon.Medal size={22} color={meta.iconColor} /> : <Icon.Lock size={22} color="var(--muted)" />}
-      </div>
-      <div style={{ fontSize: 14, fontWeight: 700, fontFamily: BODY }}>{a.name}</div>
-      <div style={{ fontSize: 9, color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>{a.desc}</div>
-      {!unlocked && a.total > 0 && <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginTop: 4 }}>{a.progress}/{a.total}</div>}
     </div>
   )
 }

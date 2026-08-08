@@ -48,7 +48,7 @@ export default function Achievements({ onBack }: Props) {
               ACHIEVEMENT WALL
             </div>
             <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif" }}>
-              成就墙
+              成就勋章
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -79,7 +79,7 @@ export default function Achievements({ onBack }: Props) {
           ))}
         </div>
 
-        {/* 成就墙：按稀有度从上到下 */}
+        {/* 成就勋章：按稀有度从上到下 */}
         {RARITY_ORDER.filter(r => r !== 'negative').map(rarity => {
           const list = byRarity(rarity)
           if (list.length === 0) return null
@@ -142,35 +142,29 @@ function AchievementCard({ achievement: a }: { achievement: Achievement }) {
   const isDiamond = a.rarity === 'diamond'
   const isRedeemed = !!(a as any).redeemed
 
-  // 钻石级未解锁也显示名称和提示
-  const showNameHint = !isLocked || isDiamond || isNegative
-
   return (
     <div style={{
-      background: a.unlocked ? `${meta.iconBg}` : 'var(--bg-alt)',
-      border: `1px solid ${a.unlocked ? `${meta.iconColor}40` : 'var(--border)'}`,
+      background: a.unlocked ? meta.iconBg : 'var(--bg-alt)',
+      border: `1px solid ${a.unlocked ? `${meta.iconColor}50` : 'var(--border)'}`,
       padding: '12px 10px', position: 'relative', clipPath: CLIP_SM,
-      opacity: isLocked && !isDiamond ? 0.5 : 1,
-      filter: isLocked && !showNameHint ? 'brightness(0.4)' : 'none'
+      opacity: a.unlocked ? 1 : 0.78
     }}>
-      {/* 钻石发光 */}
       {a.unlocked && a.rarity === 'diamond' && (
         <div style={{
           position: 'absolute', top: 4, right: 4, width: 6, height: 6, borderRadius: '50%',
-          background: meta.iconColor, boxShadow: meta.glow,
-          animation: 'breathe 3s infinite'
+          background: meta.iconColor, boxShadow: meta.glow, animation: 'breathe 3s infinite'
         }} />
       )}
 
-      {/* 图标 */}
+      {/* 图标：未解锁压暗成剪影，但卡片整体可读 */}
       <div style={{
         width: 40, height: 40, margin: '0 auto 8px',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: a.unlocked ? meta.iconBg : 'transparent',
-        border: `1px solid ${a.unlocked ? `${meta.iconColor}40` : 'var(--border)'}`,
-        clipPath: CLIP_SM, position: 'relative'
+        border: `1px solid ${a.unlocked ? `${meta.iconColor}50` : 'var(--border)'}`,
+        clipPath: CLIP_SM, position: 'relative',
+        opacity: a.unlocked ? 1 : 0.4
       }}>
-        {/* 负面成就裂纹效果 */}
         {isNegative && a.unlocked && (
           <div style={{
             position: 'absolute', inset: 0,
@@ -185,28 +179,24 @@ function AchievementCard({ achievement: a }: { achievement: Achievement }) {
         </svg>
       </div>
 
-      {/* 名称 */}
-      {showNameHint && (
-        <div style={{
-          fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 2,
-          fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif",
-          color: a.unlocked ? (isRedeemed ? '#9e9e9e' : meta.color) : (isDiamond ? meta.color : 'var(--muted)')
-        }}>
-          {a.name}
-        </div>
-      )}
+      {/* 名称：始终可见 */}
+      <div style={{
+        fontSize: 13, fontWeight: 600, textAlign: 'center', marginBottom: 2,
+        fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif",
+        color: a.unlocked ? (isRedeemed ? '#9e9e9e' : meta.color) : (isDiamond ? meta.color : 'var(--fg)')
+      }}>
+        {a.name}
+      </div>
 
-      {/* 描述 */}
-      {(a.unlocked || isDiamond || isNegative) && (
-        <div style={{
-          fontSize: 10, color: 'var(--muted)', textAlign: 'center', lineHeight: 1.4, marginBottom: 4,
-          fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif"
-        }}>
-          {a.unlocked ? a.desc : (a.hint || a.desc)}
-        </div>
-      )}
+      {/* 描述/提示：始终可见 */}
+      <div style={{
+        fontSize: 10, textAlign: 'center', lineHeight: 1.4, marginBottom: 4,
+        fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif",
+        color: 'var(--muted)', opacity: a.unlocked ? 1 : 0.85
+      }}>
+        {a.unlocked ? a.desc : (a.hint || a.desc)}
+      </div>
 
-      {/* 洗白标注 */}
       {isRedeemed && (
         <div style={{
           fontSize: 9, textAlign: 'center', padding: '1px 6px', marginTop: 4,
@@ -218,7 +208,6 @@ function AchievementCard({ achievement: a }: { achievement: Achievement }) {
         </div>
       )}
 
-      {/* 进度 */}
       {isLocked && a.total > 1 && !isNegative && (
         <div style={{ marginTop: 4 }}>
           <div style={{ height: 3, background: 'var(--bg)', borderRadius: 2, overflow: 'hidden' }}>

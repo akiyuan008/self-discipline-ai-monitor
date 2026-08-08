@@ -379,8 +379,8 @@ export default function Profile({ onNavigate, onNavigateStats }: ProfileProps) {
 
       {/* 列表 */}
       <ListRow
-        title="成就殿堂"
-        desc="成就与里程碑"
+        title="成就勋章"
+        desc="稀有度分级 · 解锁进度 · 洗白机制"
         onClick={() => onNavigate?.('achievements')}
       />
       <ListRow
