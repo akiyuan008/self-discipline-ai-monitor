@@ -1,5 +1,8 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useStore } from '@/stores/useStore'
+import { useEchoStore } from '@/stores/echoStore'
+import { readVoiceBase64, type EchoRecord } from '@/lib/echoStorage'
+import { showToast } from '@/components/Toast'
 import { useClassTaskStore } from '@/stores/classTaskStore'
 import { fmtMs } from '@/lib/usageStats'
 import Icon from '@/components/Icons'
@@ -11,7 +14,7 @@ interface Props {
 const CLIP = 'polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px)'
 const CLIP_SM = 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
 
-type Tab = 'moments' | 'voyage' | 'abyss' | 'medals'
+type Tab = 'moments' | 'voyage' | 'abyss' | 'medals' | 'echoes'
 
 export default function Legacy({ onBack }: Props) {
   const [tab, setTab] = useState<Tab>('moments')
@@ -35,6 +38,11 @@ export default function Legacy({ onBack }: Props) {
   const voyages = useMemo(() => [...taskHistory].sort((a, b) => b.date.localeCompare(a.date)), [taskHistory])
   // 深渊：按时间倒序
   const abyss = useMemo(() => [...abyssRecords].sort((a, b) => b.timestamp - a.timestamp), [abyssRecords])
+
+  // 深渊回响
+  const echoInit = useEchoStore(s => s.init)
+  const echoes = useEchoStore(s => s.echoes)
+  useEffect(() => { echoInit() }, [echoInit])
 
   return (
     <div className="safe-top safe-bottom" style={{
@@ -78,6 +86,7 @@ export default function Legacy({ onBack }: Props) {
           { id: 'voyage', label: '每日航程', icon: <Icon.Chart size={13} /> },
           { id: 'abyss', label: '深渊远征', icon: <Icon.Flame size={13} /> },
           { id: 'medals', label: '勋章', icon: <Icon.Medal size={13} /> },
+          { id: 'echoes', label: '深渊回响', icon: <Icon.Chat size={13} /> },
         ] as Array<{ id: Tab; label: string; icon: React.ReactNode }>).map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             flex: 1, padding: '8px 4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
@@ -96,6 +105,7 @@ export default function Legacy({ onBack }: Props) {
         {tab === 'voyage' && <VoyageList voyages={voyages} />}
         {tab === 'abyss' && <AbyssList records={abyss} />}
         {tab === 'medals' && <MedalList achievements={achievements} />}
+        {tab === 'echoes' && <EchoLibrary echoes={echoes} />}
       </div>
 
       {/* 照片预览弹层 */}
@@ -316,4 +326,84 @@ function fmtDate(dateStr: string): string {
 function fmtDateTime(ts: number): string {
   const d = new Date(ts)
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+// ── 深渊回响：记录库 ──
+function EchoLibrary({ echoes }: { echoes: EchoRecord[] }) {
+  const removeEcho = useEchoStore(s => s.removeEcho)
+  const [playingId, setPlayingId] = useState<string | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  async function playVoice(rec: EchoRecord) {
+    if (playingId === rec.id) {
+      audioRef.current?.pause()
+      setPlayingId(null)
+      return
+    }
+    const b64 = await readVoiceBase64(rec)
+    if (!b64) { showToast('语音读取失败'); return }
+    audioRef.current?.pause()
+    const audio = new Audio(`data:audio/webm;base64,${b64}`)
+    audioRef.current = audio
+    audio.onended = () => setPlayingId(null)
+    setPlayingId(rec.id)
+    audio.play()
+  }
+
+  if (echoes.length === 0) return <Empty text="还没有深渊回响" sub="完成深渊挑战后，可以录一段语音或写一句话封存，到约定时刻 MOSS 会回放给你" />
+
+  return (
+    <div>
+      <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginBottom: 10 }}>
+        {echoes.length} ECHOES · 存储在 APP 外部，卸载不丢
+      </div>
+      {echoes.map(rec => (
+        <div key={rec.id} style={{
+          background: 'var(--card-bg)', border: '1px solid var(--border)',
+          padding: '12px 14px', marginBottom: 8, clipPath: CLIP_SM, position: 'relative'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 34, height: 34, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: rec.type === 'voice' ? 'rgba(255,69,0,0.12)' : 'rgba(69,162,158,0.12)',
+              border: `1px solid ${rec.type === 'voice' ? '#ff4500' : '#45a29e'}`, clipPath: CLIP_SM
+            }}>
+              {rec.type === 'voice' ? <Icon.Camera size={16} color="#ff4500" /> : <Icon.Chat size={16} color="#45a29e" />}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>
+                {rec.trigger === 'streak-break' ? '断签时回放' : `到期 ${rec.triggerDate || ''}`}
+                {rec.played ? ' · 已回放' : ''}
+              </div>
+              {rec.type === 'text' && (
+                <div style={{ fontSize: 13, color: 'var(--fg)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {rec.text}
+                </div>
+              )}
+              {rec.context && (
+                <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 1 }}>{rec.context}</div>
+              )}
+            </div>
+            {rec.type === 'voice' && (
+              <button onClick={() => playVoice(rec)} style={{
+                padding: '6px 10px', background: playingId === rec.id ? 'rgba(255,69,0,0.15)' : 'var(--bg-alt)',
+                border: `1px solid ${playingId === rec.id ? '#ff4500' : 'var(--border)'}`,
+                color: playingId === rec.id ? '#ff4500' : 'var(--fg)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, clipPath: CLIP_SM
+              }}>
+                {playingId === rec.id ? <Icon.Pause size={12} color="#ff4500" /> : <Icon.Play size={12} color="var(--fg)" />}
+                {playingId === rec.id ? '停' : '播放'}
+              </button>
+            )}
+            <button onClick={() => { removeEcho(rec.id); showToast('已删除') }} style={{
+              padding: '6px 8px', background: 'transparent', border: '1px solid var(--border)',
+              color: 'var(--muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', clipPath: CLIP_SM
+            }}>
+              <Icon.Close size={12} color="var(--muted)" />
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }

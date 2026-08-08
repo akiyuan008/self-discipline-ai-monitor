@@ -3,6 +3,7 @@ import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { useClassTaskStore } from '@/stores/classTaskStore'
 import Icon from '@/components/Icons'
+import EchoRecorder from '@/components/EchoRecorder'
 
 const ABYSS_QUOTES = [
   '正在深渊重载中，反应堆全功率输出！',
@@ -45,6 +46,8 @@ export default function Dungeon({ onExit }: Props) {
   const [quote, setQuote] = useState(() => ABYSS_QUOTES[Math.floor(Math.random() * ABYSS_QUOTES.length)])
   const [showQuitConfirm, setShowQuitConfirm] = useState(false)
   const [quitPenalty, setQuitPenalty] = useState('')
+  const [showEchoRecorder, setShowEchoRecorder] = useState(false)
+  const [echoContext, setEchoContext] = useState('')
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeRef = useRef<number>(0)
@@ -187,6 +190,10 @@ export default function Dungeon({ onExit }: Props) {
           timestamp: Date.now()
         })
         showToast('归档成功！深渊重载模式挑战成功！+200 PTS')
+        // 深渊完成后引导录制"深渊回响"
+        const subj = currentTask ? currentTask.subject : '深渊重载'
+        setEchoContext(`${subj} · 深渊 ${Math.round(elapsed / 60)}min`)
+        setShowEchoRecorder(true)
       } else {
         addExp(elapsed, '专注完成')
         showToast('专注完成！做得很棒！')
@@ -468,6 +475,14 @@ export default function Dungeon({ onExit }: Props) {
           ))}
         </div>
       </div>
+
+      {/* 深渊回响录制（完成后弹出） */}
+      {showEchoRecorder && (
+        <EchoRecorder
+          context={echoContext}
+          onDone={() => { setShowEchoRecorder(false); onExit() }}
+        />
+      )}
 
       {/* 退出确认遮罩 (深渊挑战失败警告) */}
       {showQuitConfirm && (

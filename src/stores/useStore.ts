@@ -127,6 +127,8 @@ interface StoreState {
   clearChat: () => void
   syncUsage: (study: UsageStat[], ent: UsageStat[]) => void
   dailySettle: () => void
+  streakJustBroken: boolean
+  clearStreakBroken: () => void
   addPointRecord: (type: 'earn' | 'spend', amount: number, reason: string) => void
   addExp: (amount: number, reason: string) => void
   setTheme: (theme: 'default' | 'wandering') => void
@@ -170,6 +172,7 @@ export const useStore = create<StoreState>()(
       points: 0,
       xp: 0,
       streak: 0,
+      streakJustBroken: false,
       totalFocusMs: 0,
       todayStudyMs: 0,
       todayEntMs: 0,
@@ -392,10 +395,12 @@ export const useStore = create<StoreState>()(
         if (s.todayStudyMs >= dailyGoalMs) {
           set(s2 => ({ streak: s2.streak + 1, lastSyncDay: today, xp: s2.xp + 100 }))
         } else {
-          set({ streak: 0, lastSyncDay: today })
+          const wasBroken = s.streak > 0
+          set({ streak: 0, lastSyncDay: today, streakJustBroken: wasBroken })
         }
         set({ todayStudyMs: 0, todayEntMs: 0 })
       },
+      clearStreakBroken: () => set({ streakJustBroken: false }),
       addExp: (amount, reason) => {
         set(s => {
           const xpGain = Math.max(0, Math.round(amount))

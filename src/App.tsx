@@ -18,6 +18,7 @@ import Stats from '@/pages/Stats'
 import Legacy from '@/pages/Legacy'
 import Dock from '@/components/Dock'
 import Toast from '@/components/Toast'
+import EchoTrigger from '@/components/EchoTrigger'
 import { checkUpdate } from '@/lib/update'
 import { ThemeProvider } from '@/components/ThemeToggle'
 
@@ -107,6 +108,7 @@ export default function App() {
     <ThemeProvider><div className="app-container">
       <Toast />
       <PointsToast />
+      <EchoTrigger />
       {currentPage === 'onboarding' && <Onboarding />}
       {currentPage === 'home' && <Home onNavigate={navigate} />}
       {currentPage === 'dungeon' && <Dungeon onExit={goHome} />}
