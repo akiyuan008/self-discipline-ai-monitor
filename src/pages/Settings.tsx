@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useStore, PRESET_AI_CONFIG } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { testConnection } from '@/lib/ai'
 import { exportBackup, importBackup } from '@/lib/backup'
 import { useClassTaskStore } from '@/stores/classTaskStore'
@@ -204,16 +205,9 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
       <div style={{ padding: '16px 20px 32px' }}>
         <Header onBack={onBack} title="系统设置" subtitle="SYSTEM_CONFIG" />
 
-        {/* 显示设置 */}
-        <Section title="显示">
-          <Row title="深色模式" desc="保护夜战视力">
-            <div
-              className={`switch ${isDark ? 'on' : ''}`}
-              onClick={toggleDark}
-              role="switch"
-              aria-checked={isDark}
-            />
-          </Row>
+        {/* 外观与主题 */}
+        <Section title="外观与主题">
+          <ThemeToggle />
         </Section>
 
         {/* 通知设置 */}

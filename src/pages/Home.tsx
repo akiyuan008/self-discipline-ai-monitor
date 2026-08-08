@@ -239,7 +239,7 @@ export default function Home({ onNavigate }: Props) {
             clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
           }}>
             <div style={{ fontSize: 20, marginBottom: 2 }}>▶</div>
-            IGNITION
+            启动引擎
           </button>
           <button onClick={() => onNavigate?.('quests')} style={{
             padding: '14px', background: 'rgba(69,162,158,0.1)',
@@ -249,25 +249,25 @@ export default function Home({ onNavigate }: Props) {
             clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
           }}>
             <div style={{ fontSize: 20, marginBottom: 2 }}>☰</div>
-            MISSIONS
+            任务列表
           </button>
           <button onClick={() => onNavigate?.('chat')} style={{
             padding: '12px', background: 'var(--bg-alt)',
             border: '1px solid var(--border)', color: 'var(--fg)',
-            fontFamily: 'Share Tech Mono, monospace', fontSize: 11,
+            fontFamily: 'Share Tech Mono, monospace', fontSize: 12, fontWeight: 600,
             cursor: 'pointer', letterSpacing: 1,
             clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
           }}>
-            COMMS
+            通讯终端
           </button>
           <button onClick={() => onNavigate?.('shop')} style={{
             padding: '12px', background: 'var(--bg-alt)',
             border: '1px solid var(--border)', color: 'var(--fg)',
-            fontFamily: 'Share Tech Mono, monospace', fontSize: 11,
+            fontFamily: 'Share Tech Mono, monospace', fontSize: 12, fontWeight: 600,
             cursor: 'pointer', letterSpacing: 1,
             clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
           }}>
-            SUPPLY
+            补给大楼
           </button>
         </div>
       </div>

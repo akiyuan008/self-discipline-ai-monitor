@@ -5,33 +5,52 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --bg: #ffffff;
-    --bg-alt: #f5f5f7;
-    --fg: #1a1a2e;
-    --muted: #8a8a8a;
+  :root, [data-theme="light"] {
+    --bg: #f8fafc;
+    --bg-alt: #f1f5f9;
+    --fg: #0f172a;
+    --muted: #64748b;
     --card-bg: #ffffff;
-    --border: #e5e5e5;
-    --danger: #E54D2E;
-    --success: #16A34A;
+    --card-gradient: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    --border: #e2e8f0;
+    --danger: #ef4444;
+    --success: #10b981;
     --warning: #f59e0b;
-    --info: #3B82F6;
-    --accent: #667eea;
-    --accent-dim: rgba(102, 126, 234, 0.1);
+    --info: #3b82f6;
+    --accent: #2563eb;
+    --accent-dim: rgba(37, 99, 235, 0.1);
   }
+
+  [data-theme="dark"] {
+    --bg: #0f172a;
+    --bg-alt: #1e293b;
+    --fg: #f8fafc;
+    --muted: #94a3b8;
+    --card-bg: #1e293b;
+    --card-gradient: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    --border: #334155;
+    --danger: #f87171;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --info: #38bdf8;
+    --accent: #38bdf8;
+    --accent-dim: rgba(56, 189, 248, 0.15);
+  }
+
   [data-theme="wandering"] {
-    --bg: #0b0c10;
+    --bg: #07090e;
     --bg-alt: #0d1b2a;
-    --fg: #e8ecf1;
-    --muted: #5a6a7a;
-    --card-bg: rgba(20, 20, 20, 0.9);
-    --border: #1a2332;
-    --danger: #ff4444;
-    --success: #ff4500;
+    --fg: #f1f5f9;
+    --muted: #8b9bb4;
+    --card-bg: #0f172a;
+    --card-gradient: linear-gradient(135deg, #0d1b2a 0%, #080c14 100%);
+    --border: #1e293b;
+    --danger: #ff4500;
+    --success: #00e5ff;
     --warning: #f59e0b;
-    --info: #45a29e;
-    --accent: #45a29e;
-    --accent-dim: rgba(69, 162, 158, 0.1);
+    --info: #00e5ff;
+    --accent: #00e5ff;
+    --accent-dim: rgba(0, 229, 255, 0.12);
   }
   html, body, #root {
     height: 100%;
@@ -69,16 +88,17 @@
 
 @layer components {
   .card {
-    background: linear-gradient(135deg, #111827 0%, #0d1b2a 100%);
+    background: var(--card-gradient, var(--card-bg));
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-    border: 1px solid #1a2332;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border);
+    color: var(--fg);
     clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
     transition: all 0.3s;
   }
   .card:hover {
-    border-color: rgba(69, 162, 158, 0.3);
-    box-shadow: 0 0 20px rgba(69, 162, 158, 0.2);
+    border-color: var(--accent);
+    box-shadow: 0 0 20px var(--accent-dim);
   }
   .btn-primary {
     background: rgba(255, 69, 0, 0.15);

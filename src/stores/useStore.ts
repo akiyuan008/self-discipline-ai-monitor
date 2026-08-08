@@ -81,6 +81,7 @@ interface StoreState {
   customShopItems: ShopItem[]
   pointHistory: PointRecord[]
   isDark: boolean
+  darkModeMode: 'system' | 'light' | 'dark'
   ai: AIConfig
   ai2: AIConfig
   aiMode: 'single' | 'dual'
@@ -103,6 +104,7 @@ interface StoreState {
   addStreak: (n: number) => void
   addFocusMs: (n: number) => void
   toggleDark: () => void
+  setDarkModeMode: (mode: 'system' | 'light' | 'dark') => void
   setAI: (c: Partial<AIConfig>) => void
   setAI2: (c: Partial<AIConfig>) => void
   setAIMode: (mode: 'single' | 'dual') => void
@@ -185,6 +187,7 @@ export const useStore = create<StoreState>()(
       customShopItems: [],
       pointHistory: [],
       isDark: false,
+      darkModeMode: 'system',
       ai: { ...PRESET_AI_CONFIG },
       ai2: { ...PRESET_AI_CONFIG },
       aiMode: 'single',
@@ -226,7 +229,8 @@ export const useStore = create<StoreState>()(
         })),
       addStreak: (n) => set(s => ({ streak: Math.max(0, s.streak + n) })),
       addFocusMs: (n) => set(s => ({ totalFocusMs: s.totalFocusMs + n, todayStudyMs: s.todayStudyMs + n })),
-      toggleDark: () => set(s => ({ isDark: !s.isDark })),
+      toggleDark: () => set(s => ({ isDark: !s.isDark, darkModeMode: !s.isDark ? 'dark' : 'light' })),
+      setDarkModeMode: (mode) => set({ darkModeMode: mode }),
       setAI: (c) => set(s => ({ ai: { ...s.ai, ...c } })),
       setAI2: (c) => set(s => ({ ai2: { ...s.ai2, ...c } })),
       setAIMode: (mode) => set({ aiMode: mode }),

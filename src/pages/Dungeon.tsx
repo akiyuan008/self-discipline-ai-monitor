@@ -204,13 +204,14 @@ export default function Dungeon({ onExit }: Props) {
   const displayTime = mode === 'free' ? freeTime : timeLeft
 
   const btnBase: React.CSSProperties = {
-    background: isWandering ? 'rgba(13,27,42,0.8)' : 'var(--bg-alt)',
-    border: `1px solid ${isWandering ? '#ff4500' : 'var(--border)'}`,
-    color: 'var(--fg)',
-    padding: '12px 16px',
-    fontFamily: isWandering ? 'Teko, sans-serif' : 'inherit',
-    fontSize: '1.1rem',
-    letterSpacing: 1,
+    background: isWandering ? '#0f172a' : 'var(--bg-alt)',
+    border: `1px solid ${isWandering ? '#00e5ff' : 'var(--border)'}`,
+    color: isWandering ? '#f8fafc' : 'var(--fg)',
+    padding: '10px 16px',
+    fontFamily: 'inherit',
+    fontSize: '0.95rem',
+    fontWeight: 600,
+    letterSpacing: 0.5,
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
@@ -223,12 +224,12 @@ export default function Dungeon({ onExit }: Props) {
     ...btnBase,
     flexGrow: 1,
     justifyContent: 'center',
-    background: isRunning ? (isAbyssMode ? '#ff3344' : '#ff4500') : (isWandering ? 'rgba(255,69,0,0.15)' : 'var(--accent-dim)'),
-    borderColor: isRunning ? (isAbyssMode ? '#ff3344' : '#ff4500') : 'var(--accent)',
-    color: isRunning ? '#fff' : (isWandering ? '#ff4500' : 'var(--accent)'),
-    fontSize: '1.25rem',
+    background: isRunning ? (isAbyssMode ? '#ff3344' : '#ff4500') : (isWandering ? 'rgba(0,229,255,0.18)' : 'var(--accent-dim)'),
+    borderColor: isRunning ? (isAbyssMode ? '#ff3344' : '#ff4500') : (isWandering ? '#00e5ff' : 'var(--accent)'),
+    color: isRunning ? '#ffffff' : (isWandering ? '#00e5ff' : 'var(--accent)'),
+    fontSize: '1.05rem',
     fontWeight: 700,
-    boxShadow: isRunning ? `0 0 25px ${isAbyssMode ? 'rgba(255,51,68,0.6)' : 'rgba(255,69,0,0.6)'}` : 'none',
+    boxShadow: isRunning ? `0 0 25px ${isAbyssMode ? 'rgba(255,51,68,0.6)' : 'rgba(255,69,0,0.6)'}` : (isWandering ? '0 0 12px rgba(0,229,255,0.2)' : 'none'),
   }
 
   return (
@@ -278,10 +279,10 @@ export default function Dungeon({ onExit }: Props) {
         position: 'absolute', top: 16, left: 16, zIndex: 10,
         background: 'var(--card-bg)', border: '1px solid var(--border)',
         color: 'var(--fg)', padding: '8px 14px', fontSize: 13, fontWeight: 600,
-        cursor: 'pointer', fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'inherit',
+        cursor: 'pointer', fontFamily: 'inherit',
         clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
       }}>
-        ← {isWandering ? 'EXIT PROTOCOL' : '退出引擎'}
+        ← 退出引擎
       </button>
 
       {/* 深渊模式特制警告横幅 */}
@@ -434,14 +435,14 @@ export default function Dungeon({ onExit }: Props) {
         {/* 控制按钮 */}
         <div style={{ width: '100%', display: 'flex', gap: 10, justifyContent: 'center' }}>
           <button onClick={() => setShowSettings(true)} style={btnBase}>
-            <span>⚙</span> {isWandering ? 'SET' : '设置'}
+            <span>⚙</span> 设置
           </button>
           <button onClick={toggleEngine} style={ignitionBtn}>
             <span>{isRunning ? '❚❚' : '▶'}</span>
-            {isRunning ? (isWandering ? 'SHUTDOWN' : '停止') : (isWandering ? 'IGNITION' : '开始')}
+            {isRunning ? '停止引擎' : '启动引擎'}
           </button>
           <button onClick={resetEngine} style={btnBase}>
-            <span>↺</span> {isWandering ? 'RST' : '重置'}
+            <span>↺</span> 重置
           </button>
         </div>
 
@@ -449,21 +450,21 @@ export default function Dungeon({ onExit }: Props) {
         <div style={{
           marginTop: 20, width: '100%', display: 'grid',
           gridTemplateColumns: 'repeat(5, 1fr)', gap: 4,
-          borderTop: `1px solid ${isWandering ? 'rgba(255,255,255,0.08)' : 'var(--border)'}`,
+          borderTop: `1px solid ${isWandering ? 'rgba(0,229,255,0.2)' : 'var(--border)'}`,
           paddingTop: 12
         }}>
           {MODES.map(m => (
             <button key={m.key} onClick={() => setModeHandler(m.key)} style={{
-              background: mode === m.key ? (m.key === 'abyss' ? 'rgba(255,51,68,0.15)' : 'rgba(255,69,0,0.1)') : 'transparent',
+              background: mode === m.key ? (m.key === 'abyss' ? 'rgba(255,51,68,0.15)' : (isWandering ? 'rgba(0,229,255,0.15)' : 'var(--accent-dim)')) : 'transparent',
               border: 'none',
               borderBottom: mode === m.key ? `2px solid ${m.key === 'abyss' ? '#ff3344' : 'var(--accent)'}` : '2px solid transparent',
               color: mode === m.key ? (m.key === 'abyss' ? '#ff3344' : 'var(--accent)') : 'var(--muted)',
               padding: '6px 0',
-              fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'inherit',
-              fontSize: '0.7rem', cursor: 'pointer', transition: 'all 0.2s',
+              fontFamily: 'inherit',
+              fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.2s',
               textAlign: 'center', fontWeight: mode === m.key ? 700 : 400
             }}>
-              {isWandering ? m.label : m.title}
+              {m.title}
             </button>
           ))}
         </div>

@@ -3,16 +3,56 @@ import { useStore, WANDERING_THEME_UNLOCK_EXP } from '@/stores/useStore'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useStore(s => s.theme)
+  const darkModeMode = useStore(s => s.darkModeMode || 'system')
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-  }, [theme])
+    const applyTheme = () => {
+      if (theme === 'wandering') {
+        document.documentElement.setAttribute('data-theme', 'wandering')
+        document.documentElement.classList.add('dark')
+        return
+      }
+
+      let isDark = false
+      if (darkModeMode === 'system') {
+        isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+      } else if (darkModeMode === 'dark') {
+        isDark = true
+      } else {
+        isDark = false
+      }
+
+      if (isDark) {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.setAttribute('data-theme', 'light')
+        document.documentElement.classList.remove('dark')
+      }
+    }
+
+    applyTheme()
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const listener = () => {
+      if (theme !== 'wandering' && darkModeMode === 'system') {
+        applyTheme()
+      }
+    }
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', listener)
+      return () => mediaQuery.removeEventListener('change', listener)
+    }
+  }, [theme, darkModeMode])
 
   return <>{children}</>
 }
 
 export function ThemeToggle() {
   const theme = useStore(s => s.theme)
+  const darkModeMode = useStore(s => s.darkModeMode || 'system')
+  const setDarkModeMode = useStore(s => s.setDarkModeMode)
   const exp = useStore(s => s.exp)
   const totalExp = useStore(s => s.totalExp)
   const level = useStore(s => s.level)
@@ -49,6 +89,41 @@ export function ThemeToggle() {
       <div className="corner-deco tr" style={{ width: 10, height: 10, borderWidth: 1 }} />
       <div className="corner-deco bl" style={{ width: 10, height: 10, borderWidth: 1 }} />
       <div className="corner-deco br" style={{ width: 10, height: 10, borderWidth: 1 }} />
+
+      {/* 外观外观暗色模式选择 */}
+      <div style={{ marginBottom: 16, borderBottom: '1px solid var(--border)', paddingBottom: 14 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--fg)' }}>
+          外观颜色模式
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          {(['system', 'light', 'dark'] as const).map(m => {
+            const labelMap = { system: '📱 跟随系统', light: '☀️ 浅色模式', dark: '🌙 深色模式' }
+            const active = darkModeMode === m
+            return (
+              <button
+                key={m}
+                onClick={() => {
+                  setDarkModeMode(m)
+                  showToast(`已设置为：${labelMap[m]}`)
+                }}
+                style={{
+                  padding: '8px 4px',
+                  borderRadius: 6,
+                  border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
+                  background: active ? 'var(--accent-dim)' : 'var(--bg-alt)',
+                  color: active ? 'var(--accent)' : 'var(--fg)',
+                  fontSize: 12,
+                  fontWeight: active ? 700 : 400,
+                  cursor: 'pointer',
+                  textAlign: 'center'
+                }}
+              >
+                {labelMap[m]}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1, marginBottom: 14 }}>
         <div>
@@ -90,8 +165,8 @@ export function ThemeToggle() {
 
       {/* 流浪地球 · 行星发动机主题 */}
       <div style={{
-        background: theme === 'wandering' ? 'rgba(255,69,0,0.08)' : 'var(--bg-alt)',
-        border: theme === 'wandering' ? '1px solid #ff4500' : '1px solid var(--border)',
+        background: theme === 'wandering' ? 'rgba(0,229,255,0.08)' : 'var(--bg-alt)',
+        border: theme === 'wandering' ? '1px solid #00e5ff' : '1px solid var(--border)',
         borderRadius: 8, padding: '12px 14px', position: 'relative', overflow: 'hidden'
       }}>
         <button
@@ -114,7 +189,7 @@ export function ThemeToggle() {
 
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: theme === 'wandering' ? '#ff4500' : 'var(--fg)', fontFamily: 'Teko, sans-serif', letterSpacing: 1 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: theme === 'wandering' ? '#00e5ff' : 'var(--fg)', fontFamily: 'Teko, sans-serif', letterSpacing: 1 }}>
                 行星发动机 · 流浪地球
               </span>
               <span style={{
@@ -134,26 +209,26 @@ export function ThemeToggle() {
           </div>
 
           {theme === 'wandering' ? (
-            <span style={{ color: '#ff4500', fontSize: 16, fontWeight: 'bold' }}>✓</span>
+            <span style={{ color: '#00e5ff', fontSize: 16, fontWeight: 'bold' }}>✓</span>
           ) : (
             <span style={{
               fontSize: 11, fontWeight: 700, padding: '4px 10px',
-              background: hasWandering ? '#ff4500' : 'var(--border)',
-              color: hasWandering ? '#fff' : 'var(--muted)',
+              background: hasWandering ? '#00e5ff' : 'var(--border)',
+              color: hasWandering ? '#07090e' : 'var(--muted)',
               borderRadius: 4, fontFamily: 'Share Tech Mono, monospace'
             }}>
-              {hasWandering ? 'EQUIP' : 'LOCKED'}
+              {hasWandering ? '装备' : '已锁定'}
             </span>
           )}
         </button>
 
         {/* 经验值解锁进度 */}
-        <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginBottom: 4 }}>
             <span>解锁阈值: 1000 XP (Lv.2+)</span>
             <span style={{ color: expQualified ? '#00e5ff' : '#ff4500' }}>{effectiveExp} / 1000 XP</span>
           </div>
-          <div style={{ height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
             <div style={{
               height: '100%', width: `${expPct}%`,
               background: expQualified ? 'linear-gradient(90deg, #00e5ff, #ff4500)' : '#ff4500',
