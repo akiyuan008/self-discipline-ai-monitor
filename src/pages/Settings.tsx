@@ -4,6 +4,8 @@ import { showToast } from '@/components/Toast'
 import { testConnection } from '@/lib/ai'
 import { exportBackup, importBackup } from '@/lib/backup'
 import { useClassTaskStore } from '@/stores/classTaskStore'
+import { hasUsageAccess, openUsageAccessSettings } from '@/lib/usageStats'
+import { App } from '@capacitor/app'
 
 interface Props {
   onBack: () => void
@@ -46,9 +48,20 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false)
   const [modelSearch, setModelSearch] = useState('')
   const [importing, setImporting] = useState(false)
+  const [usageAccessGranted, setUsageAccessGranted] = useState(false)
   const notifSetting = useClassTaskStore(s => s.notificationSetting)
   const setNotif = useClassTaskStore(s => s.setNotification)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const checkUsagePermission = () => {
+    hasUsageAccess().then(setUsageAccessGranted).catch(() => setUsageAccessGranted(false))
+  }
+
+  useEffect(() => {
+    checkUsagePermission()
+    const sub = App.addListener('resume', () => checkUsagePermission())
+    return () => { sub.then(s => s.remove()) }
+  }, [])
   // 同步 store 的 ai 变化到本地 state（从其他页面返回或 rehydrate 时）
   useEffect(() => {
     setApiKey(ai.apiKey || '')
@@ -219,7 +232,44 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
           </Row>
         </Section>
 
-        {/* 高考目标配置 */}
+        {/* 系统权限 */}
+        <Section title="系统权限">
+          <div className="card" style={{ padding: 16, borderRadius: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>使用情况访问权限</div>
+                <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>用于精确统计学习与娱乐应用时长</div>
+              </div>
+              <div style={{
+                fontSize: 11, fontWeight: 700, fontFamily: 'DM Mono, monospace',
+                padding: '4px 8px', borderRadius: 4,
+                background: usageAccessGranted ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                color: usageAccessGranted ? '#22c55e' : '#ef4444',
+                border: `1px solid ${usageAccessGranted ? '#22c55e' : '#ef4444'}`
+              }}>
+                {usageAccessGranted ? 'ONLINE' : 'OFFLINE'}
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  showToast('正在打开系统权限设置页…')
+                  await openUsageAccessSettings()
+                } catch {
+                  showToast('请在系统设置中找到使用情况访问权限并开启')
+                }
+              }}
+              style={{
+                width: '100%', padding: '10px 14px', borderRadius: 8,
+                background: 'var(--bg-alt)', color: 'var(--fg)',
+                border: '1px solid var(--border)', fontSize: 13, fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              {usageAccessGranted ? '管理使用情况访问权限' : '▶ 开启使用情况访问权限'}
+            </button>
+          </div>
+        </Section>
         <Section title="高考目标">
           <div className="card" style={{ padding: 16, borderRadius: 12 }}>
             <div style={{

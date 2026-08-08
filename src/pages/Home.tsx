@@ -32,11 +32,18 @@ function DataBlock({ label, value, unit, color = 'var(--success)' }: { label: st
   )
 }
 
-function StatusLine({ label, status, ok }: { label: string; status: string; ok: boolean }) {
+function StatusLine({ label, status, ok, onClick }: { label: string; status: string; ok: boolean; onClick?: () => void }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+    <div
+      onClick={onClick}
+      style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
+        cursor: onClick ? 'pointer' : 'default'
+      }}
+    >
       <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>{label}</span>
-      <span style={{ fontSize: 11, color: ok ? '#45a29e' : '#ff4500', fontFamily: 'Share Tech Mono, monospace' }}>
+      <span style={{ fontSize: 11, color: ok ? '#45a29e' : '#ff4500', fontFamily: 'Share Tech Mono, monospace', fontWeight: ok ? 400 : 700 }}>
         [{status}]
       </span>
     </div>
@@ -45,27 +52,32 @@ function StatusLine({ label, status, ok }: { label: string; status: string; ok: 
 
 export default function Home({ onNavigate }: Props) {
   const points = useStore(s => s.points)
-  const xp = useStore(s => s.xp)
   const streak = useStore(s => s.streak)
-  const totalFocusMs = useStore(s => s.totalFocusMs)
   const dailyGoalMin = useStore(s => s.dailyGoalMin)
   const playerTag = useStore(s => s.playerTag)
   const todayStudyMs = useStore(s => s.todayStudyMs)
   const todayEntMs = useStore(s => s.todayEntMs)
-  const setDungeonDuration = useStore(s => s.setDungeonDuration)
   const level = useStore(s => s.level)
   const exp = useStore(s => s.exp)
 
-  const [entTop3, setEntTop3] = useState<{ label: string; ms: number }[]>([])
   const [hasAccess, setHasAccess] = useState(false)
   const [lateAlert, setLateAlert] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  useEffect(() => {
-    hasUsageAccess().then(setHasAccess).catch(() => setHasAccess(false))
+  const checkAndRefresh = async () => {
+    try {
+      const access = await hasUsageAccess()
+      setHasAccess(access)
+    } catch {
+      setHasAccess(false)
+    }
     refresh()
+  }
+
+  useEffect(() => {
+    checkAndRefresh()
     if (isLateNight()) setLateAlert(true)
-    const sub = App.addListener('resume', () => { hasUsageAccess().then(setHasAccess).catch(() => {}) })
+    const sub = App.addListener('resume', () => { checkAndRefresh() })
     return () => { sub.then(s => s.remove()) }
   }, [])
 
@@ -80,13 +92,23 @@ export default function Home({ onNavigate }: Props) {
       const now = new Date()
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       const stats = await fetchUsageStats(startOfDay.getTime(), now.getTime())
-      const ent = stats.ent.sort((a, b) => b.totalMs - a.totalMs).slice(0, 3)
-      setEntTop3(ent.map(e => ({ label: e.label, ms: e.totalMs })))
+      const studyMs = stats.study.reduce((sum, x) => sum + x.totalMs, 0)
+      const entMs = stats.ent.reduce((sum, x) => sum + x.totalMs, 0)
+      useStore.getState().syncUsage(stats.study, stats.ent)
     } catch (e) { logger.warn('home', 'refresh usage stats failed', { error: String(e) }) }
   }
 
   const studyPct = dailyGoalMin > 0 ? Math.min(100, Math.round((todayStudyMs / (dailyGoalMin * 60000)) * 100)) : 0
   const thrust = Math.min(100, Math.floor((todayStudyMs / Math.max(1, dailyGoalMin * 60000)) * 100))
+
+  const handleOpenPermissionSettings = async () => {
+    try {
+      showToast('正在打开系统权限设置页…')
+      await openUsageAccessSettings()
+    } catch {
+      showToast('请在系统设置中找到使用情况访问权限并开启')
+    }
+  }
 
   return (
     <div className="safe-top" style={{ padding: '20px 16px 140px', background: 'var(--bg)', minHeight: '100vh' }}>
@@ -110,6 +132,43 @@ export default function Home({ onNavigate }: Props) {
           </div>
         </div>
       </div>
+
+      {/* 权限提示横幅 */}
+      {!hasAccess && (
+        <div
+          onClick={handleOpenPermissionSettings}
+          style={{
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid #ef4444',
+            padding: '12px 16px',
+            borderRadius: 8,
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer'
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444' }}>
+              ⚠ 未授予使用情况访问权限
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+              点击此处跳转设置页开启权限，以获取真实时长
+            </div>
+          </div>
+          <div style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: '#ef4444',
+            border: '1px solid #ef4444',
+            padding: '4px 8px',
+            borderRadius: 4
+          }}>
+            去开启
+          </div>
+        </div>
+      )}
 
       {/* 主数据面板 */}
       <div style={{
@@ -229,7 +288,12 @@ export default function Home({ onNavigate }: Props) {
         </div>
 
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <StatusLine label="USAGE ACCESS" status={hasAccess ? 'ONLINE' : 'OFFLINE'} ok={hasAccess} />
+          <StatusLine
+            label="USAGE ACCESS"
+            status={hasAccess ? 'ONLINE' : 'OFFLINE (点击去开启)'}
+            ok={hasAccess}
+            onClick={!hasAccess ? handleOpenPermissionSettings : undefined}
+          />
           <StatusLine label="STUDY MODULE" status={todayStudyMs > 0 ? 'ACTIVE' : 'STANDBY'} ok={todayStudyMs > 0} />
           <StatusLine label="ENT MONITOR" status={todayEntMs < 300000 ? 'NOMINAL' : 'WARNING'} ok={todayEntMs < 300000} />
           <StatusLine label="LATE NIGHT" status={lateAlert ? 'ALERT' : 'NORMAL'} ok={!lateAlert} />

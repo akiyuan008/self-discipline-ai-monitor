@@ -30,12 +30,9 @@ class SelfDisciplinePlugin : Plugin() {
     )
     Log.d(TAG, "hasUsageAccess: mode=$mode (ALLOWED=${AppOpsManager.MODE_ALLOWED}, DEFAULT=${AppOpsManager.MODE_DEFAULT})")
 
-    // 某些 ROM 返回 MODE_DEFAULT 但实际有权限，尝试 fallback
-    var granted = mode == AppOpsManager.MODE_ALLOWED
-    if (!granted && mode == AppOpsManager.MODE_DEFAULT) {
-      granted = checkUsageStatsFallback()
-      Log.d(TAG, "hasUsageAccess: fallback check = $granted")
-    }
+    // 判断权限：模式为 ALLOWED，或者 fallback 方式实际获取到数据
+    val granted = (mode == AppOpsManager.MODE_ALLOWED) || checkUsageStatsFallback()
+    Log.d(TAG, "hasUsageAccess result: granted=$granted")
 
     val ret = JSObject()
     ret.put("granted", granted)
@@ -46,7 +43,7 @@ class SelfDisciplinePlugin : Plugin() {
   @PluginMethod
   fun openUsageAccessSettings(call: PluginCall) {
     Log.d(TAG, "openUsageAccessSettings called")
-    // 方式1: 用 Activity 上下文直接打开（最可靠，大多数 ROM 有效）
+    // 方式1: 用 Activity 上下文直接打开（最可靠）
     try {
       val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
       activity.startActivity(intent)
@@ -103,10 +100,7 @@ class SelfDisciplinePlugin : Plugin() {
       android.os.Process.myUid(),
       context.packageName
     )
-    var hasPermission = mode == AppOpsManager.MODE_ALLOWED
-    if (!hasPermission && mode == AppOpsManager.MODE_DEFAULT) {
-      hasPermission = checkUsageStatsFallback()
-    }
+    val hasPermission = (mode == AppOpsManager.MODE_ALLOWED) || checkUsageStatsFallback()
 
     if (!hasPermission) {
       call.reject("缺少使用情况访问权限")
@@ -115,25 +109,38 @@ class SelfDisciplinePlugin : Plugin() {
 
     try {
       val usm = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-      val rawStats = usm.queryUsageStats(
-        UsageStatsManager.INTERVAL_DAILY,
-        startTs,
-        endTs
-      ) ?: emptyList()
-
-      val filtered = rawStats.filter {
-        it.lastTimeUsed in startTs..endTs && it.totalTimeInForeground > 0
-      }
-
+      val aggregatedMap = usm.queryAndAggregateUsageStats(startTs, endTs)
       val arr = JSArray()
-      for (s in filtered) {
-        val obj = JSObject()
-        obj.put("packageName", s.packageName)
-        obj.put("totalMs", s.totalTimeInForeground)
-        obj.put("foregroundMs", s.totalTimeInForeground)
-        obj.put("lastTimeUsed", s.lastTimeUsed)
-        obj.put("firstTimeUsed", s.firstTimeStamp)
-        arr.put(obj)
+
+      if (!aggregatedMap.isNullOrEmpty()) {
+        for ((pkgName, s) in aggregatedMap) {
+          if (s.totalTimeInForeground > 0) {
+            val obj = JSObject()
+            obj.put("packageName", pkgName)
+            obj.put("totalMs", s.totalTimeInForeground)
+            obj.put("foregroundMs", s.totalTimeInForeground)
+            obj.put("lastTimeUsed", s.lastTimeUsed)
+            obj.put("firstTimeUsed", s.firstTimeStamp)
+            arr.put(obj)
+          }
+        }
+      } else {
+        val rawStats = usm.queryUsageStats(
+          UsageStatsManager.INTERVAL_DAILY,
+          startTs,
+          endTs
+        ) ?: emptyList()
+        for (s in rawStats) {
+          if (s.totalTimeInForeground > 0) {
+            val obj = JSObject()
+            obj.put("packageName", s.packageName)
+            obj.put("totalMs", s.totalTimeInForeground)
+            obj.put("foregroundMs", s.totalTimeInForeground)
+            obj.put("lastTimeUsed", s.lastTimeUsed)
+            obj.put("firstTimeUsed", s.firstTimeStamp)
+            arr.put(obj)
+          }
+        }
       }
 
       val ret = JSObject()
@@ -181,7 +188,7 @@ class SelfDisciplinePlugin : Plugin() {
   }
 
   /**
-   * Fallback：尝试查询 UsageStats，能查就说明有权限
+   * Fallback：尝试查询 UsageStats，能查且有数据或无异常说明有权限
    */
   private fun checkUsageStatsFallback(): Boolean {
     return try {
@@ -189,7 +196,7 @@ class SelfDisciplinePlugin : Plugin() {
       val end = System.currentTimeMillis()
       val start = end - 24 * 60 * 60 * 1000
       val stats = usm.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, end)
-      stats.isNotEmpty()
+      !stats.isNullOrEmpty()
     } catch (e: Exception) {
       false
     }

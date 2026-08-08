@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore, PRESET_AI_CONFIG } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
+import { hasUsageAccess, openUsageAccessSettings } from '@/lib/usageStats'
+import { App } from '@capacitor/app'
 import type { AIConfig } from '@/stores/useStore'
 
 export default function Onboarding() {
@@ -9,17 +11,50 @@ export default function Onboarding() {
   const [tag, setTag] = useState('PLAYER_01')
   const [goal, setGoal] = useState(120)
   const [ai, setAI] = useState<AIConfig>({ ...PRESET_AI_CONFIG })
+  const [usageGranted, setUsageGranted] = useState(false)
+  const [checkingPermission, setCheckingPermission] = useState(false)
+
+  const checkPermission = async () => {
+    setCheckingPermission(true)
+    try {
+      const granted = await hasUsageAccess()
+      setUsageGranted(granted)
+    } catch {
+      setUsageGranted(false)
+    } finally {
+      setCheckingPermission(false)
+    }
+  }
+
+  useEffect(() => {
+    checkPermission()
+    const sub = App.addListener('resume', () => {
+      checkPermission()
+    })
+    return () => {
+      sub.then(s => s.remove())
+    }
+  }, [])
 
   function finish() {
     init(tag.trim() || 'PLAYER_01', goal, ai)
     showToast(`欢迎，${tag || 'PLAYER_01'}`)
   }
 
+  const handleGrantPermission = async () => {
+    try {
+      showToast('正在为你跳转到系统设置页…')
+      await openUsageAccessSettings()
+    } catch (e: any) {
+      showToast('无法自动打开设置页，请在手机设置-隐私-使用情况访问中手动开启')
+    }
+  }
+
   return (
     <div className="min-h-full flex flex-col" style={{ padding: 'max(48px, env(safe-area-inset-top)) 24px max(48px, env(safe-area-inset-bottom))' }}>
       {/* 步骤指示 */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 32 }}>
-        {[0, 1, 2].map(i => (
+        {[0, 1, 2, 3].map(i => (
           <div
             key={i}
             style={{
@@ -49,7 +84,6 @@ export default function Onboarding() {
           <input
             value={tag}
             onChange={(e) => setTag(e.target.value)}
-
             placeholder="PLAYER_01"
             style={{
               width: '100%',
@@ -77,7 +111,8 @@ export default function Onboarding() {
               color: 'var(--bg)',
               fontSize: 16,
               fontWeight: 600,
-              border: 'none'
+              border: 'none',
+              cursor: 'pointer'
             }}
           >
             继续
@@ -123,7 +158,8 @@ export default function Onboarding() {
               color: 'var(--bg)',
               fontSize: 16,
               fontWeight: 600,
-              border: 'none'
+              border: 'none',
+              cursor: 'pointer'
             }}
           >
             继续
@@ -137,6 +173,90 @@ export default function Onboarding() {
             INITIALIZATION // 03
           </div>
           <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: -0.5, marginBottom: 12 }}>
+            使用情况访问权限
+          </h1>
+          <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
+            为了能准确统计你的每日学习应用与娱乐应用时长，AI 监管者需要获取系统的「使用情况访问权限」。
+          </p>
+
+          <div style={{
+            padding: 18,
+            borderRadius: 12,
+            background: 'var(--card-bg)',
+            border: `1px solid ${usageGranted ? 'var(--success)' : 'var(--border)'}`,
+            marginBottom: 24,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>
+                权限状态
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+                {checkingPermission ? '正在检测权限…' : (usageGranted ? '✓ 已成功授予使用情况访问权限' : '⚠ 未开启权限（可能影响时长统计）')}
+              </div>
+            </div>
+            <div style={{
+              padding: '4px 10px',
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 700,
+              fontFamily: 'DM Mono, monospace',
+              background: usageGranted ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+              color: usageGranted ? '#22c55e' : '#ef4444',
+              border: `1px solid ${usageGranted ? '#22c55e' : '#ef4444'}`
+            }}>
+              {usageGranted ? 'ONLINE' : 'OFFLINE'}
+            </div>
+          </div>
+
+          <button
+            onClick={handleGrantPermission}
+            style={{
+              width: '100%',
+              padding: '16px',
+              borderRadius: 12,
+              background: usageGranted ? 'var(--bg-alt)' : '#ff4500',
+              color: usageGranted ? 'var(--fg)' : '#ffffff',
+              fontSize: 15,
+              fontWeight: 700,
+              border: usageGranted ? '1px solid var(--border)' : 'none',
+              cursor: 'pointer',
+              boxShadow: usageGranted ? 'none' : '0 4px 15px rgba(255,69,0,0.3)',
+              marginBottom: 16
+            }}
+          >
+            {usageGranted ? '已开启权限 (再次打开设置)' : '▶ 开启使用情况访问权限'}
+          </button>
+
+          <div style={{ flex: 1 }} />
+
+          <button
+            onClick={() => setStep(3)}
+            style={{
+              width: '100%',
+              padding: '16px',
+              borderRadius: 100,
+              background: 'var(--fg)',
+              color: 'var(--bg)',
+              fontSize: 16,
+              fontWeight: 600,
+              border: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            继续
+          </button>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="flex-1 flex flex-col animate-in">
+          <div style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: 'var(--muted)', marginBottom: 8 }}>
+            INITIALIZATION // 04
+          </div>
+          <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: -0.5, marginBottom: 12 }}>
             接入 AI 监管者
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 24 }}>
@@ -147,7 +267,6 @@ export default function Onboarding() {
           <input
             value={ai.apiKey}
             onChange={(e) => setAI({ ...ai, apiKey: e.target.value })}
-
             placeholder="sk-xxx"
             type="password"
             style={{
@@ -168,7 +287,6 @@ export default function Onboarding() {
           <input
             value={ai.endpoint}
             onChange={(e) => setAI({ ...ai, endpoint: e.target.value })}
-
             placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1"
             style={{
               width: '100%',
@@ -188,7 +306,6 @@ export default function Onboarding() {
           <input
             value={ai.model}
             onChange={(e) => setAI({ ...ai, model: e.target.value })}
-
             placeholder="qwen-plus"
             style={{
               width: '100%',
@@ -204,7 +321,6 @@ export default function Onboarding() {
             }}
           />
 
-          {/* 提示：已预置百炼配置 */}
           <div style={{
             padding: '10px 12px',
             background: 'rgba(22, 163, 74, 0.08)',
@@ -228,7 +344,8 @@ export default function Onboarding() {
                 color: 'var(--muted)',
                 fontSize: 14,
                 fontWeight: 600,
-                border: '1px solid var(--border)'
+                border: '1px solid var(--border)',
+                cursor: 'pointer'
               }}
             >
               跳过
@@ -242,7 +359,8 @@ export default function Onboarding() {
                 color: 'var(--bg)',
                 fontSize: 16,
                 fontWeight: 600,
-                border: 'none'
+                border: 'none',
+                cursor: 'pointer'
               }}
             >
               进入赛博世界

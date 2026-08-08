@@ -1,9 +1,8 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import type { UsageStat } from '@/stores/useStore'
-import { STUDY_PACKAGES, ENTERTAINMENT_PACKAGES, APP_LABELS } from '@/data/appClassification'
+import { STUDY_PACKAGES, ENTERTAINMENT_PACKAGES, SYSTEM_PACKAGES, APP_LABELS, isStudyApp, isEntertainmentApp } from '@/data/appClassification'
 import { logger } from '@/lib/logger'
 
-// 惰性获取插件代理，避免模块加载时 Capacitor 未初始化
 let _plugin: any = null
 let _pluginLogged = false
 function getPlugin(): any {
@@ -23,24 +22,30 @@ export async function fetchUsageStats(startTs: number, endTs: number): Promise<{
     return mockUsage()
   }
   try {
-        
     const res = await getPlugin().getUsageStats({ startTs, endTs })
     const stats: any[] = res?.stats ?? []
     const study: UsageStat[] = []
     const ent: UsageStat[] = []
+
     for (const s of stats) {
-      const isStudy = STUDY_PACKAGES.has(s.packageName)
-      const isEnt = ENTERTAINMENT_PACKAGES.has(s.packageName)
-      if (!isStudy && !isEnt) continue
+      const pkg = s.packageName ?? ''
+      if (!pkg || SYSTEM_PACKAGES.has(pkg)) continue
+
+      const rawLabel = s.label || APP_LABELS[pkg] || pkg.split('.').pop() || '未知应用'
+      const isStudy = isStudyApp(pkg, rawLabel)
+      const isEnt = !isStudy // 所有非学习类的三方应用归入娱乐/日常使用统计
+
       const item: UsageStat = {
-        packageName: s.packageName,
-        label: APP_LABELS[s.packageName] ?? s.label ?? s.packageName.split('.').pop() ?? '未知',
+        packageName: pkg,
+        label: APP_LABELS[pkg] ?? rawLabel,
         isStudy,
-        totalMs: s.totalMs ?? 0
+        totalMs: s.totalMs ?? s.foregroundMs ?? 0
       }
+
       if (isStudy) study.push(item)
       else ent.push(item)
     }
+
     return { study, ent }
   } catch (e) {
     logger.warn('usage', '原生使用统计查询失败，使用 mock 数据', { error: String(e) })
@@ -51,7 +56,6 @@ export async function fetchUsageStats(startTs: number, endTs: number): Promise<{
 export async function hasUsageAccess(): Promise<boolean> {
   if (Capacitor.getPlatform() !== 'android') return true
   try {
-        
     const r = await getPlugin().hasUsageAccess()
     logger.debug('usage', 'hasUsageAccess 返回', { granted: r?.granted, mode: r?.mode })
     return !!r?.granted
