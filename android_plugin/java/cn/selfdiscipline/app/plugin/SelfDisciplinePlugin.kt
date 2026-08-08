@@ -4,6 +4,8 @@ import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import com.getcapacitor.JSArray
@@ -121,6 +123,7 @@ class SelfDisciplinePlugin : Plugin() {
             obj.put("foregroundMs", s.totalTimeInForeground)
             obj.put("lastTimeUsed", s.lastTimeUsed)
             obj.put("firstTimeUsed", s.firstTimeStamp)
+            obj.put("label", getAppLabel(pkgName))
             arr.put(obj)
           }
         }
@@ -138,6 +141,7 @@ class SelfDisciplinePlugin : Plugin() {
             obj.put("foregroundMs", s.totalTimeInForeground)
             obj.put("lastTimeUsed", s.lastTimeUsed)
             obj.put("firstTimeUsed", s.firstTimeStamp)
+            obj.put("label", getAppLabel(s.packageName))
             arr.put(obj)
           }
         }
@@ -184,6 +188,55 @@ class SelfDisciplinePlugin : Plugin() {
       call.resolve()
     } catch (e: Exception) {
       call.reject("遮罩失败：${e.message}")
+    }
+  }
+
+  /**
+   * 通过 PackageManager 获取应用显示名称
+   */
+  private fun getAppLabel(pkg: String): String {
+    return try {
+      val pm = context.packageManager
+      val appInfo = pm.getApplicationInfo(pkg, 0)
+      pm.getApplicationLabel(appInfo).toString()
+    } catch (e: PackageManager.NameNotFoundException) {
+      pkg.substringAfterLast('.')
+    }
+  }
+
+  /**
+   * 启动监工前台服务
+   */
+  @PluginMethod
+  fun startMonitorService(call: PluginCall) {
+    try {
+      val intent = Intent(context, MonitorService::class.java)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        context.startForegroundService(intent)
+      } else {
+        context.startService(intent)
+      }
+      Log.d(TAG, "MonitorService started")
+      call.resolve()
+    } catch (e: Exception) {
+      Log.e(TAG, "startMonitorService failed", e)
+      call.reject("启动监工服务失败：${e.message}")
+    }
+  }
+
+  /**
+   * 停止监工前台服务
+   */
+  @PluginMethod
+  fun stopMonitorService(call: PluginCall) {
+    try {
+      val intent = Intent(context, MonitorService::class.java)
+      context.stopService(intent)
+      Log.d(TAG, "MonitorService stopped")
+      call.resolve()
+    } catch (e: Exception) {
+      Log.e(TAG, "stopMonitorService failed", e)
+      call.reject("停止监工服务失败：${e.message}")
     }
   }
 

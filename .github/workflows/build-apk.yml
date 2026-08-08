@@ -36,7 +36,7 @@ jobs:
       - name: 🤖 Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'tools platform-tools platforms;android-34 build-tools;34.0.0'
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
 
       - name: ➕ Add Capacitor Android platform
         run: |
@@ -50,10 +50,36 @@ jobs:
         run: |
           BASE=android/app/src/main/java/cn/selfdiscipline/app
           mkdir -p "$BASE/plugin"
+          # 清理可能残留的 Java 版插件，避免与 Kotlin 版类名冲突
+          rm -f "$BASE/MainActivity.java" "$BASE/SelfDisciplinePlugin.java"
           cp android_plugin/java/cn/selfdiscipline/app/MainActivity.kt "$BASE/"
           cp android_plugin/java/cn/selfdiscipline/app/plugin/*.kt "$BASE/plugin/"
           echo "=== plugin files ==="
           ls -la "$BASE" "$BASE/plugin"
+
+      - name: 🧩 Ensure Kotlin compilation support
+        run: |
+          ROOT_GRADLE=android/build.gradle
+          APP_GRADLE=android/app/build.gradle
+          # 1) project-level: kotlin-gradle-plugin classpath
+          if ! grep -q "kotlin-gradle-plugin" "$ROOT_GRADLE"; then
+            sed -i "s|classpath 'com.android.tools.build:gradle:.*'|&\n        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.10'|" "$ROOT_GRADLE"
+            echo "Added kotlin-gradle-plugin classpath"
+          fi
+          # 2) app-level: 应用 kotlin-android 插件
+          if ! grep -q "org.jetbrains.kotlin.android" "$APP_GRADLE"; then
+            sed -i "s|apply plugin: 'com.android.application'|apply plugin: 'com.android.application'\napply plugin: 'org.jetbrains.kotlin.android'|" "$APP_GRADLE"
+            echo "Applied kotlin-android plugin"
+          fi
+          # 3) app-level: kotlinOptions jvmTarget
+          if ! grep -q "kotlinOptions" "$APP_GRADLE"; then
+            sed -i "/android {/a \    kotlinOptions {\n        jvmTarget = '17'\n    }" "$APP_GRADLE"
+            echo "Added kotlinOptions"
+          fi
+          echo "=== root buildscript deps ==="
+          grep -A6 "dependencies {" "$ROOT_GRADLE" | head -8
+          echo "=== app build.gradle head ==="
+          head -12 "$APP_GRADLE"
 
       - name: 📝 Overwrite AndroidManifest with full declarations
         run: cp android_plugin/AndroidManifest.xml android/app/src/main/AndroidManifest.xml

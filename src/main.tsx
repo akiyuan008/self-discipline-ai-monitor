@@ -7,7 +7,7 @@ import App from '@/App'
 import { autoBackup, startAutoBackup } from '@/lib/backup'
 import { useClassTaskStore } from '@/stores/classTaskStore'
 import { useStore } from '@/stores/useStore'
-import { fetchUsageStats } from '@/lib/usageStats'
+import { fetchUsageStats, startMonitorService, hasUsageAccess } from '@/lib/usageStats'
 import { SCHEDULE, getPeriodTime, timeToMinutes } from '@/data/schedule'
 import { logger, installGlobalErrorHandlers } from '@/lib/logger'
 
@@ -194,6 +194,11 @@ function startScheduler() {
   useStore.getState().dailySettle()
   generateTodayTasks()
   scheduleClassNotifications()
+
+  // 权限就绪后启动监工前台服务（后台持续监测）
+  hasUsageAccess().then(granted => {
+    if (granted) startMonitorService()
+  }).catch(() => {})
 
   if (monitorInterval) clearInterval(monitorInterval)
   monitorInterval = setInterval(monitorUsage, 5 * 60 * 1000)

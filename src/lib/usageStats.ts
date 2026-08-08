@@ -82,6 +82,28 @@ export async function requestUsagePermission(): Promise<void> {
   await openUsageAccessSettings()
 }
 
+/** 启动监工前台服务（后台持续监测使用情况） */
+export async function startMonitorService(): Promise<void> {
+  if (Capacitor.getPlatform() !== 'android') return
+  try {
+    await getPlugin().startMonitorService()
+    logger.info('monitor', '监工前台服务已启动')
+  } catch (e: any) {
+    logger.warn('monitor', '启动监工前台服务失败', { error: String(e?.message || e) })
+  }
+}
+
+/** 停止监工前台服务 */
+export async function stopMonitorService(): Promise<void> {
+  if (Capacitor.getPlatform() !== 'android') return
+  try {
+    await getPlugin().stopMonitorService()
+    logger.info('monitor', '监工前台服务已停止')
+  } catch (e: any) {
+    logger.warn('monitor', '停止监工前台服务失败', { error: String(e?.message || e) })
+  }
+}
+
 function mockUsage(): { study: UsageStat[]; ent: UsageStat[] } {
   const now = Date.now()
   return {
