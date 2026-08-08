@@ -49,13 +49,13 @@ class LockScreenActivity : Activity() {
     )
 
     val seconds = intent.getLongExtra(EXTRA_DURATION_SEC, 300L)
-    val text = intent.getStringExtra(EXTRA_TEXT) ?: "休息一下"
+    val msgText = intent.getStringExtra(EXTRA_TEXT) ?: "休息一下"
 
     val tv = TextView(this).apply {
       gravity = Gravity.CENTER
       setTextColor(0xFFFFFFFF.toInt())
       textSize = 24f
-      text = text + "\n\n剩余 ${seconds / 60} 分 ${seconds % 60} 秒"
+      text = msgText + "\n\n剩余 ${seconds / 60} 分 ${seconds % 60} 秒"
       setPadding(48, 0, 48, 0)
     }
     setContentView(tv)
@@ -70,7 +70,7 @@ class LockScreenActivity : Activity() {
     timer = object : CountDownTimer(seconds * 1000, 1000) {
       override fun onTick(millisUntilFinished: Long) {
         val s = millisUntilFinished / 1000
-        tv.text = "$text\n\n剩余 ${s / 60} 分 ${s % 60} 秒"
+        tv.text = "$msgText\n\n剩余 ${s / 60} 分 ${s % 60} 秒"
       }
       override fun onFinish() {
         finish()

@@ -107,8 +107,12 @@ class MonitorService : Service() {
       }
       // 周末/通勤时段（17-22）娱乐类累计超 1 小时
       if (hour in 17..22) {
-        val totalMs = stats.filter { ENTERTAINMENT_PACKAGES.contains(it.key) }
-          .sumOf { it.value.totalTimeInForeground }
+        var totalMs = 0L
+        for ((pkgKey, st) in stats) {
+          if (ENTERTAINMENT_PACKAGES.contains(pkgKey)) {
+            totalMs += st.totalTimeInForeground
+          }
+        }
         if (totalMs > 60 * 60 * 1000L) {
           notifyCare("今日娱乐时长已超 1 小时，监督人格注意到了。")
         }
