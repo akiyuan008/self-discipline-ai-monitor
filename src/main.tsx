@@ -10,6 +10,7 @@ import { useStore } from '@/stores/useStore'
 import { fetchUsageStats, startMonitorService, hasUsageAccess } from '@/lib/usageStats'
 import { SCHEDULE, getPeriodTime, timeToMinutes } from '@/data/schedule'
 import { logger, installGlobalErrorHandlers } from '@/lib/logger'
+import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
 
 CapApp.addListener('pause', () => { autoBackup().catch(() => {}) })
 startAutoBackup()
@@ -39,7 +40,7 @@ function getGrantedStudyMinutes(): number {
     const raw = localStorage.getItem(STUDY_EXP_KEY)
     if (!raw) return 0
     const obj = JSON.parse(raw)
-    const today = new Date().toISOString().slice(0, 10)
+    const today = localDateStr()
     return obj.date === today ? (obj.minutes || 0) : 0
   } catch { return 0 }
 }
@@ -47,7 +48,7 @@ function getGrantedStudyMinutes(): number {
 function setGrantedStudyMinutes(minutes: number) {
   try {
     localStorage.setItem(STUDY_EXP_KEY, JSON.stringify({
-      date: new Date().toISOString().slice(0, 10),
+      date: localDateStr(),
       minutes
     }))
   } catch { /* ignore */ }
@@ -112,7 +113,7 @@ async function scheduleClassNotifications() {
 
 function generateTodayTasks() {
   const store = useClassTaskStore.getState()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateStr()
   const hasTodayTasks = store.classTasks.some(t => t.date === today)
   if (!hasTodayTasks) store.generateTodayTasks()
 }

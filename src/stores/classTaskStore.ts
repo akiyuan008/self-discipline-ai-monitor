@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { useStore } from '@/stores/useStore'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { SCHEDULE, getPeriodTime, timeToMinutes, canStartClass, canCheckInClass } from '@/data/schedule'
+import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
 
 export interface ClassTask {
   id: string
@@ -131,7 +132,7 @@ export const useClassTaskStore = create<ClassTaskState>()(
       generateTodayTasks: () => {
         const today = new Date()
         const dayOfWeek = today.getDay()
-        const dateStr = today.toISOString().slice(0, 10)
+        const dateStr = localDateStr(today)
         const tasks: ClassTask[] = SCHEDULE
           .filter(s => s.dayOfWeek === dayOfWeek)
           .map(s => ({
@@ -255,7 +256,7 @@ export const useClassTaskStore = create<ClassTaskState>()(
 
       checkFullAttendance: () => {
         const state = get()
-        const today = new Date().toISOString().slice(0, 10)
+        const today = localDateStr()
         if (state.lastAttendanceDate === today) return 0
         const todayTasks = state.classTasks.filter(t => t.date === today)
         const allCompleted = todayTasks.length > 0 && todayTasks.every(t => t.status === 'completed')
@@ -294,7 +295,7 @@ export const useClassTaskStore = create<ClassTaskState>()(
           isPunished = false
         }
 
-        const today = new Date().toISOString().slice(0, 10)
+        const today = localDateStr()
         const newMonitor: MonitorState = {
           lastCheckTime: now,
           warningCount,
@@ -342,7 +343,7 @@ export const useClassTaskStore = create<ClassTaskState>()(
       },
 
       getTaskHistory: (date) => {
-        const d = date || new Date().toISOString().slice(0, 10)
+        const d = date || localDateStr()
         return get().taskHistory.find(h => h.date === d)
       },
 
@@ -352,7 +353,7 @@ export const useClassTaskStore = create<ClassTaskState>()(
       },
 
       getMonitorHistory: (date) => {
-        const d = date || new Date().toISOString().slice(0, 10)
+        const d = date || localDateStr()
         return get().monitorHistory.find(m => m.date === d)
       },
 

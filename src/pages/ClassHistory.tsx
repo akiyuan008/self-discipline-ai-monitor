@@ -7,6 +7,7 @@ import { getPeriodTime } from '@/data/schedule'
 import { fmtMs } from '@/lib/usageStats'
 import { showToast } from '@/components/Toast'
 import Icon from '@/components/Icons'
+import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
 
 interface Props {
   onBack: () => void
@@ -384,8 +385,8 @@ function Empty({ text, sub }: { text: string; sub: string }) {
 
 function fmtDate(dateStr: string): string {
   const d = new Date(dateStr)
-  const today = new Date().toISOString().slice(0, 10)
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+  const today = localDateStr()
+  const yesterday = yesterdayDateStr()
   if (dateStr === today) return '今天'
   if (dateStr === yesterday) return '昨天'
   return `${d.getMonth() + 1}月${d.getDate()}日`

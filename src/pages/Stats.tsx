@@ -3,6 +3,7 @@ import { useStore } from '@/stores/useStore'
 import { useClassTaskStore } from '@/stores/classTaskStore'
 import type { AbyssRecord } from '@/stores/classTaskStore'
 import Icon from '@/components/Icons'
+import { localDateStr } from '@/lib/dateUtils'
 
 interface Props {
   onBack: () => void
@@ -53,7 +54,7 @@ export default function Stats({ onBack }: Props) {
     for (let i = 29; i >= 0; i--) {
       const d = new Date(today)
       d.setDate(d.getDate() - i)
-      const key = d.toISOString().slice(0, 10)
+      const key = localDateStr(d)
       data[key] = 0
     }
     taskHistory.forEach(day => {

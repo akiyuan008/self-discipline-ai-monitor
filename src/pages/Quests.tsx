@@ -7,6 +7,7 @@ import { verifyClassPhoto, reportToWarden } from '@/lib/verifyAI'
 import { showToast } from '@/components/Toast'
 import { logger } from '@/lib/logger'
 import Icon from '@/components/Icons'
+import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
 
 interface Props {
   onNavigate?: (p: PageId) => void
@@ -44,7 +45,7 @@ export default function Quests({ onNavigate }: Props) {
     return () => clearInterval(timer)
   }, [])
 
-  const today = now.toISOString().slice(0, 10)
+  const today = localDateStr(now)
   const todayTasks = useMemo(
     () => classTasks.filter(t => t.date === today).sort((a, b) => a.period - b.period),
     [classTasks, today]

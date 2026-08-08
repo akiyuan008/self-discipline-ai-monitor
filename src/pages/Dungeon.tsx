@@ -4,6 +4,7 @@ import { showToast } from '@/components/Toast'
 import { useClassTaskStore } from '@/stores/classTaskStore'
 import Icon from '@/components/Icons'
 import EchoRecorder from '@/components/EchoRecorder'
+import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
 
 const ABYSS_QUOTES = [
   '正在深渊重载中，反应堆全功率输出！',
@@ -117,7 +118,7 @@ export default function Dungeon({ onExit }: Props) {
 
     if (isAbyssMode) {
       addAbyssRecord({
-        date: new Date().toISOString().slice(0, 10),
+        date: localDateStr(),
         subject: currentTask ? currentTask.subject : '深渊重载模式',
         duration: elapsed,
         completed: false,
@@ -183,7 +184,7 @@ export default function Dungeon({ onExit }: Props) {
         addPoints(200)
         addPointRecord('earn', 200, '完成深渊重载挑战')
         addAbyssRecord({
-          date: new Date().toISOString().slice(0, 10),
+          date: localDateStr(),
           subject: currentTask ? currentTask.subject : '深渊重载',
           duration: elapsed,
           completed: true,
