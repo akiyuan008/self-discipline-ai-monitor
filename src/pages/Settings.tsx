@@ -233,7 +233,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
                 <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>用于精确统计学习与娱乐应用时长</div>
               </div>
               <div style={{
-                fontSize: 11, fontWeight: 700, fontFamily: 'DM Mono, monospace',
+                fontSize: 11, fontWeight: 700, fontFamily: 'Share Tech Mono, monospace',
                 padding: '4px 8px', borderRadius: 4,
                 background: usageAccessGranted ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
                 color: usageAccessGranted ? '#22c55e' : '#ef4444',
@@ -274,7 +274,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
             <div style={{ marginBottom: 16 }}>
               <div style={{
                 fontSize: 11, color: 'var(--muted)',
-                fontFamily: 'DM Mono, monospace',
+                fontFamily: 'Share Tech Mono, monospace',
                 marginBottom: 6
               }}>
                 GAOKAO_DATE
@@ -295,7 +295,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
                   background: 'var(--bg)', color: 'var(--fg)',
                   border: '1px solid var(--border)',
                   borderRadius: 8, fontSize: 13,
-                  fontFamily: 'DM Mono, monospace',
+                  fontFamily: 'Share Tech Mono, monospace',
                   outline: 'none'
                 }}
               />
@@ -305,7 +305,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
             <div style={{ marginBottom: 16 }}>
               <div style={{
                 fontSize: 11, color: 'var(--muted)',
-                fontFamily: 'DM Mono, monospace',
+                fontFamily: 'Share Tech Mono, monospace',
                 marginBottom: 6
               }}>
                 TARGET_SCORE
@@ -342,7 +342,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>基础估分</span>
-                <span style={{ color: 'var(--fg)', fontFamily: 'DM Mono, monospace' }}>{gaokaoBaseScore}</span>
+                <span style={{ color: 'var(--fg)', fontFamily: 'Share Tech Mono, monospace' }}>{gaokaoBaseScore}</span>
               </div>
               <div style={{ fontSize: 10, marginTop: 4 }}>
                 基础估分为起步分数，学习每小时 +5，娱乐每小时 -3，完成任务 +3。
@@ -382,7 +382,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
             <div style={{ marginBottom: 12 }}>
               <div style={{
                 fontSize: 11, color: 'var(--muted)',
-                fontFamily: 'DM Mono, monospace',
+                fontFamily: 'Share Tech Mono, monospace',
                 marginBottom: 6
               }}>
                 MODEL
@@ -397,7 +397,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
                       background: 'var(--bg)', color: 'var(--fg)',
                       border: '1px solid var(--border)',
                       borderRadius: 8, fontSize: 13,
-                      fontFamily: 'DM Mono, monospace',
+                      fontFamily: 'Share Tech Mono, monospace',
                       cursor: 'pointer',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       gap: 8
@@ -469,7 +469,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
                                 background: m === model ? 'var(--bg-alt)' : 'transparent',
                                 color: m === model ? 'var(--fg)' : 'var(--muted)',
                                 border: 'none', fontSize: 13,
-                                fontFamily: 'DM Mono, monospace',
+                                fontFamily: 'Share Tech Mono, monospace',
                                 cursor: 'pointer', textAlign: 'left',
                                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                 transition: 'background 0.15s'
@@ -510,7 +510,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
             <div style={{ marginBottom: 12 }}>
               <div style={{
                 fontSize: 11, color: 'var(--muted)',
-                fontFamily: 'DM Mono, monospace',
+                fontFamily: 'Share Tech Mono, monospace',
                 marginBottom: 6
               }}>
                 SYSTEM_PROMPT
@@ -551,7 +551,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
                 borderRadius: 8,
                 fontSize: 11,
                 marginBottom: 12,
-                fontFamily: 'DM Mono, monospace'
+                fontFamily: 'Share Tech Mono, monospace'
               }}>
                 三项缺一不可。配置完成后 MOSS 才能真正对话与调用工具。
               </div>
@@ -642,11 +642,11 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
             }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600 }}>{playerTag}</div>
-                <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+                <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>
                   本地账户 · 数据存于设备
                 </div>
               </div>
-              <div style={{ fontSize: 11, color: 'var(--success)', fontFamily: 'DM Mono, monospace' }}>
+              <div style={{ fontSize: 11, color: 'var(--success)', fontFamily: 'Share Tech Mono, monospace' }}>
                 ACTIVE
               </div>
             </div>
@@ -654,7 +654,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
               display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}>
               <div style={{ fontSize: 14, fontWeight: 600 }}>Cyber Survival</div>
-              <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+              <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>
                 v2.2.0 · LOCAL · OFFLINE
               </div>
             </div>
@@ -777,12 +777,14 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 24 }}>
-      <div style={{
-        fontSize: 11, color: 'var(--muted)',
-        fontFamily: 'DM Mono, monospace',
-        marginBottom: 8, paddingLeft: 4
-      }}>
-        {title.toUpperCase()}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <div style={{ width: 3, height: 14, background: '#45a29e' }} />
+        <div style={{
+          fontSize: 12, color: '#45a29e',
+          fontFamily: 'Share Tech Mono, monospace', letterSpacing: 2
+        }}>
+          {title.toUpperCase()}
+        </div>
       </div>
       {children}
     </div>
@@ -817,8 +819,8 @@ function Field({
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{
-        fontSize: 11, color: 'var(--muted)',
-        fontFamily: 'DM Mono, monospace',
+        fontSize: 10, color: 'var(--muted)',
+        fontFamily: 'Share Tech Mono, monospace', letterSpacing: 1,
         marginBottom: 6
       }}>
         {label.toUpperCase()}
@@ -834,7 +836,7 @@ function Field({
           background: 'var(--bg)', color: 'var(--fg)',
           border: '1px solid var(--border)',
           borderRadius: 8, fontSize: 13,
-          fontFamily: mono ? 'DM Mono, monospace' : 'inherit',
+          fontFamily: mono ? 'Share Tech Mono, monospace' : 'inherit',
           outline: 'none'
         }}
       />
@@ -844,14 +846,18 @@ function Field({
 
 function Header({ onBack, title, subtitle }: { onBack: () => void; title: string; subtitle: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+    <div style={{
+      display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 20,
+      paddingBottom: 10, borderBottom: '1px solid rgba(69, 162, 158, 0.2)'
+    }}>
       <button
         onClick={onBack}
         style={{
-          width: 36, height: 36, borderRadius: '50%',
-          background: 'var(--card-bg)', border: '1px solid var(--border)',
+          width: 34, height: 34,
+          background: 'var(--bg-alt)', border: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', color: 'var(--fg)'
+          cursor: 'pointer', color: 'var(--fg)',
+          clipPath: 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
         }}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -859,10 +865,10 @@ function Header({ onBack, title, subtitle }: { onBack: () => void; title: string
         </svg>
       </button>
       <div>
-        <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
+        <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 2 }}>
           {subtitle}
         </div>
-        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5 }}>{title}</div>
+        <div style={{ fontSize: 26, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 2, textTransform: 'uppercase' }}>{title}</div>
       </div>
     </div>
   )
