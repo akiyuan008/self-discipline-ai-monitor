@@ -102,7 +102,7 @@ export default function Stats({ onBack }: Props) {
             <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'DM Mono, monospace' }}>
               {isWandering ? 'DATA CENTER' : 'STATISTICS'}
             </div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, fontFamily: isWandering ? 'Teko, sans-serif' : 'inherit', letterSpacing: isWandering ? 1 : 0 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, fontFamily: isWandering ? 'Teko, sans-serif' : "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: isWandering ? 1 : 0 }}>
               {isWandering ? 'COMBAT RECORDS' : '数据统计'}
             </h1>
           </div>

@@ -269,13 +269,13 @@ export interface ResolvedTask {
 }
 
 const STATE_META: Record<TaskUIState, { label: string; color: string; blink: boolean }> = {
-  LOCKED: { label: 'STANDBY', color: '#5a6a7a', blink: false },
-  READY:  { label: 'READY',   color: '#45a29e', blink: true },
-  LIVE:   { label: 'LIVE',    color: '#ff4500', blink: true },
-  GRACE:  { label: 'GRACE',   color: '#f59e0b', blink: true },
-  VERIFY: { label: 'VERIFY',  color: '#45a29e', blink: true },
-  DONE:   { label: 'DONE',    color: '#22c55e', blink: false },
-  MISSED: { label: 'MISSED',  color: '#ff4444', blink: false },
+  LOCKED: { label: '待命',   color: '#5a6a7a', blink: false },
+  READY:  { label: '就绪',   color: '#45a29e', blink: true },
+  LIVE:   { label: '进行中', color: '#ff4500', blink: true },
+  GRACE:  { label: '宽限期', color: '#f59e0b', blink: true },
+  VERIFY: { label: '待核验', color: '#45a29e', blink: true },
+  DONE:   { label: '已完成', color: '#22c55e', blink: false },
+  MISSED: { label: '已逾期', color: '#ff4444', blink: false },
 }
 
 /**

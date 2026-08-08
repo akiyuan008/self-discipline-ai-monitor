@@ -780,10 +780,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <div style={{ width: 3, height: 14, background: '#45a29e' }} />
         <div style={{
-          fontSize: 12, color: '#45a29e',
-          fontFamily: 'Share Tech Mono, monospace', letterSpacing: 2
+          fontSize: 13, fontWeight: 600, color: '#45a29e',
+          fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1
         }}>
-          {title.toUpperCase()}
+          {title}
         </div>
       </div>
       {children}
@@ -820,10 +820,10 @@ function Field({
     <div style={{ marginBottom: 12 }}>
       <div style={{
         fontSize: 10, color: 'var(--muted)',
-        fontFamily: 'Share Tech Mono, monospace', letterSpacing: 1,
+        fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1,
         marginBottom: 6
       }}>
-        {label.toUpperCase()}
+        {label}
       </div>
       <input
         type={type}
@@ -868,7 +868,7 @@ function Header({ onBack, title, subtitle }: { onBack: () => void; title: string
         <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 2 }}>
           {subtitle}
         </div>
-        <div style={{ fontSize: 26, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 2, textTransform: 'uppercase' }}>{title}</div>
+        <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1 }}>{title}</div>
       </div>
     </div>
   )

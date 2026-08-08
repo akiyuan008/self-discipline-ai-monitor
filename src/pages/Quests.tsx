@@ -272,13 +272,13 @@ function MissionCard({ task, r, verifying, onAbyss, onVerify }: {
           CURRENT MISSION
         </span>
         <span style={{
-          fontSize: 9, padding: '1px 8px', background: `${r.color}15`,
+          fontSize: 10, padding: '1px 8px', background: `${r.color}15`,
           border: `1px solid ${r.color}50`, color: r.color,
-          fontFamily: 'Share Tech Mono, monospace', letterSpacing: 1
+          fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1
         }}>{r.label}</span>
       </div>
 
-      <div style={{ fontSize: 34, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 2, lineHeight: 1.05 }}>
+      <div style={{ fontSize: 30, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 2, lineHeight: 1.1 }}>
         {task.subject}
       </div>
       <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginBottom: 14 }}>
@@ -310,7 +310,7 @@ function BigBtn({ children, color, onClick, disabled }: { children: React.ReactN
       style={{
         width: '100%', padding: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         background: `${color}12`, border: `1px solid ${color}`, color,
-        fontFamily: 'Teko, sans-serif', fontSize: 17, letterSpacing: 2, textTransform: 'uppercase',
+        fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", fontSize: 16, fontWeight: 600, letterSpacing: 2,
         cursor: disabled ? 'not-allowed' : 'pointer', clipPath: CLIP_SM, opacity: disabled ? 0.5 : 1
       }}
     >{children}</button>
@@ -394,13 +394,13 @@ function Timeline({ resolved, now, verifyingId, onVerify, onAbyss }: {
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{
-                    fontSize: 14, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 1,
+                    fontSize: 14, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1,
                     textDecoration: r.state === 'MISSED' ? 'line-through' : 'none'
                   }}>{task.subject}</span>
                   <span style={{
-                    fontSize: 8, padding: '1px 5px', background: `${r.color}12`,
+                    fontSize: 9, padding: '1px 5px', background: `${r.color}12`,
                     border: `1px solid ${r.color}40`, color: r.color,
-                    fontFamily: 'Share Tech Mono, monospace'
+                    fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif"
                   }}>{r.label}</span>
                 </div>
                 <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginTop: 1 }}>

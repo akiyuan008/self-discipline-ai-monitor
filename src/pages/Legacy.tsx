@@ -57,7 +57,7 @@ export default function Legacy({ onBack }: Props) {
           <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 2 }}>
             VOYAGE ARCHIVE
           </div>
-          <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 2, textTransform: 'uppercase' }}>
+          <div style={{ fontSize: 24, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 2 }}>
             航迹档案
           </div>
         </div>
@@ -118,8 +118,8 @@ function StatBlock({ label, value, color }: { label: string; value: string; colo
       background: 'var(--card-bg)', border: '1px solid var(--border)',
       padding: '10px 6px', textAlign: 'center', clipPath: CLIP_SM
     }}>
-      <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Teko, sans-serif', color, lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontSize: 8, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 1, marginTop: 2 }}>{label}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", color, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1, marginTop: 2 }}>{label}</div>
     </div>
   )
 }
@@ -129,8 +129,8 @@ function MomentsGrid({ moments, onPreview }: { moments: any[]; onPreview: (p: st
   if (moments.length === 0) return <Empty text="还没有努力瞬间" sub="完成课程拍照核验后，这里会记录你的每一次专注" />
   return (
     <div>
-      <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginBottom: 10 }}>
-        {moments.length} RECORDS · 每一张都是你努力的证据
+      <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 10 }}>
+        共 {moments.length} 条 · 每一张都是你努力的证据
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {moments.map((m, i) => (
@@ -148,14 +148,14 @@ function MomentsGrid({ moments, onPreview }: { moments: any[]; onPreview: (p: st
             )}
             <div style={{ padding: '8px 10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 1 }}>{m.subject}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1 }}>{m.subject}</span>
                 <span style={{
                   fontSize: 9, padding: '1px 5px', fontFamily: 'Share Tech Mono, monospace',
                   background: m.passed ? 'rgba(34,197,94,0.12)' : 'rgba(255,68,68,0.12)',
                   color: m.passed ? '#22c55e' : '#ff4444', border: `1px solid ${m.passed ? '#22c55e' : '#ff4444'}40`
                 }}>{m.aiScore}</span>
               </div>
-              <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginTop: 3 }}>
+              <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 3 }}>
                 {fmtDate(m.date)}
               </div>
               {m.aiReview && (
@@ -187,7 +187,7 @@ function VoyageList({ voyages }: { voyages: any[] }) {
           }}>
             <div className="corner-deco tl" style={{ width: 7, height: 7, borderWidth: 1 }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1 }}>
                 {fmtDate(v.date)}
               </div>
               <div style={{ display: 'flex', gap: 8, fontSize: 10, fontFamily: 'Share Tech Mono, monospace' }}>
@@ -230,18 +230,18 @@ function AbyssList({ records }: { records: any[] }) {
             <Icon.Flame size={18} color={r.completed ? '#ff4500' : 'var(--muted)'} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 1 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1 }}>
               {r.subject || '深渊专注'}
             </div>
-            <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginTop: 1 }}>
-              {fmtDateTime(r.timestamp)} · {r.duration}min
+            <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 1 }}>
+              {fmtDateTime(r.timestamp)} · {r.duration}分钟
             </div>
           </div>
           <span style={{
-            fontSize: 9, padding: '2px 8px', fontFamily: 'Share Tech Mono, monospace',
+            fontSize: 10, padding: '2px 8px', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif",
             background: r.completed ? 'rgba(34,197,94,0.12)' : 'rgba(255,68,68,0.12)',
             color: r.completed ? '#22c55e' : '#ff4444', border: `1px solid ${r.completed ? '#22c55e' : '#ff4444'}40`
-          }}>{r.completed ? 'SUCCESS' : 'ABORT'}</span>
+          }}>{r.completed ? '成功' : '中断'}</span>
         </div>
       ))}
     </div>
@@ -257,7 +257,7 @@ function MedalList({ achievements }: { achievements: any[] }) {
     <div>
       {unlocked.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 10, color: '#f59e0b', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 1, marginBottom: 8 }}>UNLOCKED · {unlocked.length}</div>
+          <div style={{ fontSize: 10, color: '#f59e0b', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1, marginBottom: 8 }}>已解锁 · {unlocked.length}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {unlocked.map((a, i) => <MedalCard key={i} a={a} unlocked />)}
           </div>
@@ -265,7 +265,7 @@ function MedalList({ achievements }: { achievements: any[] }) {
       )}
       {locked.length > 0 && (
         <div>
-          <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 1, marginBottom: 8 }}>LOCKED · {locked.length}</div>
+          <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1, marginBottom: 8 }}>未解锁 · {locked.length}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {locked.map((a, i) => <MedalCard key={i} a={a} unlocked={false} />)}
           </div>
@@ -285,10 +285,10 @@ function MedalCard({ a, unlocked }: { a: any; unlocked: boolean }) {
       <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'center' }}>
         {unlocked ? <Icon.Medal size={22} color="#f59e0b" /> : <Icon.Lock size={22} color="var(--muted)" />}
       </div>
-      <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 1 }}>{a.name}</div>
+      <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1 }}>{a.name}</div>
       <div style={{ fontSize: 9, color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>{a.desc}</div>
       {!unlocked && a.total > 0 && (
-        <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginTop: 4 }}>{a.progress}/{a.total}</div>
+        <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", marginTop: 4 }}>{a.progress}/{a.total}</div>
       )}
     </div>
   )
@@ -298,7 +298,7 @@ function Empty({ text, sub }: { text: string; sub: string }) {
   return (
     <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--muted)' }}>
       <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}><Icon.Book size={32} color="var(--muted)" /></div>
-      <div style={{ fontSize: 14, fontFamily: 'Share Tech Mono, monospace' }}>{text}</div>
+      <div style={{ fontSize: 14, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif" }}>{text}</div>
       <div style={{ fontSize: 11, marginTop: 8, opacity: 0.6, lineHeight: 1.5 }}>{sub}</div>
     </div>
   )

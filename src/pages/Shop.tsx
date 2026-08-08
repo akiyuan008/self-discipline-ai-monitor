@@ -45,7 +45,7 @@ export default function Shop({ onNavigate }: Props) {
           <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 2 }}>
             SUPPLY DEPOT
           </div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 2, textTransform: 'uppercase', margin: 0 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 2, margin: 0 }}>
             补给大楼
           </h1>
         </div>
@@ -56,10 +56,10 @@ export default function Shop({ onNavigate }: Props) {
               padding: '6px 12px', background: editMode ? 'rgba(69,162,158,0.15)' : 'var(--bg-alt)',
               border: `1px solid ${editMode ? '#45a29e' : 'var(--border)'}`,
               color: editMode ? '#45a29e' : 'var(--muted)',
-              fontFamily: 'Share Tech Mono, monospace', fontSize: 11, letterSpacing: 1,
+              fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", fontSize: 12, letterSpacing: 1,
               cursor: 'pointer', clipPath: CLIP_SM
             }}
-          >{editMode ? 'DONE' : 'EDIT'}</button>
+          >{editMode ? '完成' : '编辑'}</button>
           <div style={{ textAlign: 'right' }} onClick={() => onNavigate?.('pointsDetail')}>
             <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>CREDITS</div>
             <div style={{ fontSize: 20, fontWeight: 700, color: '#f59e0b', fontFamily: 'Teko, sans-serif', cursor: 'pointer' }}>{points}</div>
@@ -73,12 +73,12 @@ export default function Shop({ onNavigate }: Props) {
           background: 'var(--card-bg)', border: '1px solid #45a29e', padding: '14px',
           marginBottom: 12, position: 'relative', clipPath: CLIP
         }}>
-          <div style={{ fontSize: 11, color: '#45a29e', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 1, marginBottom: 10 }}>
-            ADD ITEM
+          <div style={{ fontSize: 12, color: '#45a29e', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1, marginBottom: 10 }}>
+            添加道具
           </div>
-          <input placeholder="ITEM NAME" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} style={inputStyle} />
-          <input placeholder="DESCRIPTION" value={newItem.desc} onChange={e => setNewItem({ ...newItem, desc: e.target.value })} style={inputStyle} />
-          <input type="number" placeholder="COST" value={newItem.cost} onChange={e => setNewItem({ ...newItem, cost: Number(e.target.value) || 0 })} style={inputStyle} />
+          <input placeholder="道具名称" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} style={inputStyle} />
+          <input placeholder="道具描述" value={newItem.desc} onChange={e => setNewItem({ ...newItem, desc: e.target.value })} style={inputStyle} />
+          <input type="number" placeholder="积分价格" value={newItem.cost} onChange={e => setNewItem({ ...newItem, cost: Number(e.target.value) || 0 })} style={inputStyle} />
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => {
@@ -97,12 +97,12 @@ export default function Shop({ onNavigate }: Props) {
                 logger.info('shop', `添加自定义道具：${newItem.name.trim()}`, { cost: Math.max(1, newItem.cost) })
                 showToast('道具已添加')
               }}
-              style={{ flex: 1, padding: '9px', background: 'rgba(69,162,158,0.15)', border: '1px solid #45a29e', color: '#45a29e', fontFamily: 'Share Tech Mono, monospace', fontSize: 12, letterSpacing: 1, cursor: 'pointer', clipPath: CLIP_SM }}
-            >CONFIRM</button>
+              style={{ flex: 1, padding: '9px', background: 'rgba(69,162,158,0.15)', border: '1px solid #45a29e', color: '#45a29e', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", fontSize: 13, letterSpacing: 1, cursor: 'pointer', clipPath: CLIP_SM }}
+            >确认添加</button>
             <button
               onClick={() => setShowAddForm(false)}
-              style={{ flex: 1, padding: '9px', background: 'var(--bg-alt)', border: '1px solid var(--border)', color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', fontSize: 12, letterSpacing: 1, cursor: 'pointer', clipPath: CLIP_SM }}
-            >CANCEL</button>
+              style={{ flex: 1, padding: '9px', background: 'var(--bg-alt)', border: '1px solid var(--border)', color: 'var(--muted)', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", fontSize: 13, letterSpacing: 1, cursor: 'pointer', clipPath: CLIP_SM }}
+            >取消</button>
           </div>
         </div>
       )}
@@ -114,10 +114,10 @@ export default function Shop({ onNavigate }: Props) {
           style={{
             width: '100%', padding: '14px', marginBottom: 10,
             background: 'transparent', border: '1px dashed #45a29e', color: '#45a29e',
-            fontFamily: 'Share Tech Mono, monospace', fontSize: 12, letterSpacing: 1,
+            fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", fontSize: 13, letterSpacing: 1,
             cursor: 'pointer', clipPath: CLIP, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
           }}
-        ><Icon.More size={14} color="#45a29e" /> ADD CUSTOM ITEM</button>
+        ><Icon.More size={14} color="#45a29e" /> 添加自定义道具</button>
       )}
 
       {/* 商品网格 */}
@@ -169,11 +169,11 @@ export default function Shop({ onNavigate }: Props) {
                 </svg>
               </div>
 
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 1, marginBottom: 2 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1, marginBottom: 2 }}>
                 {item.name}
               </div>
-              <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginBottom: 10, minHeight: 26, lineHeight: 1.4 }}>
-                {item.lockLevel && !canBuy ? `UNLOCK AT STREAK ${item.lockLevel}` : item.desc}
+              <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", marginBottom: 10, minHeight: 26, lineHeight: 1.4 }}>
+                {item.lockLevel && !canBuy ? `连签 ${item.lockLevel} 天解锁` : item.desc}
               </div>
 
               <button
@@ -192,11 +192,11 @@ export default function Shop({ onNavigate }: Props) {
                   background: canBuy && enough && !editMode ? 'rgba(245,158,11,0.12)' : 'var(--bg-alt)',
                   border: `1px solid ${canBuy && enough && !editMode ? '#f59e0b' : 'var(--border)'}`,
                   color: canBuy && enough && !editMode ? '#f59e0b' : 'var(--muted)',
-                  fontFamily: 'Share Tech Mono, monospace', fontSize: 12, letterSpacing: 1,
+                  fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", fontSize: 12, letterSpacing: 1,
                   cursor: canBuy && enough && !editMode ? 'pointer' : 'default', clipPath: CLIP_SM
                 }}
               >
-                {item.cost} CR{ownedCount > 0 ? ` // ×${ownedCount}` : ''}
+                {item.cost} 积分{ownedCount > 0 ? ` · ×${ownedCount}` : ''}
               </button>
             </div>
           )

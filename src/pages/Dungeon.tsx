@@ -484,7 +484,7 @@ export default function Dungeon({ onExit }: Props) {
             <div style={{ fontSize: 11, color: '#ff3344', fontFamily: 'Share Tech Mono, monospace', marginBottom: 4 }}>
               [ABYSS INTERRUPT WARNING]
             </div>
-            <h3 style={{ fontSize: 20, fontWeight: 700, fontFamily: 'Teko, sans-serif', color: '#ff3344', margin: '0 0 10px' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", color: '#ff3344', margin: '0 0 10px' }}>
               确定中断深渊挑战？
             </h3>
             <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 14, lineHeight: 1.5 }}>

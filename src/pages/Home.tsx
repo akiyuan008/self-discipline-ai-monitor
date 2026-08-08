@@ -23,7 +23,7 @@ function DataBlock({ label, value, unit, color = 'var(--success)' }: { label: st
       <div className="corner-deco tr" style={{ width: 10, height: 10, borderWidth: 1 }} />
       <div className="corner-deco bl" style={{ width: 10, height: 10, borderWidth: 1 }} />
       <div className="corner-deco br" style={{ width: 10, height: 10, borderWidth: 1 }} />
-      <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 1, textTransform: 'uppercase' }}>
+      <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1 }}>
         {label}
       </div>
       <div style={{ fontSize: 22, fontWeight: 700, color, fontFamily: 'Teko, sans-serif', lineHeight: 1.1, marginTop: 2 }}>
@@ -191,10 +191,10 @@ export default function Home({ onNavigate }: Props) {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, position: 'relative', zIndex: 1 }}>
-          <DataBlock label="LEVEL" value={level} />
-          <DataBlock label="EXP" value={exp % 1000} unit="/1000" />
-          <DataBlock label="STREAK" value={streak} unit="D" color="#45a29e" />
-          <DataBlock label="POINTS" value={points} color="#f59e0b" />
+          <DataBlock label="等级" value={level} />
+          <DataBlock label="经验" value={exp % 1000} unit="/1000" />
+          <DataBlock label="连签" value={streak} unit="天" color="#45a29e" />
+          <DataBlock label="积分" value={points} color="#f59e0b" />
         </div>
 
         {/* 今日专注进度条 */}
