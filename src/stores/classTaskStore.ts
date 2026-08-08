@@ -337,6 +337,10 @@ export const useClassTaskStore = create<ClassTaskState>()(
         })
       },
 
+      addAbyssRecord: (record) => {
+        set(s => ({ abyssRecords: [...s.abyssRecords, record] }))
+      },
+
       getTaskHistory: (date) => {
         const d = date || new Date().toISOString().slice(0, 10)
         return get().taskHistory.find(h => h.date === d)
@@ -362,7 +366,8 @@ export const useClassTaskStore = create<ClassTaskState>()(
         lastPointsChange: null,
         taskHistory: [],
         verifyHistory: [],
-        monitorHistory: []
+        monitorHistory: [],
+        abyssRecords: []
       })
     }),
     {

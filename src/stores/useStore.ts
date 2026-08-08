@@ -160,6 +160,8 @@ export const PRESET_MODEL_LIST = [
   'qwen-long'
 ]
 
+export const WANDERING_THEME_UNLOCK_EXP = 1000
+
 export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
@@ -200,7 +202,7 @@ export const useStore = create<StoreState>()(
       unlockedThemes: ['default'],
 
       addPoints: (n) => set(s => ({ points: s.points + n })),
-      addXp: (n) => set(s => ({ xp: s.xp + Math.max(0, Math.round(n)) })),
+      addXp: (n) => get().addExp(n, '任务及学习经验'),
       spendPoints: (cost) => {
         if (get().points < cost) return false
         set(s => ({ points: s.points - cost }))
@@ -405,11 +407,18 @@ export const useStore = create<StoreState>()(
         set(s => {
           const xpGain = Math.max(0, Math.round(amount))
           const newExp = s.exp + xpGain
+          const newTotalExp = s.totalExp + xpGain
           const newLevel = Math.floor(newExp / 1000) + 1
+          const canUnlockWandering = newExp >= WANDERING_THEME_UNLOCK_EXP || newTotalExp >= WANDERING_THEME_UNLOCK_EXP || newLevel >= 2
+          const unlockedThemes = canUnlockWandering && !s.unlockedThemes.includes('wandering')
+            ? [...s.unlockedThemes, 'wandering']
+            : s.unlockedThemes
           return {
             exp: newExp,
-            totalExp: s.totalExp + xpGain,
-            level: newLevel > s.level ? newLevel : s.level
+            totalExp: newTotalExp,
+            level: newLevel > s.level ? newLevel : s.level,
+            xp: s.xp + xpGain,
+            unlockedThemes
           }
         })
       },

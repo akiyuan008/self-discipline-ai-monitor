@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useStore } from '@/stores/useStore'
+import { useStore, WANDERING_THEME_UNLOCK_EXP } from '@/stores/useStore'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useStore(s => s.theme)
@@ -13,32 +13,35 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
 export function ThemeToggle() {
   const theme = useStore(s => s.theme)
-  const points = useStore(s => s.points)
+  const exp = useStore(s => s.exp)
+  const totalExp = useStore(s => s.totalExp)
+  const level = useStore(s => s.level)
   const unlockedThemes = useStore(s => s.unlockedThemes)
   const setTheme = useStore(s => s.setTheme)
   const unlockTheme = useStore(s => s.unlockTheme)
-  const addPoints = useStore(s => s.addPoints)
-  const addPointRecord = useStore(s => s.addPointRecord)
 
   const isWandering = theme === 'wandering'
-  const hasWandering = unlockedThemes.includes('wandering')
-  const WANDERING_COST = 800
+  const effectiveExp = Math.max(exp, totalExp)
+  const expQualified = effectiveExp >= WANDERING_THEME_UNLOCK_EXP || level >= 2
+  const hasWandering = unlockedThemes.includes('wandering') || expQualified
 
-  function buyWandering() {
-    if (points < WANDERING_COST) {
-      showToast(`需要 ${WANDERING_COST} 积分，当前 ${points}`)
-      return
+  function handleSelectWandering() {
+    if (hasWandering) {
+      if (!unlockedThemes.includes('wandering')) {
+        unlockTheme('wandering')
+      }
+      setTheme('wandering')
+      showToast('🌍 行星发动机·流浪地球主题已启用！')
+    } else {
+      showToast(`经验值不足！需达到 1000 XP (等级 Lv.2) 解锁，当前: ${effectiveExp} XP`)
     }
-    addPoints(-WANDERING_COST)
-    addPointRecord('spend', -WANDERING_COST, '解锁行星发动机皮肤')
-    unlockTheme('wandering')
-    setTheme('wandering')
-    showToast('🌍 行星发动机皮肤已解锁！')
   }
+
+  const expPct = Math.min(100, Math.round((effectiveExp / WANDERING_THEME_UNLOCK_EXP) * 100))
 
   return (
     <div style={{
-      padding: '14px', borderRadius: 12,
+      padding: '16px', borderRadius: 12,
       background: 'var(--card-bg)', border: '1px solid var(--border)',
       marginBottom: 12, position: 'relative'
     }}>
@@ -47,13 +50,13 @@ export function ThemeToggle() {
       <div className="corner-deco bl" style={{ width: 10, height: 10, borderWidth: 1 }} />
       <div className="corner-deco br" style={{ width: 10, height: 10, borderWidth: 1 }} />
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1, marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1, marginBottom: 14 }}>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 600, fontFamily: 'Teko, sans-serif', letterSpacing: 1, textTransform: 'uppercase' }}>
-            {isWandering ? '🌍 UEG THEME' : '主题设置'}
+          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 1, textTransform: 'uppercase' }}>
+            {isWandering ? '🌍 UEG INTERFACE // 主题皮肤' : '主题皮肤选择'}
           </div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-            {isWandering ? 'UNIT: CN-171-11 // ONLINE' : '当前：默认主题'}
+          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontFamily: isWandering ? 'Share Tech Mono, monospace' : 'inherit' }}>
+            {isWandering ? 'UEG SYSTEM STATUS: ONLINE' : '通过积累经验值解锁专属科技皮肤'}
           </div>
         </div>
         <div style={{
@@ -61,66 +64,105 @@ export function ThemeToggle() {
           background: isWandering ? 'rgba(255,69,0,0.15)' : 'var(--bg-alt)',
           color: isWandering ? '#ff4500' : 'var(--muted)',
           border: isWandering ? '1px solid #ff4500' : '1px solid var(--border)',
-          fontSize: 10, fontWeight: 600, fontFamily: 'Share Tech Mono, monospace'
+          fontSize: 10, fontWeight: 700, fontFamily: 'Share Tech Mono, monospace'
         }}>
-          {isWandering ? 'ACTIVE' : 'DEFAULT'}
+          {isWandering ? 'WANDERING' : 'DEFAULT'}
         </div>
       </div>
 
       {/* 默认主题 */}
-      <button onClick={() => setTheme('default')} style={{
-        width: '100%', padding: '12px', marginBottom: 8,
+      <button onClick={() => { setTheme('default'); showToast('已切换至默认极简主题') }} style={{
+        width: '100%', padding: '12px 14px', marginBottom: 10,
         background: theme === 'default' ? 'var(--accent-dim)' : 'var(--bg-alt)',
         border: theme === 'default' ? '1px solid var(--accent)' : '1px solid var(--border)',
         color: theme === 'default' ? 'var(--accent)' : 'var(--fg)',
-        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
-        clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
+        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12,
+        clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
+        textAlign: 'left'
       }}>
-        <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #667eea, #764ba2)' }} />
-        <div style={{ textAlign: 'left', flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>默认主题</div>
-          <div style={{ fontSize: 10, color: 'var(--muted)' }}>已解锁</div>
+        <div style={{ width: 36, height: 36, borderRadius: 8, background: 'linear-gradient(135deg, #667eea, #764ba2)', flexShrink: 0 }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>基础控制台 (Default)</div>
+          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>系统预设极简双色主题</div>
         </div>
-        {theme === 'default' && <span style={{ color: 'var(--accent)', fontSize: 16 }}>✓</span>}
+        {theme === 'default' && <span style={{ color: 'var(--accent)', fontSize: 16, fontWeight: 'bold' }}>✓</span>}
       </button>
 
-      {/* 流浪地球主题 */}
-      <button onClick={() => {
-        if (hasWandering) setTheme('wandering')
-        else buyWandering()
-      }} style={{
-        width: '100%', padding: '12px',
-        background: theme === 'wandering' ? 'rgba(255,69,0,0.1)' : 'var(--bg-alt)',
+      {/* 流浪地球 · 行星发动机主题 */}
+      <div style={{
+        background: theme === 'wandering' ? 'rgba(255,69,0,0.08)' : 'var(--bg-alt)',
         border: theme === 'wandering' ? '1px solid #ff4500' : '1px solid var(--border)',
-        color: theme === 'wandering' ? '#ff4500' : 'var(--fg)',
-        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
-        clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)',
-        position: 'relative', overflow: 'hidden'
+        borderRadius: 8, padding: '12px 14px', position: 'relative', overflow: 'hidden'
       }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: 8,
-          background: 'radial-gradient(circle at 30% 30%, #4a90d9, #1a3a5c)',
-          boxShadow: '0 0 10px rgba(0, 212, 255, 0.3)'
-        }} />
-        <div style={{ textAlign: 'left', flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Teko, sans-serif', letterSpacing: 0.5 }}>
-            行星发动机
+        <button
+          onClick={handleSelectWandering}
+          style={{
+            width: '100%', background: 'transparent', border: 'none', padding: 0,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left'
+          }}
+        >
+          <div style={{
+            width: 38, height: 38, borderRadius: 8,
+            background: 'radial-gradient(circle at 30% 30%, #ff4500, #0a0e1a)',
+            border: '1px solid #ff4500',
+            boxShadow: '0 0 12px rgba(255, 69, 0, 0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18, flexShrink: 0
+          }}>
+            🌍
           </div>
-          <div style={{ fontSize: 10, color: hasWandering ? '#45a29e' : 'var(--muted)' }}>
-            {hasWandering ? '已解锁' : `${WANDERING_COST} 积分解锁`}
+
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: theme === 'wandering' ? '#ff4500' : 'var(--fg)', fontFamily: 'Teko, sans-serif', letterSpacing: 1 }}>
+                行星发动机 · 流浪地球
+              </span>
+              <span style={{
+                fontSize: 9, padding: '1px 6px', borderRadius: 3,
+                background: hasWandering ? 'rgba(0,229,255,0.15)' : 'rgba(255,69,0,0.15)',
+                color: hasWandering ? '#00e5ff' : '#ff4500',
+                border: `1px solid ${hasWandering ? '#00e5ff' : '#ff4500'}`,
+                fontFamily: 'Share Tech Mono, monospace'
+              }}>
+                {hasWandering ? 'UNLOCKED' : 'EXP REQ'}
+              </span>
+            </div>
+
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+              UEG工业科幻控制台 & 深渊引擎重载模式
+            </div>
+          </div>
+
+          {theme === 'wandering' ? (
+            <span style={{ color: '#ff4500', fontSize: 16, fontWeight: 'bold' }}>✓</span>
+          ) : (
+            <span style={{
+              fontSize: 11, fontWeight: 700, padding: '4px 10px',
+              background: hasWandering ? '#ff4500' : 'var(--border)',
+              color: hasWandering ? '#fff' : 'var(--muted)',
+              borderRadius: 4, fontFamily: 'Share Tech Mono, monospace'
+            }}>
+              {hasWandering ? 'EQUIP' : 'LOCKED'}
+            </span>
+          )}
+        </button>
+
+        {/* 经验值解锁进度 */}
+        <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginBottom: 4 }}>
+            <span>解锁阈值: 1000 XP (Lv.2+)</span>
+            <span style={{ color: expQualified ? '#00e5ff' : '#ff4500' }}>{effectiveExp} / 1000 XP</span>
+          </div>
+          <div style={{ height: 4, background: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', width: `${expPct}%`,
+              background: expQualified ? 'linear-gradient(90deg, #00e5ff, #ff4500)' : '#ff4500',
+              transition: 'width 0.5s ease',
+              boxShadow: '0 0 8px rgba(255, 69, 0, 0.5)'
+            }} />
           </div>
         </div>
-        {theme === 'wandering' && <span style={{ color: '#ff4500', fontSize: 16 }}>✓</span>}
-        {!hasWandering && (
-          <span style={{
-            fontSize: 10, padding: '2px 8px', background: 'rgba(255,69,0,0.15)',
-            color: '#ff4500', border: '1px solid #ff4500', borderRadius: 4,
-            fontFamily: 'Share Tech Mono, monospace'
-          }}>
-            LOCKED
-          </span>
-        )}
-      </button>
+      </div>
     </div>
   )
 }
@@ -128,7 +170,7 @@ export function ThemeToggle() {
 function showToast(msg: string) {
   const el = document.createElement('div')
   el.textContent = msg
-  el.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;background:rgba(0,0,0,0.9);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;white-space:nowrap;'
+  el.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;background:rgba(0,0,0,0.9);color:#00e5ff;padding:10px 20px;border-radius:8px;font-size:13px;border:1px solid #00e5ff;font-family:Share Tech Mono, monospace;box-shadow:0 0 15px rgba(0,229,255,0.3);'
   document.body.appendChild(el)
   setTimeout(() => el.remove(), 2500)
 }
