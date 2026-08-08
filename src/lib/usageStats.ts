@@ -33,7 +33,7 @@ export async function fetchUsageStats(startTs: number, endTs: number): Promise<{
 
       const rawLabel = s.label || APP_LABELS[pkg] || pkg.split('.').pop() || '未知应用'
       const isStudy = isStudyApp(pkg, rawLabel)
-      const isEnt = !isStudy // 所有非学习类的三方应用归入娱乐/日常使用统计
+      // 所有非学习类的三方应用归入娱乐/日常使用统计
 
       const item: UsageStat = {
         packageName: pkg,

@@ -85,9 +85,10 @@ jobs:
               echo "Added signing config"
             fi
           fi
-          # 设置版本号
+          # 设置版本号：versionName 从 public/version.json 读取，避免多处硬编码漂移
+          VERSION_NAME=$(node -p "require('./public/version.json').version")
           sed -i "s/versionCode .*/versionCode ${{ github.run_number }}/" "$GRADLE_FILE"
-          sed -i "s/versionName .*/versionName \"1.1.0\"/" "$GRADLE_FILE"
+          sed -i "s/versionName .*/versionName \"$VERSION_NAME\"/" "$GRADLE_FILE"
           echo "=== build.gradle (first 60 lines) ==="
           head -60 "$GRADLE_FILE"
 

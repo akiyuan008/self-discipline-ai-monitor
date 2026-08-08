@@ -92,8 +92,6 @@ export default function Home({ onNavigate }: Props) {
       const now = new Date()
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       const stats = await fetchUsageStats(startOfDay.getTime(), now.getTime())
-      const studyMs = stats.study.reduce((sum, x) => sum + x.totalMs, 0)
-      const entMs = stats.ent.reduce((sum, x) => sum + x.totalMs, 0)
       useStore.getState().syncUsage(stats.study, stats.ent)
     } catch (e) { logger.warn('home', 'refresh usage stats failed', { error: String(e) }) }
   }

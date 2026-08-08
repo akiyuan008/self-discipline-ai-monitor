@@ -14,8 +14,6 @@ interface Props {
 }
 
 export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
-  const isDark = useStore(s => s.isDark)
-  const toggleDark = useStore(s => s.toggleDark)
   const ai = useStore(s => s.ai)
   const setAI = useStore(s => s.setAI)
   const ai2 = useStore(s => s.ai2)
@@ -657,7 +655,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
             }}>
               <div style={{ fontSize: 14, fontWeight: 600 }}>Cyber Survival</div>
               <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-                v2.5.0 · LOCAL · OFFLINE
+                v2.2.0 · LOCAL · OFFLINE
               </div>
             </div>
           </div>

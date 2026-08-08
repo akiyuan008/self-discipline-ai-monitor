@@ -16,6 +16,7 @@ import ClassHistory from '@/pages/ClassHistory'
 import DiagLogs from '@/pages/DiagLogs'
 import Stats from '@/pages/Stats'
 import Dock from '@/components/Dock'
+import Toast from '@/components/Toast'
 import { checkUpdate } from '@/lib/update'
 import { ThemeProvider } from '@/components/ThemeToggle'
 
@@ -57,13 +58,6 @@ export default function App() {
   const page = useStore(s => s.onboarded ? 'home' : 'onboarding')
   const [currentPage, setCurrentPage] = useState<PageId>(page)
   const onboarded = useStore(s => s.onboarded)
-  const isDark = useStore(s => s.isDark)
-
-  // 深色模式：同步到 DOM
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDark)
-    document.body.style.backgroundColor = isDark ? '#000000' : ''
-  }, [isDark])
 
   useEffect(() => {
     if (onboarded && currentPage === 'onboarding') setCurrentPage('home')
@@ -85,7 +79,7 @@ export default function App() {
         if (!canGoBack) CapApp.exitApp()
       }
     })
-    return () => { sub.then(s => s.remove()) }
+    return () => { void sub.then(s => s.remove()) }
   }, [])
 
   const pageStackRef = useRef<PageId[]>([page])
@@ -110,6 +104,7 @@ export default function App() {
 
   return (
     <ThemeProvider><div className="app-container">
+      <Toast />
       <PointsToast />
       {currentPage === 'onboarding' && <Onboarding />}
       {currentPage === 'home' && <Home onNavigate={navigate} />}

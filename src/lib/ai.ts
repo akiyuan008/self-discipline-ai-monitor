@@ -515,7 +515,7 @@ export async function chatWithAI(
 // ═══════════════════════════════════════════════════════════
 // URL 拼接工具：兼容两种 endpoint 格式
 // ═══════════════════════════════════════════════════════════
-function buildChatUrl(endpoint: string): string {
+export function buildChatUrl(endpoint: string): string {
   const base = endpoint.replace(/\/+$/, '')
   // 如果用户填了完整 URL（含 /chat/completions），直接返回
   if (base.endsWith('/chat/completions')) return base
@@ -568,9 +568,6 @@ async function callAPI(
       const errText = await res.text()
       let detail = ''
       try { detail = JSON.parse(errText)?.error?.message || '' } catch { /* ignore */ }
-      if (false) {
-        console.error('[AI] API Error:', res.status, errText.slice(0, 500))
-      }
       throw new Error(`请求失败 (${res.status})：${detail || errText.slice(0, 200)}`)
     }
 
@@ -634,9 +631,6 @@ async function callAPIStream(
       const errText = await res.text()
       let detail = ''
       try { detail = JSON.parse(errText)?.error?.message || '' } catch { /* ignore */ }
-      if (false) {
-        console.error('[AI] API Error:', res.status, errText.slice(0, 500))
-      }
       throw new Error(`请求失败 (${res.status})：${detail || errText.slice(0, 200)}`)
     }
 
@@ -748,7 +742,7 @@ function buildContext(state: any): string {
   const profile = gks.profile
   const subjectList = profile.subjects.map((s: any) => `  - ${s.name}：${s.currentScore}/${s.targetScore}（满分${s.fullScore}）${s.currentScore < s.targetScore ? '⚠️' : '✅'}`).join('\n')
   const errorList = profile.errorQuestions.slice(0, 5).map((q: any) => `  - [${q.resolved ? '✓' : '○'}] ${q.subject}·${q.tag}：${q.desc}`).join('\n') || '  （暂无）'
-  const planList = profile.generatedPlan.slice(0, 5).map((p: any) => `  - [${p.completed ? '✓' : '○'}] ${p.task}（${p.subject}·${p.tag}）`).join('\n') || '  （暂无）'
+  const planList = profile.generatedPlan.slice(0, 5).map((p: any) => `  - [${p.completed ? '✓' : '○'}] ${p.content}（${p.subject}）`).join('\n') || '  （暂无）'
 
   return `${SYSTEM_PROMPT}
 

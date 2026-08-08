@@ -31,6 +31,28 @@ function getTodaySchedule() {
   return SCHEDULE.filter(s => s.dayOfWeek === dayOfWeek)
 }
 
+// ── 学习经验增量发放：记录今日已发放经验对应的学习分钟数，避免重复累加 ──
+const STUDY_EXP_KEY = 'study-exp-granted'
+
+function getGrantedStudyMinutes(): number {
+  try {
+    const raw = localStorage.getItem(STUDY_EXP_KEY)
+    if (!raw) return 0
+    const obj = JSON.parse(raw)
+    const today = new Date().toISOString().slice(0, 10)
+    return obj.date === today ? (obj.minutes || 0) : 0
+  } catch { return 0 }
+}
+
+function setGrantedStudyMinutes(minutes: number) {
+  try {
+    localStorage.setItem(STUDY_EXP_KEY, JSON.stringify({
+      date: new Date().toISOString().slice(0, 10),
+      minutes
+    }))
+  } catch { /* ignore */ }
+}
+
 async function scheduleClassNotifications() {
   const granted = await requestNotificationPermission()
   if (!granted) return
@@ -74,7 +96,6 @@ async function scheduleClassNotifications() {
       id: notifyId,
       schedule: { at: remindDate, allowWhileIdle: true },
       sound: notifSetting.sound ? 'default' : undefined,
-      smallIcon: 'ic_notification',
       attachments: []
     })
   }
@@ -112,10 +133,12 @@ async function monitorUsage() {
     classStore.updateMonitorState(studyMs, entMs)
     mainStore.syncUsage(study, ent)
 
-    // 每5分钟学习奖励经验值
+    // 学习奖励经验值：只发放增量（避免每次轮询把累计时长重复计入）
     const studyMinutes = Math.floor(studyMs / 60000)
-    if (studyMinutes > 0) {
-      mainStore.addExp(studyMinutes, '专注学习')
+    const grantedMinutes = getGrantedStudyMinutes()
+    if (studyMinutes > grantedMinutes) {
+      mainStore.addExp(studyMinutes - grantedMinutes, '专注学习')
+      setGrantedStudyMinutes(studyMinutes)
     }
 
     const monitor = classStore.monitorState

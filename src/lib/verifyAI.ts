@@ -1,5 +1,5 @@
 import { useStore } from '@/stores/useStore'
-import { useClassTaskStore } from '@/stores/classTaskStore'
+import { buildChatUrl } from '@/lib/ai'
 import { logger } from '@/lib/logger'
 
 export interface VerifyResult {
@@ -69,7 +69,7 @@ export async function verifyClassPhoto(photoBase64: string, subject: string): Pr
       }
     ]
 
-    const resp = await fetch(verifyAI.endpoint + '/chat/completions', {
+    const resp = await fetch(buildChatUrl(verifyAI.endpoint), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

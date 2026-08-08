@@ -190,7 +190,7 @@ const QUICK_PROMPTS = [
   '奖励我50积分',
   '扣我10积分',
   '加个任务：复习数学',
-  '设HP为80',
+  '我是不是在偷懒',
 ]
 
 function InputBar({ sending, onSend }: InputBarProps) {
