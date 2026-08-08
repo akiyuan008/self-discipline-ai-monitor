@@ -93,7 +93,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
     const r = await testConnection(cfg)
     setTesting(r.ok ? 'ok' : 'fail')
     setTestMsg(r.msg)
-    if (r.ok) showToast('连接成功，监管者已就绪')
+    if (r.ok) showToast('连接成功，MOSS 已就绪')
     else showToast('连接失败：' + r.msg)
     // 不清空表单 — local state 保持不变
   }
@@ -351,8 +351,8 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
           </div>
         </Section>
 
-        {/* AI 监管者配置 */}
-        <Section title="AI 监管者">
+        {/* MOSS 配置 */}
+        <Section title="MOSS 引擎">
           <div className="card" style={{ padding: 16, borderRadius: 12 }}>
             <div style={{
               fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6
@@ -538,7 +538,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
                 }}
               />
               <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 4 }}>
-                此提示词将作为 messages[0] 发送给大模型，定义监管者的人格和行为规则。
+                此提示词将作为 messages[0] 发送给大模型，定义 MOSS 的人格和行为规则。
               </div>
             </div>
 
@@ -553,7 +553,7 @@ export default function Settings({ onBack, onNavigateDiagLogs }: Props) {
                 marginBottom: 12,
                 fontFamily: 'DM Mono, monospace'
               }}>
-                ⚠ 三项缺一不可。配置完成后监管者才能真正对话与调用工具。
+                三项缺一不可。配置完成后 MOSS 才能真正对话与调用工具。
               </div>
             )}
 

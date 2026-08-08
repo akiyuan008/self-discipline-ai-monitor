@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { useClassTaskStore } from '@/stores/classTaskStore'
+import Icon from '@/components/Icons'
 
 const ABYSS_QUOTES = [
   '正在深渊重载中，反应堆全功率输出！',
@@ -185,10 +186,10 @@ export default function Dungeon({ onExit }: Props) {
           completed: true,
           timestamp: Date.now()
         })
-        showToast('🔥 归档成功！深渊重载模式挑战成功！+200 PTS')
+        showToast('归档成功！深渊重载模式挑战成功！+200 PTS')
       } else {
         addExp(elapsed, '专注完成')
-        showToast('🎉 专注完成！做得很棒！')
+        showToast('专注完成！做得很棒！')
       }
     }
   }, [timeLeft, isRunning, mode, totalTime, isAbyssMode, currentTask, addFocusMs, addExp, addPoints, addPointRecord, addAbyssRecord])
@@ -280,7 +281,7 @@ export default function Dungeon({ onExit }: Props) {
         cursor: 'pointer', fontFamily: 'inherit',
         clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
       }}>
-        ← 退出引擎
+        <Icon.Back size={14} /> 退出引擎
       </button>
 
       {/* 深渊模式特制警告横幅 */}
@@ -433,14 +434,14 @@ export default function Dungeon({ onExit }: Props) {
         {/* 控制按钮 */}
         <div style={{ width: '100%', display: 'flex', gap: 10, justifyContent: 'center' }}>
           <button onClick={() => setShowSettings(true)} style={btnBase}>
-            <span>⚙</span> 设置
+            <Icon.Gear size={14} /> 设置
           </button>
           <button onClick={toggleEngine} style={ignitionBtn}>
-            <span>{isRunning ? '❚❚' : '▶'}</span>
+            {isRunning ? <Icon.Pause size={14} /> : <Icon.Play size={14} />}
             {isRunning ? '停止引擎' : '启动引擎'}
           </button>
           <button onClick={resetEngine} style={btnBase}>
-            <span>↺</span> 重置
+            <Icon.Refresh size={14} /> 重置
           </button>
         </div>
 

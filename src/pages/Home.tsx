@@ -5,6 +5,7 @@ import { App } from '@capacitor/app'
 import { fetchUsageStats, hasUsageAccess, fmtMs, isLateNight, openUsageAccessSettings } from '@/lib/usageStats'
 import { logger } from '@/lib/logger'
 import GaokaoProgress from '@/components/GaokaoProgress'
+import Icon from '@/components/Icons'
 import type { PageId } from '@/stores/useStore'
 
 interface Props {
@@ -148,8 +149,8 @@ export default function Home({ onNavigate }: Props) {
           }}
         >
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444' }}>
-              ⚠ 未授予使用情况访问权限
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon.Warning size={15} color="#ef4444" /> 未授予使用情况访问权限
             </div>
             <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
               点击此处跳转设置页开启权限，以获取真实时长
@@ -236,7 +237,7 @@ export default function Home({ onNavigate }: Props) {
             cursor: 'pointer', textTransform: 'uppercase',
             clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
           }}>
-            <div style={{ fontSize: 20, marginBottom: 2 }}>▶</div>
+            <div style={{ marginBottom: 4, display: 'flex', justifyContent: 'center' }}><Icon.Play size={20} color="#ff4500" /></div>
             启动引擎
           </button>
           <button onClick={() => onNavigate?.('quests')} style={{
@@ -246,7 +247,7 @@ export default function Home({ onNavigate }: Props) {
             cursor: 'pointer', textTransform: 'uppercase',
             clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
           }}>
-            <div style={{ fontSize: 20, marginBottom: 2 }}>☰</div>
+            <div style={{ marginBottom: 4, display: 'flex', justifyContent: 'center' }}><Icon.Menu size={20} color="#45a29e" /></div>
             任务列表
           </button>
           <button onClick={() => onNavigate?.('chat')} style={{

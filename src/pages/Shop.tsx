@@ -3,10 +3,14 @@ import { useStore, type PageId } from '@/stores/useStore'
 import { SHOP_ITEMS, type ShopItem } from '@/data/shop'
 import { showToast } from '@/components/Toast'
 import { logger } from '@/lib/logger'
+import Icon from '@/components/Icons'
 
 interface Props {
   onNavigate?: (p: PageId) => void
 }
+
+const CLIP = 'polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px)'
+const CLIP_SM = 'polygon(4px 0, 100% 0, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0 100%, 0 4px)'
 
 export default function Shop({ onNavigate }: Props) {
   const points = useStore(s => s.points)
@@ -23,67 +27,58 @@ export default function Shop({ onNavigate }: Props) {
 
   const allItems = [...SHOP_ITEMS, ...customItems]
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', background: 'var(--bg-alt)',
+    color: 'var(--fg)', border: '1px solid var(--border)',
+    fontSize: 13, outline: 'none', marginBottom: 8, boxSizing: 'border-box',
+    fontFamily: 'Share Tech Mono, monospace', clipPath: CLIP_SM
+  }
+
   return (
-    <div className="safe-top" style={{ padding: '24px 20px 140px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
+    <div className="safe-top" style={{ padding: '20px 16px 140px', background: 'var(--bg)', minHeight: '100vh' }}>
+      {/* 顶部 */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+        marginBottom: 16, paddingBottom: 10, borderBottom: '1px solid rgba(69, 162, 158, 0.2)'
+      }}>
         <div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-            ITEM_SHOP
+          <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 2 }}>
+            SUPPLY DEPOT
           </div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5, marginBottom: 0 }}>
-            补给站
+          <h1 style={{ fontSize: 26, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 2, textTransform: 'uppercase', margin: 0 }}>
+            补给大楼
           </h1>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
           <button
             onClick={() => setEditMode(!editMode)}
             style={{
-              border: '1px solid var(--border)',
-              borderRadius: 100, padding: '6px 12px',
-              fontSize: 11, fontWeight: 600,
-              cursor: 'pointer',
-              background: editMode ? 'var(--fg)' : 'var(--bg-alt)',
-              color: editMode ? 'var(--bg)' : 'var(--fg)'
+              padding: '6px 12px', background: editMode ? 'rgba(69,162,158,0.15)' : 'var(--bg-alt)',
+              border: `1px solid ${editMode ? '#45a29e' : 'var(--border)'}`,
+              color: editMode ? '#45a29e' : 'var(--muted)',
+              fontFamily: 'Share Tech Mono, monospace', fontSize: 11, letterSpacing: 1,
+              cursor: 'pointer', clipPath: CLIP_SM
             }}
-          >{editMode ? '完成' : '编辑'}</button>
-          <button
-            onClick={() => onNavigate?.('pointsDetail')}
-            style={{
-              background: 'none', border: 'none',
-              fontSize: 18, fontWeight: 600, fontFamily: 'DM Mono, monospace',
-              color: 'var(--fg)', cursor: 'pointer',
-              display: 'flex', alignItems: 'baseline', gap: 4
-            }}
-          >
-            {points}
-            <span style={{ fontSize: 11, color: 'var(--muted)' }}>PTS ›</span>
-          </button>
+          >{editMode ? 'DONE' : 'EDIT'}</button>
+          <div style={{ textAlign: 'right' }} onClick={() => onNavigate?.('pointsDetail')}>
+            <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>CREDITS</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#f59e0b', fontFamily: 'Teko, sans-serif', cursor: 'pointer' }}>{points}</div>
+          </div>
         </div>
       </div>
 
-      {/* 添加新道具表单 */}
+      {/* 添加表单 */}
       {editMode && showAddForm && (
-        <div className="card" style={{ padding: 16, borderRadius: 16, marginBottom: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>添加自定义道具</div>
-          <input
-            placeholder="道具名称"
-            value={newItem.name}
-            onChange={e => setNewItem({ ...newItem, name: e.target.value })}
-            style={{ width: '100%', padding: '10px 12px', background: 'var(--bg)', color: 'var(--fg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
-          />
-          <input
-            placeholder="道具描述"
-            value={newItem.desc}
-            onChange={e => setNewItem({ ...newItem, desc: e.target.value })}
-            style={{ width: '100%', padding: '10px 12px', background: 'var(--bg)', color: 'var(--fg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
-          />
-          <input
-            type="number"
-            placeholder="积分价格"
-            value={newItem.cost}
-            onChange={e => setNewItem({ ...newItem, cost: Number(e.target.value) || 0 })}
-            style={{ width: '100%', padding: '10px 12px', background: 'var(--bg)', color: 'var(--fg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, outline: 'none', marginBottom: 12, boxSizing: 'border-box' }}
-          />
+        <div style={{
+          background: 'var(--card-bg)', border: '1px solid #45a29e', padding: '14px',
+          marginBottom: 12, position: 'relative', clipPath: CLIP
+        }}>
+          <div style={{ fontSize: 11, color: '#45a29e', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 1, marginBottom: 10 }}>
+            ADD ITEM
+          </div>
+          <input placeholder="ITEM NAME" value={newItem.name} onChange={e => setNewItem({ ...newItem, name: e.target.value })} style={inputStyle} />
+          <input placeholder="DESCRIPTION" value={newItem.desc} onChange={e => setNewItem({ ...newItem, desc: e.target.value })} style={inputStyle} />
+          <input type="number" placeholder="COST" value={newItem.cost} onChange={e => setNewItem({ ...newItem, cost: Number(e.target.value) || 0 })} style={inputStyle} />
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => {
@@ -92,9 +87,9 @@ export default function Shop({ onNavigate }: Props) {
                   name: newItem.name.trim(),
                   desc: newItem.desc.trim() || '自定义道具',
                   cost: Math.max(1, newItem.cost),
-                  iconBg: 'var(--bg-alt)',
-                  iconColor: 'var(--fg)',
-                  iconPath: 'M12 2L2 7L12 12L22 7L12 2M2 17L12 22L22 17M2 12L12 17L22 12',
+                  iconBg: 'rgba(69,162,158,0.12)',
+                  iconColor: '#45a29e',
+                  iconPath: 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z',
                   effect: 'snack'
                 })
                 setNewItem({ name: '', desc: '', cost: 100 })
@@ -102,12 +97,12 @@ export default function Shop({ onNavigate }: Props) {
                 logger.info('shop', `添加自定义道具：${newItem.name.trim()}`, { cost: Math.max(1, newItem.cost) })
                 showToast('道具已添加')
               }}
-              style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--fg)', color: 'var(--bg)', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-            >确认添加</button>
+              style={{ flex: 1, padding: '9px', background: 'rgba(69,162,158,0.15)', border: '1px solid #45a29e', color: '#45a29e', fontFamily: 'Share Tech Mono, monospace', fontSize: 12, letterSpacing: 1, cursor: 'pointer', clipPath: CLIP_SM }}
+            >CONFIRM</button>
             <button
               onClick={() => setShowAddForm(false)}
-              style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'var(--bg-alt)', color: 'var(--fg)', border: '1px solid var(--border)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-            >取消</button>
+              style={{ flex: 1, padding: '9px', background: 'var(--bg-alt)', border: '1px solid var(--border)', color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', fontSize: 12, letterSpacing: 1, cursor: 'pointer', clipPath: CLIP_SM }}
+            >CANCEL</button>
           </div>
         </div>
       )}
@@ -116,84 +111,69 @@ export default function Shop({ onNavigate }: Props) {
       {editMode && !showAddForm && (
         <button
           onClick={() => setShowAddForm(true)}
-          className="card"
           style={{
-            width: '100%', padding: '14px', borderRadius: 16, marginBottom: 10,
-            background: 'var(--bg-alt)', border: '2px dashed var(--border)',
-            fontSize: 13, fontWeight: 600, color: 'var(--muted)', cursor: 'pointer'
+            width: '100%', padding: '14px', marginBottom: 10,
+            background: 'transparent', border: '1px dashed #45a29e', color: '#45a29e',
+            fontFamily: 'Share Tech Mono, monospace', fontSize: 12, letterSpacing: 1,
+            cursor: 'pointer', clipPath: CLIP, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
           }}
-        >+ 添加自定义道具</button>
+        ><Icon.More size={14} color="#45a29e" /> ADD CUSTOM ITEM</button>
       )}
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 10
-      }}>
+      {/* 商品网格 */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {allItems.map(item => {
-          const isCustom = customItems.some(c => c.id === item.id)
+          const isCustom = customItems.some(ci => ci.id === item.id)
           const canBuy = !item.lockLevel || streak >= item.lockLevel
           const enough = points >= item.cost
           const ownedCount = owned[item.id] ?? 0
 
           return (
-            <div
-              key={item.id}
-              className="card"
-              style={{
-                padding: 16,
-                borderRadius: 16,
-                position: 'relative',
-                opacity: canBuy ? 1 : 0.5,
-                filter: canBuy ? 'none' : 'grayscale(1)'
-              }}
-            >
+            <div key={item.id} style={{
+              background: 'var(--card-bg)', border: '1px solid var(--border)',
+              padding: '14px', position: 'relative', clipPath: CLIP,
+              opacity: canBuy ? 1 : 0.45, filter: canBuy ? 'none' : 'grayscale(1)'
+            }}>
+              <div className="corner-deco tl" style={{ width: 8, height: 8, borderWidth: 1 }} />
+              <div className="corner-deco br" style={{ width: 8, height: 8, borderWidth: 1 }} />
+
               {editMode && isCustom && (
                 <button
                   onClick={() => { removeCustom(item.id); showToast('已删除') }}
                   style={{
-                    position: 'absolute', top: 6, right: 6,
-                    width: 24, height: 24, borderRadius: '50%',
-                    background: 'var(--danger)', color: '#fff',
-                    border: 'none', fontSize: 14, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    zIndex: 10
+                    position: 'absolute', top: 8, right: 8, width: 22, height: 22,
+                    background: 'rgba(255,68,68,0.15)', border: '1px solid #ff4444',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 10, clipPath: CLIP_SM
                   }}
-                >×</button>
+                ><Icon.Close size={12} color="#ff4444" /></button>
               )}
 
               {item.badge && (
                 <div style={{
-                  position: 'absolute',
-                  top: 8, right: editMode && isCustom ? 36 : 8,
-                  padding: '2px 6px',
-                  background: 'var(--danger)',
-                  color: '#fff',
-                  fontSize: 9,
-                  fontWeight: 700,
-                  borderRadius: 100
-                }}>
-                  {item.badge}
-                </div>
+                  position: 'absolute', top: 8, right: editMode && isCustom ? 36 : 8,
+                  padding: '1px 6px', background: 'rgba(255,69,0,0.15)',
+                  border: '1px solid #ff4500', color: '#ff4500',
+                  fontSize: 8, fontWeight: 700, fontFamily: 'Share Tech Mono, monospace', letterSpacing: 1
+                }}>{item.badge}</div>
               )}
 
               <div style={{
-                width: 44, height: 44,
-                borderRadius: 12,
-                background: item.iconBg,
+                width: 42, height: 42, background: item.iconBg,
+                border: `1px solid ${item.iconColor}40`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                marginBottom: 12
+                marginBottom: 10, clipPath: CLIP_SM
               }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill={item.iconColor}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={item.iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d={item.iconPath} />
                 </svg>
               </div>
 
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 1, marginBottom: 2 }}>
                 {item.name}
               </div>
-              <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 12, minHeight: 28 }}>
-                {item.lockLevel && !canBuy ? `Lv.${item.lockLevel} 解锁` : item.desc}
+              <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginBottom: 10, minHeight: 26, lineHeight: 1.4 }}>
+                {item.lockLevel && !canBuy ? `UNLOCK AT STREAK ${item.lockLevel}` : item.desc}
               </div>
 
               <button
@@ -201,25 +181,22 @@ export default function Shop({ onNavigate }: Props) {
                 onClick={() => {
                   if (buy(item.id)) {
                     logger.info('shop', `购买道具：${item.name}`, { cost: item.cost, id: item.id })
-                    showToast(`购买成功：${item.name}${ownedCount > 0 ? ` (×${ownedCount + 1})` : ''}`)
+                    showToast(`兑换成功：${item.name}${ownedCount > 0 ? ` (×${ownedCount + 1})` : ''}`)
                   } else {
                     logger.warn('shop', `购买失败：${item.name}`, { cost: item.cost, points })
-                    showToast('积分不足或已达购买上限')
+                    showToast('积分不足或已达上限')
                   }
                 }}
                 style={{
-                  width: '100%',
-                  padding: '8px',
-                  borderRadius: 8,
-                  background: canBuy && enough && !editMode ? 'var(--fg)' : 'var(--bg-alt)',
-                  color: canBuy && enough && !editMode ? 'var(--bg)' : 'var(--muted)',
-                  border: 'none',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: canBuy && enough && !editMode ? 'pointer' : 'default'
+                  width: '100%', padding: '7px',
+                  background: canBuy && enough && !editMode ? 'rgba(245,158,11,0.12)' : 'var(--bg-alt)',
+                  border: `1px solid ${canBuy && enough && !editMode ? '#f59e0b' : 'var(--border)'}`,
+                  color: canBuy && enough && !editMode ? '#f59e0b' : 'var(--muted)',
+                  fontFamily: 'Share Tech Mono, monospace', fontSize: 12, letterSpacing: 1,
+                  cursor: canBuy && enough && !editMode ? 'pointer' : 'default', clipPath: CLIP_SM
                 }}
               >
-                {item.cost} PTS
+                {item.cost} CR{ownedCount > 0 ? ` // ×${ownedCount}` : ''}
               </button>
             </div>
           )

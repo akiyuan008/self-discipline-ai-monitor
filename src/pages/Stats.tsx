@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useStore } from '@/stores/useStore'
 import { useClassTaskStore } from '@/stores/classTaskStore'
 import type { AbyssRecord } from '@/stores/classTaskStore'
+import Icon from '@/components/Icons'
 
 interface Props {
   onBack: () => void
@@ -357,7 +358,7 @@ export default function Stats({ onBack }: Props) {
                   opacity: unlocked ? 1 : 0.5,
                   clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
                 }}>
-                  <div style={{ fontSize: 20, marginBottom: 4 }}>{unlocked ? '🏆' : '🔒'}</div>
+                  <div style={{ marginBottom: 4, display: 'flex', justifyContent: 'center' }}>{unlocked ? <Icon.Trophy size={20} color="#ff4500" /> : <Icon.Lock size={20} color="var(--muted)" />}</div>
                   <div style={{ fontSize: 12, fontWeight: 600, color: unlocked ? '#ff4500' : 'var(--fg)' }}>{medal.name}</div>
                   <div style={{ fontSize: 10, color: 'var(--muted)' }}>{medal.desc}</div>
                 </div>

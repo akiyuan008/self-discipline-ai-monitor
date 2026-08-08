@@ -77,7 +77,7 @@ export default function Onboarding() {
             Cyber Survival
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 40 }}>
-            在这个赛博自律世界里，积分是你的财富，深渊挑战是学习时段，AI 监管者会守护你的进度曲线。
+            在这个赛博自律世界里，积分是你的财富，深渊挑战是学习时段，MOSS 会守护你的进度曲线。
           </p>
 
           <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 8 }}>玩家代号</label>
@@ -176,7 +176,7 @@ export default function Onboarding() {
             使用情况访问权限
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 24, lineHeight: 1.6 }}>
-            为了能准确统计你的每日学习应用与娱乐应用时长，AI 监管者需要获取系统的「使用情况访问权限」。
+            为了能准确统计你的每日学习应用与娱乐应用时长，MOSS 需要获取系统的「使用情况访问权限」。
           </p>
 
           <div style={{
@@ -194,7 +194,7 @@ export default function Onboarding() {
                 权限状态
               </div>
               <div style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
-                {checkingPermission ? '正在检测权限…' : (usageGranted ? '✓ 已成功授予使用情况访问权限' : '⚠ 未开启权限（可能影响时长统计）')}
+                {checkingPermission ? '正在检测权限…' : (usageGranted ? '✓ 已成功授予使用情况访问权限' : '未开启权限（可能影响时长统计）')}
               </div>
             </div>
             <div style={{
@@ -257,10 +257,10 @@ export default function Onboarding() {
             INITIALIZATION // 04
           </div>
           <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: -0.5, marginBottom: 12 }}>
-            接入 AI 监管者
+            接入 MOSS
           </h1>
           <p style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 24 }}>
-            填入兼容 OpenAI 协议的大模型 API。监管者会在你低谷时主动开口、能调任务/积分/成就。
+            填入兼容 OpenAI 协议的大模型 API。MOSS 会在你低谷时主动开口、能调任务/积分/成就。
           </p>
 
           <label style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>API Key</label>

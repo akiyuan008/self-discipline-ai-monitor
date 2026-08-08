@@ -145,7 +145,7 @@ export default function ClassHistory({ onBack }: Props) {
               <div key={i} className="card" style={{ padding: 14, borderRadius: 16, marginBottom: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 600 }}>{fmtDate(m.date)}</span>
-                  {m.isPunished && <span style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 600 }}>⚠ 被警告</span>}
+                  {m.isPunished && <span style={{ fontSize: 11, color: 'var(--danger)', fontWeight: 600 }}>[被警告]</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 16, fontSize: 12 }}>
                   <div>

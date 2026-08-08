@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useStore } from '@/stores/useStore'
+import Icon from '@/components/Icons'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useStore(s => s.theme)
@@ -76,7 +77,7 @@ export function ThemeToggle() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
           {(['system', 'light', 'dark'] as const).map(m => {
-            const labelMap = { system: '📱 跟随系统', light: '☀️ 浅色模式', dark: '🌙 深色模式' }
+            const labelMap = { system: '跟随系统', light: '浅色模式', dark: '深色模式' }
             const active = darkModeMode === m
             return (
               <button
@@ -143,7 +144,7 @@ export function ThemeToggle() {
       </button>
 
       {/* 流浪地球主题：原项目 default 极简风格 */}
-      <button onClick={() => { setTheme('wandering'); showToast('🌍 流浪地球主题已启用！') }} style={{
+      <button onClick={() => { setTheme('wandering'); showToast('流浪地球主题已启用！') }} style={{
         width: '100%', padding: '12px 14px',
         background: theme === 'wandering' ? 'var(--accent-dim)' : 'var(--bg-alt)',
         border: theme === 'wandering' ? '1px solid var(--accent)' : '1px solid var(--border)',
@@ -156,9 +157,9 @@ export function ThemeToggle() {
           width: 38, height: 38, borderRadius: 8,
           background: 'linear-gradient(135deg, #2563eb, #38bdf8)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 18, flexShrink: 0
+          flexShrink: 0
         }}>
-          🌍
+          <Icon.Globe size={20} color="#fff" />
         </div>
 
         <div style={{ flex: 1 }}>

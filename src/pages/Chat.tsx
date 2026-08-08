@@ -4,6 +4,7 @@ import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { chatWithAI } from '@/lib/ai'
 import { hasUsageAccess, openUsageAccessSettings } from '@/lib/usageStats'
+import Icon from '@/components/Icons'
 
 interface Props {
   onNavigateSettings?: () => void
@@ -24,26 +25,28 @@ const StatusBar = memo(function StatusBar({ onClearChat, onToggleHistory, showHi
 
   return (
     <div style={{
-      padding: '16px 20px 12px',
+      padding: '16px 16px 12px',
       display: 'flex',
       justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      flexShrink: 0
+      alignItems: 'flex-end',
+      flexShrink: 0,
+      borderBottom: '1px solid rgba(69, 162, 158, 0.2)'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: ai.apiKey ? 'var(--success)' : 'var(--muted)',
-              display: 'inline-block'
-            }} />
-            AI_WARDEN · {ai.apiKey ? 'ONLINE' : 'OFFLINE'}
-          </div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, letterSpacing: -0.5, margin: 0 }}>监管者</h1>
-          <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace', marginTop: 2 }}>
-            {points} PTS · 连签 {streak}天
-          </div>
+      <div>
+        <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{
+            width: 6, height: 6, borderRadius: '50%',
+            background: ai.apiKey ? '#45a29e' : 'var(--muted)',
+            boxShadow: ai.apiKey ? '0 0 6px #45a29e' : 'none',
+            display: 'inline-block'
+          }} />
+          MOSS · {ai.apiKey ? 'ONLINE' : 'OFFLINE'}
+        </div>
+        <h1 style={{ fontSize: 26, fontWeight: 700, fontFamily: 'Teko, sans-serif', letterSpacing: 2, textTransform: 'uppercase', margin: 0 }}>
+          MOSS
+        </h1>
+        <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginTop: 2 }}>
+          {points} CREDITS // STREAK {streak}D
         </div>
       </div>
       <div style={{ display: 'flex', gap: 6 }}>
@@ -249,7 +252,7 @@ function InputBar({ sending, onSend }: InputBarProps) {
         onKeyDown={handleKeyDown}
         onCompositionStart={handleCompositionStart}
         onCompositionEnd={handleCompositionEnd}
-        placeholder="告诉监管者…"
+        placeholder="向 MOSS 发送指令…"
         inputMode="text"
         enterKeyHint="send"
         autoCapitalize="off"
@@ -403,8 +406,8 @@ export default function Chat({ onNavigateSettings }: Props) {
             background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)',
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: 28, marginBottom: 6 }}>⚠</div>
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>监管者未上线</div>
+            <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'center' }}><Icon.Warning size={26} color="var(--warning)" /></div>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 6 }}>MOSS 未上线</div>
             <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 12, lineHeight: 1.6 }}>
               {!ai.apiKey?.trim() ? '· 缺少 API Key\n' : ''}
               {!ai.endpoint?.trim() ? '· 缺少 Base URL\n' : ''}
@@ -426,7 +429,7 @@ export default function Chat({ onNavigateSettings }: Props) {
           }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--danger)' }}>缺少使用情况访问权限</div>
-              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>监管者需要此权限查阅你的真实学习/娱乐时长</div>
+              <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>MOSS 需要此权限查阅你的真实学习/娱乐时长</div>
             </div>
             <button onClick={async () => {
               try {
@@ -452,7 +455,7 @@ export default function Chat({ onNavigateSettings }: Props) {
             padding: '14px 14px', borderRadius: 16, background: 'var(--card-bg)',
             border: '1px solid var(--border)', marginBottom: 12, color: 'var(--muted)', fontSize: 13
           }}>
-            现在可以直接和监管者交流，要求、惩罚、奖励、任务和成就都会同步到你的状态里。
+            现在可以直接和 MOSS 交流，要求、惩罚、奖励、任务和成就都会同步到你的状态里。
           </div>
         )}
 

@@ -14,7 +14,7 @@ import { fetchUsageStats, hasUsageAccess, openUsageAccessSettings, fmtMs } from 
 // ═══════════════════════════════════════════════════════════
 // 硬编码 System Prompt — 永远放在 messages[0]
 // ═══════════════════════════════════════════════════════════
-const SYSTEM_PROMPT = `你是用户的个人成长监督者（监管者）。
+const SYSTEM_PROMPT = `你是 MOSS，用户的个人成长监督 AI。
 
 核心规则：
 - 回复简短直接，不超过3句话。不要用emoji、不要用markdown标题。
@@ -419,13 +419,13 @@ export async function chatWithAI(
   const ai = state.ai
 
   if (!ai.apiKey?.trim()) {
-    return '请在「设置 → AI 监管者」填入 API Key 后再开始对话。'
+    return '请在「设置 → MOSS 引擎」填入 API Key 后再开始对话。'
   }
   if (!ai.endpoint?.trim()) {
-    return '请在「设置 → AI 监管者」填入 Endpoint（例如 https://api.deepseek.com）。'
+    return '请在「设置 → MOSS 引擎」填入 Endpoint（例如 https://api.deepseek.com）。'
   }
   if (!ai.model?.trim()) {
-    return '请在「设置 → AI 监管者」填入模型名称（例如 deepseek-v4-flash）。'
+    return '请在「设置 → MOSS 引擎」填入模型名称（例如 deepseek-v4-flash）。'
   }
 
   // ── 滑动窗口：System Prompt（index 0）+ 最近 20 条历史对话（10 轮）──
@@ -807,7 +807,7 @@ export async function testConnection(cfg: {
 
     if (res.ok) {
       logger.info('ai', 'AI 连接测试成功', { model: cfg.model, endpoint: cfg.endpoint })
-      return { ok: true, msg: '连接成功，监管者已就绪' }
+      return { ok: true, msg: '连接成功，MOSS 已就绪' }
     }
     const text = await res.text()
     let detail = ''

@@ -49,7 +49,7 @@ export default function Achievements({ onBack }: Props) {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, fontWeight: 500 }}>AI 动态管理</div>
             <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1 }}>
-              与监管者对话时，AI 会根据你的表现添加和更新成就
+              与 MOSS 对话时，AI 会根据你的表现添加和更新成就
             </div>
           </div>
         </div>

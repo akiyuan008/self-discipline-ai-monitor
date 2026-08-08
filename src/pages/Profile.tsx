@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useStore, daysUntilGaokao } from '@/stores/useStore'
 import { useGaoKaoStore } from '@/stores/gaoKaoStore'
+import Icon from '@/components/Icons'
 
 interface ProfileProps {
   onNavigate?: (page: any) => void
@@ -30,10 +31,9 @@ function ExpPanel() {
             width: 36, height: 36, borderRadius: 10,
             background: true ? 'linear-gradient(135deg, #ff4500, #f59e0b)' : 'var(--bg-alt)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 16,
             boxShadow: true ? '0 0 10px rgba(255, 69, 0, 0.3)' : 'none'
           }}>
-            {true ? '🚀' : '⭐'}
+            <Icon.Rocket size={18} color="#fff" />
           </div>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, fontFamily: 'Teko, sans-serif', letterSpacing: 1 }}>LVL.{level}</div>
