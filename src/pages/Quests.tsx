@@ -4,6 +4,7 @@ import { useClassTaskStore } from '@/stores/classTaskStore'
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera'
 import { getPeriodTime, resolveTaskState, reconcileOverdue, type TaskUIState } from '@/data/schedule'
 import { verifyClassPhoto, reportToWarden } from '@/lib/verifyAI'
+import { savePhoto } from '@/lib/photoStorage'
 import { showToast } from '@/components/Toast'
 import { logger } from '@/lib/logger'
 import Icon from '@/components/Icons'
@@ -96,9 +97,11 @@ export default function Quests({ onNavigate }: Props) {
       const image = await Camera.getPhoto({ quality: 80, allowEditing: false, resultType: CameraResultType.Base64, source: CameraSource.Camera })
       showToast('MOSS 核验中…')
       const verifyResult = await verifyClassPhoto(image.base64String || '', task.subject)
+      // 照片存到外部存储，localStorage 只存路径（避免配额超限）
+      const photoPath = await savePhoto(image.base64String || '', taskId)
       useClassTaskStore.getState().addVerifyRecord({
         taskId, date: today, subject: task.subject,
-        photoUrl: image.base64String || '',
+        photoUrl: photoPath,
         aiReview: verifyResult.review,
         aiScore: verifyResult.score,
         passed: verifyResult.passed
@@ -109,7 +112,7 @@ export default function Quests({ onNavigate }: Props) {
         await reportToWarden(`${task.subject} 打卡核验未通过（${verifyResult.score}分）。${verifyResult.review}`)
         return
       }
-      const reward = completeClassTask(taskId, image.base64String || undefined, verifyResult.review, verifyResult.score)
+      const reward = completeClassTask(taskId, photoPath || undefined, verifyResult.review, verifyResult.score)
       if (reward > 0) {
         addPoints(reward)
         addPointRecord('earn', reward, `${task.subject}课完成`)

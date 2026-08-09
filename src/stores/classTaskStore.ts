@@ -219,7 +219,7 @@ export const useClassTaskStore = create<ClassTaskState>()(
           classTasks: newTasks,
           currentTask: null,
           lastPointsChange: { amount: totalReward, reason: `完成${task.subject}课`, time: now },
-          taskHistory: [...otherHistory, newHistory]
+          taskHistory: [...otherHistory, newHistory].slice(-60)
         })
 
         // XP 跨 store 更新
@@ -318,7 +318,7 @@ export const useClassTaskStore = create<ClassTaskState>()(
         set({
           monitorState: newMonitor,
           lastPointsChange: pointsChange,
-          monitorHistory: [...otherMonitor, monitorRecord]
+          monitorHistory: [...otherMonitor, monitorRecord].slice(-60)
         })
       },
 
@@ -328,7 +328,7 @@ export const useClassTaskStore = create<ClassTaskState>()(
 
       addVerifyRecord: (record) => {
         const fullRecord: VerifyRecord = { ...record, verifiedAt: Date.now() }
-        set(s => ({ verifyHistory: [...s.verifyHistory, fullRecord] }))
+        set(s => ({ verifyHistory: [...s.verifyHistory, fullRecord].slice(-100) }))
       },
 
       addMonitorHistory: (record) => {
@@ -339,7 +339,7 @@ export const useClassTaskStore = create<ClassTaskState>()(
       },
 
       addAbyssRecord: (record) => {
-        set(s => ({ abyssRecords: [...s.abyssRecords, record] }))
+        set(s => ({ abyssRecords: [...s.abyssRecords, record].slice(-200) }))
       },
 
       getTaskHistory: (date) => {
@@ -373,7 +373,25 @@ export const useClassTaskStore = create<ClassTaskState>()(
     }),
     {
       name: 'class-task-store',
-      storage: createJSONStorage(() => localStorage)
+      storage: createJSONStorage(() => localStorage),
+      merge: (persisted, current) => {
+        const p = (persisted || {}) as any
+        const c = current as any
+        // 清理旧的内联 base64 照片（>1000 字符视为 base64 照片），避免撑爆 localStorage
+        const stripPhoto = (url: string) => (url && url.length > 1000 && !url.startsWith('MOSS_Photos/') ? '' : url)
+        if (Array.isArray(p.verifyHistory)) {
+          p.verifyHistory = p.verifyHistory.map((r: any) => ({ ...r, photoUrl: stripPhoto(r.photoUrl || '') }))
+        }
+        if (Array.isArray(p.taskHistory)) {
+          p.taskHistory = p.taskHistory.map((day: any) => ({
+            ...day,
+            tasks: Array.isArray(day.tasks)
+              ? day.tasks.map((t: any) => ({ ...t, photoUrl: stripPhoto(t.photoUrl || '') }))
+              : day.tasks
+          }))
+        }
+        return { ...c, ...p }
+      }
     }
   )
 )

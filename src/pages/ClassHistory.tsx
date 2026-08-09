@@ -7,6 +7,7 @@ import { getPeriodTime } from '@/data/schedule'
 import { fmtMs } from '@/lib/usageStats'
 import { showToast } from '@/components/Toast'
 import Icon from '@/components/Icons'
+import { loadPhoto } from '@/lib/photoStorage'
 import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
 
 interface Props {
@@ -203,14 +204,7 @@ function PhotosTab({ data, onPreview }: { data: any[]; onPreview: (p: string) =>
             background: 'var(--card-bg)', border: '1px solid var(--border)',
             clipPath: CLIP_SM, overflow: 'hidden', cursor: m.photoUrl ? 'pointer' : 'default'
           }}>
-            {m.photoUrl ? (
-              <img src={m.photoUrl.startsWith('data:') ? m.photoUrl : `data:image/jpeg;base64,${m.photoUrl}`}
-                style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block' }} alt={m.subject} />
-            ) : (
-              <div style={{ width: '100%', height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-alt)' }}>
-                <Icon.Camera size={22} color="var(--muted)" />
-              </div>
-            )}
+            <PhotoImage path={m.photoUrl} subject={m.subject} />
             <div style={{ padding: '8px 10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 13, fontWeight: 700, fontFamily: BODY }}>{m.subject}</span>
@@ -381,6 +375,30 @@ function Empty({ text, sub }: { text: string; sub: string }) {
       <div style={{ fontSize: 11, marginTop: 8, opacity: 0.6, lineHeight: 1.5, fontFamily: BODY }}>{sub}</div>
     </div>
   )
+}
+
+function PhotoImage({ path, subject }: { path: string; subject: string }) {
+  const [src, setSrc] = useState('')
+  useEffect(() => {
+    if (!path) return
+    if (path.startsWith('data:')) {
+      setSrc(path)
+    } else if (path.startsWith('MOSS_Photos/')) {
+      loadPhoto(path).then(b64 => { if (b64) setSrc(`data:image/jpeg;base64,${b64}`) })
+    } else {
+      // 旧数据：base64 直接内联
+      setSrc(`data:image/jpeg;base64,${path}`)
+    }
+  }, [path])
+
+  if (!src) {
+    return (
+      <div style={{ width: '100%', height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-alt)' }}>
+        <Icon.Camera size={22} color="var(--muted)" />
+      </div>
+    )
+  }
+  return <img src={src} style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block' }} alt={subject} />
 }
 
 function fmtDate(dateStr: string): string {
