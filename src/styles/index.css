@@ -1,8 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Teko:wght@400;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ═══ 全局统一字体 ═══
+   整个 APP 只用一套字体：英文/数字用 Inter，中文用系统中文（苹方/雅黑/思源）。
+   用 !important 强制覆盖所有内联 fontFamily，确保全局一致。 */
+:root {
+  --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+}
+*, *::before, *::after {
+  font-family: var(--font-main) !important;
+}
 
 @layer base {
   /* 默认主题：APK 旧版本简洁风格 */
@@ -76,7 +84,7 @@
     margin: 0;
   }
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-family: var(--font-main);
     background: var(--bg);
     color: var(--fg);
     -webkit-font-smoothing: antialiased;
@@ -101,7 +109,7 @@
     -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
   }
   .font-mono {
-    font-family: 'Share Tech Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-main);
   }
 }
 
@@ -236,7 +244,7 @@
   .timer-text {
     font-size: 6rem;
     font-weight: 200;
-    font-family: 'Teko', sans-serif;
+    font-family: var(--font-main);
   }
   .safe-top {
     padding-top: env(safe-area-inset-top);
@@ -335,7 +343,7 @@
   border-radius: 100px;
   font-size: 11px;
   font-weight: 700;
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--font-main);
   background: var(--bg-alt);
   border: 1px solid var(--border);
   color: var(--accent);
@@ -385,7 +393,7 @@
 
 /* 状态指示器 */
 .status-indicator {
-  font-family: 'Share Tech Mono', monospace;
+  font-family: var(--font-main);
   font-size: 0.8rem;
   letter-spacing: 3px;
   color: var(--accent);
