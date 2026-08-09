@@ -5,8 +5,12 @@
 /* ═══ 全局统一字体 ═══
    整个 APP 只用一套字体：英文/数字用 Inter，中文用系统中文（苹方/雅黑/思源）。
    用 !important 强制覆盖所有内联 fontFamily，确保全局一致。 */
-:root {
+/* 字体按主题切换：默认用 Inter，流浪地球用 Share Tech Mono */
+:root, [data-theme="light"], [data-theme="dark"] {
   --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+}
+[data-theme="wandering"] {
+  --font-main: 'Share Tech Mono', 'Inter', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
 }
 *, *::before, *::after {
   font-family: var(--font-main) !important;
@@ -458,3 +462,40 @@
   z-index: 0;
   pointer-events: none;
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   主题级结构分离
+   默认模式：现代简约卡片式（圆角+阴影，无切角，无战术角标）
+   流浪地球：FUI/HUD（切角+战术角标，线条框，无阴影）
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 默认模式：去掉切角和战术角标，用圆角 ── */
+[data-theme="light"] .corner-deco,
+[data-theme="dark"] .corner-deco {
+  display: none !important;
+}
+
+/* 默认模式：移除所有 clip-path，让 border-radius 生效 */
+[data-theme="light"] *,
+[data-theme="dark"] * {
+  clip-path: none !important;
+}
+
+/* 默认模式：卡片用圆角+阴影（覆盖内联 clip-path） */
+[data-theme="light"] .card,
+[data-theme="dark"] .card {
+  border-radius: 16px !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06) !important;
+  background: var(--card-bg) !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* ── 流浪地球模式：保留切角+战术角标，线条框 ── */
+[data-theme="wandering"] .card {
+  background: transparent !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+
+/* 流浪地球：装饰性等宽英文标签（通过 data-theme 控制字体）已由 --font-main 处理 */
