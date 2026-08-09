@@ -73,7 +73,7 @@ export default function App() {
     const sub = CapApp.addListener('backButton', ({ canGoBack }) => {
       const page = pageRef.current
       if (page === 'onboarding') return
-      if (page === 'dungeon') { goHome(); return }
+      if (page === 'dungeon') return  // 深渊页自己处理返回（运行中弹确认，不直接退出）
       if (page !== 'home') {
         goBack()  // 返回上一个页面
       } else {

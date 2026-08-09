@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { App as CapApp } from '@capacitor/app'
 import { useStore } from '@/stores/useStore'
 import { showToast } from '@/components/Toast'
 import { useClassTaskStore } from '@/stores/classTaskStore'
@@ -172,6 +173,32 @@ export default function Dungeon({ onExit }: Props) {
     showToast(`专注时长已设定为 ${val} 分钟`)
   }
 
+  // 退出请求：运行中先弹确认，否则直接退出（供"退出引擎"按钮和系统返回手势共用）
+  const requestExit = useCallback(() => {
+    // 确认弹窗已打开时，返回 = 关闭弹窗（继续坚守）
+    if (showQuitConfirm) {
+      setShowQuitConfirm(false)
+      return
+    }
+    if (isRunning) {
+      const penalties = ['背诵一段课文', '做10个深蹲', '抄写10个单词', '闭眼冥想1分钟']
+      setQuitPenalty(penalties[Math.floor(Math.random() * penalties.length)])
+      setShowQuitConfirm(true)
+      return
+    }
+    onExit()
+  }, [isRunning, showQuitConfirm, onExit])
+
+  // 系统返回手势/返回键：走 requestExit（运行中弹确认，不直接退出）
+  const requestExitRef = useRef(requestExit)
+  requestExitRef.current = requestExit
+  useEffect(() => {
+    const sub = CapApp.addListener('backButton', () => {
+      requestExitRef.current()
+    })
+    return () => { void sub.then(s => s.remove()) }
+  }, [])
+
   useEffect(() => {
     if (timeLeft === 0 && isRunning && mode !== 'free') {
       if (timerRef.current) clearInterval(timerRef.current)
@@ -274,15 +301,7 @@ export default function Dungeon({ onExit }: Props) {
       }} />
 
       {/* 返回按钮 */}
-      <button onClick={() => {
-        if (isRunning) {
-          const penalties = ['背诵一段课文', '做10个深蹲', '抄写10个单词', '闭眼冥想1分钟']
-          setQuitPenalty(penalties[Math.floor(Math.random() * penalties.length)])
-          setShowQuitConfirm(true)
-          return
-        }
-        onExit()
-      }} style={{
+      <button onClick={requestExit} style={{
         position: 'absolute', top: 16, left: 16, zIndex: 10,
         background: 'var(--card-bg)', border: '1px solid var(--border)',
         color: 'var(--fg)', padding: '8px 14px', fontSize: 13, fontWeight: 600,
