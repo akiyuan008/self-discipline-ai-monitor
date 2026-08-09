@@ -208,8 +208,8 @@ export default function Dungeon({ onExit }: Props) {
 
       if (isAbyssMode) {
         addExp(elapsed * 2, '深渊重载完美通关')
-        addPoints(200)
-        addPointRecord('earn', 200, '完成深渊重载挑战')
+        addPoints(400)
+        addPointRecord('earn', 400, '完成深渊重载挑战')
         addAbyssRecord({
           date: localDateStr(),
           subject: currentTask ? currentTask.subject : '深渊重载',
@@ -217,7 +217,7 @@ export default function Dungeon({ onExit }: Props) {
           completed: true,
           timestamp: Date.now()
         })
-        showToast('归档成功！深渊重载模式挑战成功！+200 PTS')
+        showToast('归档成功！深渊重载模式挑战成功！+400 PTS')
         // 深渊完成后引导录制"深渊回响"
         const subj = currentTask ? currentTask.subject : '深渊重载'
         setEchoContext(`${subj} · 深渊 ${Math.round(elapsed / 60)}min`)

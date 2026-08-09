@@ -177,9 +177,9 @@ export const useClassTaskStore = create<ClassTaskState>()(
         if (period) {
           const endMin = timeToMinutes(period.endTime)
           const currentMin = new Date().getHours() * 60 + new Date().getMinutes()
-          if (currentMin <= endMin) bonus += 10
+          if (currentMin <= endMin) bonus += 15
         }
-        if (aiScore && aiScore >= 80) bonus += 20
+        if (aiScore && aiScore >= 80) bonus += 25
 
         // XP 奖励：打卡 +50，AI 评分 >=90 额外 +30
         let xpGain = 50
@@ -262,9 +262,9 @@ export const useClassTaskStore = create<ClassTaskState>()(
         const allCompleted = todayTasks.length > 0 && todayTasks.every(t => t.status === 'completed')
         if (allCompleted) {
           const newStreak = state.fullAttendanceDays + 1
-          let bonus = 0
-          if (newStreak >= 30) bonus = 1000
-          else if (newStreak >= 7) bonus = 200
+          let bonus = 150
+          if (newStreak >= 30) bonus += 1000
+          else if (newStreak >= 7) bonus += 200
           set({
             fullAttendanceDays: newStreak,
             lastAttendanceDate: today,

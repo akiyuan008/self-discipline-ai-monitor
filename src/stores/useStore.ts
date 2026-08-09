@@ -436,6 +436,13 @@ export const useStore = create<StoreState>()(
         const s = get()
         if (s.lastSyncDay === today) return
         const dailyGoalMs = s.dailyGoalMin * 60_000
+
+        // 每日学习里程碑：学习满 1 小时 +100 积分
+        if (s.todayStudyMs >= 3600000) {
+          set(s2 => ({ points: s2.points + 100 }))
+          get().addPointRecord('earn', 100, '每日学习里程碑（满1小时）')
+        }
+
         if (s.todayStudyMs >= dailyGoalMs) {
           set(s2 => ({ streak: s2.streak + 1, lastSyncDay: today, xp: s2.xp + 100 }))
         } else {
