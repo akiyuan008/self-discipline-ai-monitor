@@ -66,7 +66,6 @@ interface StoreState {
   playerTag: string
   dailyGoalMin: number
   points: number
-  xp: number
   streak: number
   totalFocusMs: number
   todayStudyMs: number
@@ -171,7 +170,6 @@ export const useStore = create<StoreState>()(
       playerTag: 'PLAYER_01',
       dailyGoalMin: 120,
       points: 0,
-      xp: 0,
       streak: 0,
       streakJustBroken: false,
       totalFocusMs: 0,
@@ -242,9 +240,9 @@ export const useStore = create<StoreState>()(
         const reward = q.reward || 0
         set(s => ({
           quests: s.quests.map(qx => qx.id === id ? { ...qx, progress: qx.total, completed: true } : qx),
-          points: s.points + reward,
-          xp: s.xp + 20
+          points: s.points + reward
         }))
+        get().addExp(20, `完成任务：${q.title}`)
         if (reward > 0) get().addPointRecord('earn', reward, `完成任务：${q.title}`)
       },
       buyItem: (id) => {
@@ -270,7 +268,8 @@ export const useStore = create<StoreState>()(
             ax.id === id ? { ...ax, unlocked: true, progress: ax.total } : ax
           )
         }))
-        set(s => ({ points: s.points + 200, xp: s.xp + 200 }))
+        set(s => ({ points: s.points + 200 }))
+        get().addExp(200, `解锁成就：${a.name}`)
         get().addPointRecord('earn', 200, `解锁成就：${a.name}`)
       },
       updateAchievementProgress: (id, progress) => {
@@ -398,8 +397,7 @@ export const useStore = create<StoreState>()(
           playerTag: 'PLAYER_01',
           dailyGoalMin: 120,
           points: 0,
-          xp: 0,
-          streak: 0,
+              streak: 0,
           totalFocusMs: 0,
           todayStudyMs: 0,
           todayEntMs: 0,
@@ -440,13 +438,16 @@ export const useStore = create<StoreState>()(
         })),
       clearChat: () => set({ chat: [] }),
       syncUsage: (study, ent) => {
-        const studyMs = study.reduce((sum, x) => sum + x.totalMs, 0)
-        const entMs = ent.reduce((sum, x) => sum + x.totalMs, 0)
+        const systemStudyMs = study.reduce((sum, x) => sum + x.totalMs, 0)
+        const systemEntMs = ent.reduce((sum, x) => sum + x.totalMs, 0)
         const prevEnt = get().todayEntMs
-        const entDelta = Math.max(0, entMs - prevEnt)
+        const entDelta = Math.max(0, systemEntMs - prevEnt)
+        // 学习时长：取系统统计与已累计(含深渊专注)的较大值，避免覆盖深渊专注时间
+        const prevStudy = get().todayStudyMs
+        const studyMs = Math.max(prevStudy, systemStudyMs)
         set({
           todayStudyMs: studyMs,
-          todayEntMs: entMs,
+          todayEntMs: systemEntMs,
           totalEntMs: get().totalEntMs + entDelta
         })
       },
@@ -463,7 +464,8 @@ export const useStore = create<StoreState>()(
         }
 
         if (s.todayStudyMs >= dailyGoalMs) {
-          set(s2 => ({ streak: s2.streak + 1, lastSyncDay: today, xp: s2.xp + 100 }))
+          set(s2 => ({ streak: s2.streak + 1, lastSyncDay: today }))
+          get().addExp(100, '连签达成')
         } else {
           const wasBroken = s.streak > 0
           set({ streak: 0, lastSyncDay: today, streakJustBroken: wasBroken })
@@ -480,8 +482,7 @@ export const useStore = create<StoreState>()(
           return {
             exp: newExp,
             totalExp: newTotalExp,
-            level: newLevel > s.level ? newLevel : s.level,
-            xp: s.xp + xpGain
+            level: newLevel > s.level ? newLevel : s.level
           }
         })
       },
@@ -489,7 +490,7 @@ export const useStore = create<StoreState>()(
     }),
     {
       name: 'cyber-survival-store',
-      version: 4,
+      version: 5,
       storage: createJSONStorage(() => localStorage),
       migrate: (persisted: any, version: number) => {
         if (version < 3 && persisted) {

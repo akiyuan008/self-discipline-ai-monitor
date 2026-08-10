@@ -169,7 +169,8 @@ function checkOverdue() {
     const period = getPeriodTime(task.period)
     if (!period) return
     const endMin = timeToMinutes(period.endTime)
-    if (nowMin > endMin) {
+    // 与打卡宽限期一致：课后30分钟内仍可打卡，逾期判定也用 endMin+30
+    if (nowMin > endMin + 30) {
       const penalty = store.markTaskOverdue(task.id)
       if (penalty < 0) {
         mainStore.addPoints(penalty)

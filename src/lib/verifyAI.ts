@@ -42,7 +42,8 @@ export async function verifyClassPhoto(photoBase64: string, subject: string): Pr
   // 双AI模式下优先使用二号AI做视觉验证
   const verifyAI = state.aiMode === 'dual' && state.ai2.apiKey?.trim() ? state.ai2 : ai
   if (!verifyAI.apiKey?.trim()) {
-    return { passed: true, score: 85, review: 'AI验证官离线，自动通过', suggestion: '' }
+    // 无 AI 核验官：不自动高分通过，降级为"未核验"(score 0)，不给 AI 高分奖励
+    return { passed: false, score: 0, review: '未配置 AI 核验官，无法核验照片。请在设置中配置 MOSS 引擎', suggestion: '配置 AI 后重新打卡' }
   }
 
   const startTime = Date.now()
