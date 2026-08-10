@@ -57,6 +57,16 @@ export default function Dungeon({ onExit }: Props) {
   const currentTask = useClassTaskStore(s => s.currentTask)
   const addAbyssRecord = useClassTaskStore(s => s.addAbyssRecord)
 
+  // 进入时若有当前任务（从任务中心"进入深渊"），自动切到深渊模式并同步时长
+  useEffect(() => {
+    if (currentTask) {
+      setMode('abyss')
+      const secs = dungeonDurationMin * 60
+      setTotalTime(secs)
+      setTimeLeft(secs)
+    }
+  }, [])  // 只在挂载时执行一次
+
   const isAbyssMode = mode === 'abyss'
 
   const circumference = 2 * Math.PI * 100
@@ -126,7 +136,9 @@ export default function Dungeon({ onExit }: Props) {
         quitReason: quitPenalty,
         timestamp: Date.now()
       })
-      showToast(`深渊挑战中断！未完成深渊模式。记录已归档。`)
+      showToast(`深渊挑战中断！惩罚：${quitPenalty}`)
+      // 中断后 1.5 秒自动返回主页（经典做法：退出即回主页）
+      setTimeout(() => onExit(), 1500)
     } else if (elapsed > 0) {
       addFocusMs(elapsed * 1000)
       addExp(elapsed, '部分专注完成')
