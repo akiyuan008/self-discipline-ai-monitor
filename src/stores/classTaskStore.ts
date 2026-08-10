@@ -340,6 +340,24 @@ export const useClassTaskStore = create<ClassTaskState>()(
 
       addAbyssRecord: (record) => {
         set(s => ({ abyssRecords: [...s.abyssRecords, record].slice(-200) }))
+        // 深渊完成后判定深渊类成就
+        const records = get().abyssRecords
+        const completed = records.filter(r => r.completed)
+        const completedCount = completed.length
+        const unlock = useStore.getState().unlockAchievement
+        // 首次完成深渊
+        if (completedCount >= 1) unlock('abyss_first')
+        // 完成一次 60 分钟深渊
+        if (completed.some(r => r.duration >= 60)) unlock('abyss_deep')
+        // 本次未中断（completed=true 即未中断）
+        if (record.completed) unlock('abyss_noquit')
+        // 累计完成次数
+        if (completedCount >= 4) unlock('abyss_4x')
+        if (completedCount >= 50) unlock('abyss_50')
+        if (completedCount >= 500) unlock('abyss_500')
+        // 连续 7 天每天至少 1 次深渊
+        const days = new Set(completed.map(r => r.date))
+        if (days.size >= 7) unlock('abyss_7day')
       },
 
       getTaskHistory: (date) => {

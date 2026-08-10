@@ -210,6 +210,8 @@ export default function Dungeon({ onExit }: Props) {
         addExp(elapsed * 2, '深渊重载完美通关')
         addPoints(400)
         addPointRecord('earn', 400, '完成深渊重载挑战')
+        // 深渊完成后检查成就（含深渊类成就）
+        useStore.getState().checkAchievements()
         addAbyssRecord({
           date: localDateStr(),
           subject: currentTask ? currentTask.subject : '深渊重载',

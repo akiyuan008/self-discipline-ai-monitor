@@ -313,7 +313,10 @@ export const useStore = create<StoreState>()(
           if (a.unlocked) return a
           let progress = a.progress
           let unlocked = false
+          const now = new Date()
+          const hour = now.getHours()
           switch (a.id) {
+            // ── 学习时长类 ──
             case 'st_1h': case 'st_4h': case 'st_8h': case 'st_12h': case 'st_16h':
               progress = Math.min(a.total, todayStudyMin)
               if (todayStudyMin >= a.total) unlocked = true
@@ -330,6 +333,7 @@ export const useStore = create<StoreState>()(
               progress = Math.min(a.total, Math.floor(studyHours * 60))
               if (studyHours >= 10000) unlocked = true
               break
+            // ── 连签类 ──
             case 'streak_3': case 'streak_7': case 'streak_15': case 'streak_30': case 'streak_100': case 'streak_365':
               progress = s.streak
               if (s.streak >= a.total) unlocked = true
@@ -337,6 +341,21 @@ export const useStore = create<StoreState>()(
             case 'streak_first':
               if (s.streak > 0 || s.totalFocusMs > 0) { progress = 1; unlocked = true }
               break
+            // ── 特殊时段类（基于当前时间） ──
+            case 'sp_dawn':
+              if (hour < 6 && s.todayStudyMs > 0) { progress = 1; unlocked = true }
+              break
+            case 'sp_night':
+              if (hour >= 23 && s.todayStudyMs > 0) { progress = 1; unlocked = true }
+              break
+            case 'sp_3am':
+              if (hour === 3 && s.todayStudyMs > 0) { progress = 1; unlocked = true }
+              break
+            case 'sp_cny': {
+              const m = now.getMonth() + 1, d = now.getDate()
+              if ((m === 1 || m === 2) && s.todayStudyMs > 0) { progress = 1; unlocked = true }
+              break
+            }
           }
           if (unlocked && !a.unlocked) {
             s.addExp(200, a.name)
@@ -489,9 +508,15 @@ export const useStore = create<StoreState>()(
         const defaultAI = c.ai || { ...PRESET_AI_CONFIG }
         const persistedAI = p.ai || {}
         const ai = { ...defaultAI, ...persistedAI }
-        const achievements = (p.achievements && p.achievements.length > 0)
-          ? p.achievements
-          : c.achievements
+        // 合并成就：保留用户已有进度，补充新增成就
+        const persistedAch = Array.isArray(p.achievements) ? p.achievements : []
+        const defaultAch = Array.isArray(c.achievements) ? c.achievements : []
+        const achievements = defaultAch.map((def: any) => {
+          const existing = persistedAch.find((a: any) => a.id === def.id)
+          return existing
+            ? { ...def, progress: existing.progress, unlocked: existing.unlocked, redeemed: existing.redeemed }
+            : def
+        })
         return {
           ...c,
           ...p,

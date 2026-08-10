@@ -64,7 +64,19 @@ export default function App() {
     if (onboarded && currentPage === 'onboarding') setCurrentPage('home')
   }, [onboarded, currentPage])
 
-  useEffect(() => { checkUpdate() }, [])
+  useEffect(() => {
+    checkUpdate()
+    // 挂载时检查成就
+    useStore.getState().checkAchievements()
+  }, [])
+
+  // 从后台恢复时检查成就
+  useEffect(() => {
+    const sub = CapApp.addListener('resume', () => {
+      useStore.getState().checkAchievements()
+    })
+    return () => { void sub.then(s => s.remove()) }
+  }, [])
 
   // Android 物理返回键：子页面回 Home，Home 退出 App
   const pageRef = useRef(currentPage)
