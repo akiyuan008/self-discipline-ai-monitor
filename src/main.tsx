@@ -138,7 +138,10 @@ async function monitorUsage() {
     const studyMinutes = Math.floor(studyMs / 60000)
     const grantedMinutes = getGrantedStudyMinutes()
     if (studyMinutes > grantedMinutes) {
-      mainStore.addExp(studyMinutes - grantedMinutes, '专注学习')
+      const incrementMin = studyMinutes - grantedMinutes
+      mainStore.addExp(incrementMin, '专注学习')
+      // 增量学习时长计入总专注时长(解决学习时长成就只算深渊的问题)
+      mainStore.addStudyMs(incrementMin * 60000)
       setGrantedStudyMinutes(studyMinutes)
     }
 

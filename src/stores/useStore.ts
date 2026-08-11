@@ -102,6 +102,7 @@ interface StoreState {
   spendPoints: (n: number) => boolean
   addStreak: (n: number) => void
   addFocusMs: (n: number) => void
+  addStudyMs: (n: number) => void
   toggleDark: () => void
   setDarkModeMode: (mode: 'system' | 'light' | 'dark') => void
   setAI: (c: Partial<AIConfig>) => void
@@ -226,7 +227,10 @@ export const useStore = create<StoreState>()(
           lastPointsChange: { amount: type === 'spend' ? -Math.abs(amount) : Math.abs(amount), reason, time: Date.now() }
         })),
       addStreak: (n) => set(s => ({ streak: Math.max(0, s.streak + n) })),
-      addFocusMs: (n) => set(s => ({ totalFocusMs: s.totalFocusMs + n, todayStudyMs: s.todayStudyMs + n })),
+      // 深渊专注: 计入今日进度(todayStudyMs)；总专注时长由系统监测(addStudyMs)统一管理，避免重复
+      addFocusMs: (n) => set(s => ({ todayStudyMs: s.todayStudyMs + n })),
+      // 普通学习时长(来自使用情况监控)计入总专注时长，但要避免与 addFocusMs 重复
+      addStudyMs: (n) => set(s => ({ totalFocusMs: s.totalFocusMs + Math.max(0, Math.round(n)) })),
       toggleDark: () => set(s => ({ isDark: !s.isDark, darkModeMode: !s.isDark ? 'dark' : 'light' })),
       setDarkModeMode: (mode) => set({ darkModeMode: mode }),
       setAI: (c) => set(s => ({ ai: { ...s.ai, ...c } })),
