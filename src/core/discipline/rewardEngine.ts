@@ -52,6 +52,14 @@ export function grantMissionReward(m: Mission, cb: RewardCallbacks): RewardResul
     reasons.push('高度专注加成')
   }
 
+  // 深渊挑战奖励：Mission 的专注证据含 DUNGEON(abyss) 区间 → +400 PTS
+  // （原 Dungeon 直接发 400 PTS，现迁移到 RewardEngine 统一发放，避免双重奖励）
+  const hasAbyssDungeon = (m.focusIntervals || []).some(iv => iv.source === 'DUNGEON' && iv.tag === 'abyss')
+  if (hasAbyssDungeon) {
+    points += 400
+    reasons.push('深渊重载挑战奖励')
+  }
+
   cb.addPoints(points)
   if (cb.addExp) cb.addExp(xp, `完成任务：${m.title}`)
   else cb.addXp(xp)

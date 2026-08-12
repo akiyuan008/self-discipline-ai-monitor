@@ -34,17 +34,22 @@ async function sampleUsageForCurrentMission() {
 
   try {
     const { study, ent } = await fetchUsageStats(windowStart, now)
-    const studyMs = study.reduce((s, x) => s + x.totalMs, 0)
-    // 分心 = 娱乐 + 社交
-    const distractionMs = ent
-      .filter(x => {
-        const cat = classifyApp(x.packageName, x.label)
-        return cat === 'entertainment' || cat === 'social'
-      })
-      .reduce((s, x) => s + x.totalMs, 0)
+    const windowLen = Math.max(1, now - windowStart)
+    // 学习时长收敛到窗口内（防止聚合/mock 数据超出窗口）
+    const studyMs = Math.min(study.reduce((s, x) => s + x.totalMs, 0), windowLen)
+    // 分心 = 娱乐 + 社交（同样收敛到窗口剩余部分）
+    const distractionMs = Math.min(
+      ent
+        .filter(x => {
+          const cat = classifyApp(x.packageName, x.label)
+          return cat === 'entertainment' || cat === 'social'
+        })
+        .reduce((s, x) => s + x.totalMs, 0),
+      windowLen - studyMs
+    )
 
     lastSampleTs = now
-    handleEvent({ type: 'USAGE_SAMPLE', ts: now, studyMs, distractionMs })
+    handleEvent({ type: 'USAGE_SAMPLE', ts: now, windowStart, studyMs, distractionMs })
   } catch (e) {
     logger.warn('discipline', 'UsageStats 采样失败', { error: String(e) })
   }

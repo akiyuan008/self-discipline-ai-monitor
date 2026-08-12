@@ -5,7 +5,9 @@ import { showToast } from '@/components/Toast'
 import { useClassTaskStore } from '@/stores/classTaskStore'
 import Icon from '@/components/Icons'
 import EchoRecorder from '@/components/EchoRecorder'
-import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
+import { localDateStr } from '@/lib/dateUtils'
+import { useMissionStore, submitDungeonFocus } from '@/core/discipline'
+import type { Mission } from '@/core/discipline'
 
 const ABYSS_QUOTES = [
   '正在深渊重载中，反应堆全功率输出！',
@@ -31,9 +33,6 @@ const MODES = [
 
 export default function Dungeon({ onExit }: Props) {
   const addFocusMs = useStore(s => s.addFocusMs)
-  const addExp = useStore(s => s.addExp)
-  const addPoints = useStore(s => s.addPoints)
-  const addPointRecord = useStore(s => s.addPointRecord)
   const dungeonDurationMin = useStore(s => s.dungeonDurationMin)
   const setDungeonDuration = useStore(s => s.setDungeonDuration)
 
@@ -53,21 +52,39 @@ export default function Dungeon({ onExit }: Props) {
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeRef = useRef<number>(0)
+  const focusStartRef = useRef<number | null>(null)   // 当前打开的 DUNGEON 专注区间起点
+  const isRunningRef = useRef(false)
 
-  const currentTask = useClassTaskStore(s => s.currentTask)
   const addAbyssRecord = useClassTaskStore(s => s.addAbyssRecord)
 
-  // 进入时若有当前任务（从任务中心"进入深渊"），自动切到深渊模式并同步时长
+  // 自律核心：当前 Mission（Dungeon = Mission 的 Focus Runtime / Focus Evidence Provider）
+  const missions = useMissionStore(s => s.missions)
+  const currentMissionId = useMissionStore(s => s.currentMissionId)
+  const currentMission: Mission | undefined = missions.find(m => m.id === currentMissionId)
+
+  // 进入时若有当前 Mission（从首页"开始专注"进入），同步深渊模式与任务目标时长
   useEffect(() => {
-    if (currentTask) {
+    const m = useMissionStore.getState().getCurrentMission()
+    const ACTIVE = ['READY', 'FOCUSING', 'DISTRACTED', 'RECOVERING', 'INTERVENTION']
+    if (m && ACTIVE.includes(m.status)) {
       setMode('abyss')
-      const secs = dungeonDurationMin * 60
+      const secs = m.targetMinutes * 60
       setTotalTime(secs)
       setTimeLeft(secs)
     }
   }, [])  // 只在挂载时执行一次
 
+  useEffect(() => { isRunningRef.current = isRunning }, [isRunning])
+
   const isAbyssMode = mode === 'abyss'
+
+  // 本次 Focus Session 已进行秒数（用于顶部展示，随计时器每秒刷新）
+  const sessionSec = focusStartRef.current != null
+    ? Math.max(0, Math.floor((Date.now() - focusStartRef.current) / 1000))
+    : 0
+  const missionProgressPct = currentMission && currentMission.targetMinutes > 0
+    ? Math.min(100, Math.round((currentMission.actualStudyMs / (currentMission.targetMinutes * 60000)) * 100))
+    : 0
 
   const circumference = 2 * Math.PI * 100
   const progress = mode === 'free'
@@ -88,6 +105,68 @@ export default function Dungeon({ onExit }: Props) {
     setTimeout(() => setFlash(false), 200)
   }
 
+  // ── Focus Runtime：确保绑定 Mission、开关 DUNGEON 专注区间（FocusEvidence）──
+  const ACTIVE_MISSION_STATUS = ['READY', 'FOCUSING', 'DISTRACTED', 'RECOVERING', 'INTERVENTION']
+
+  /** 确保存在一个绑定 Dungeon 的 Mission：复用激活任务，否则动态创建（source=USER） */
+  const ensureDungeonMission = useCallback((minutes: number): Mission | undefined => {
+    const store = useMissionStore.getState()
+    const cur = store.getCurrentMission()
+    if (cur && ACTIVE_MISSION_STATUS.includes(cur.status)) {
+      // 任务就绪但尚未开始 → 启动本次专注会话时转入 FOCUSING
+      if (cur.status === 'READY') {
+        store.updateMission(cur.id, { status: 'FOCUSING', startedAt: Date.now() })
+      }
+      return store.getMission(cur.id)
+    }
+    const now = Date.now()
+    const modeMeta = MODES.find(x => x.key === mode)
+    const m = store.createMission({
+      title: `${modeMeta?.title ?? '专注'} · 动态任务`,
+      subject: modeMeta?.title,
+      source: 'USER',
+      createdBy: 'USER',
+      plannedStart: now,
+      plannedEnd: now + minutes * 60000,
+      targetMinutes: minutes,
+      requiresEvidence: false,
+      status: 'FOCUSING'
+    })
+    store.setCurrentMission(m.id)
+    store.updateMission(m.id, { startedAt: now })
+    return m
+  }, [mode])
+
+  /** 打开 DUNGEON 专注区间（开始/恢复前台时） */
+  const openFocusInterval = useCallback(() => {
+    if (focusStartRef.current == null) focusStartRef.current = Date.now()
+  }, [])
+
+  /**
+   * 关闭当前 DUNGEON 专注区间：
+   * 1) 提交 FocusEvidence 给 Mission（由 DisciplineEngine 去重合并、判完成、经 RewardEngine 统一发奖）；
+   * 2) 该段时长计入今日进度（addFocusMs，syncUsage 以 max 保留，与学习 App 时长不重复）。
+   */
+  const closeFocusInterval = useCallback(() => {
+    if (focusStartRef.current == null) return
+    const startedAt = focusStartRef.current
+    const endedAt = Date.now()
+    focusStartRef.current = null
+    const dur = endedAt - startedAt
+    if (dur <= 0) return
+    const store = useMissionStore.getState()
+    const m = store.getCurrentMission()
+    if (m) submitDungeonFocus(m.id, startedAt, endedAt, isAbyssMode ? 'abyss' : 'focus')
+    addFocusMs(dur)
+  }, [isAbyssMode, addFocusMs])
+
+  // App 切后台 → 关闭专注区间；回到前台且仍在计时 → 重新打开（只计前台专注时间）
+  useEffect(() => {
+    const subPause = CapApp.addListener('pause', () => { closeFocusInterval() })
+    const subResume = CapApp.addListener('resume', () => { if (isRunningRef.current) openFocusInterval() })
+    return () => { void subPause.then(s => s.remove()); void subResume.then(s => s.remove()) }
+  }, [closeFocusInterval, openFocusInterval])
+
   const toggleEngine = useCallback(() => {
     triggerFlash()
     if (isRunning) {
@@ -99,14 +178,15 @@ export default function Dungeon({ onExit }: Props) {
       }
       if (timerRef.current) clearInterval(timerRef.current)
       setIsRunning(false)
-      const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000)
-      if (elapsed > 0) {
-        addFocusMs(elapsed * 1000)
-        addExp(elapsed, '专注学习')
-      }
+      // 提交 DUNGEON 专注证据 + 今日进度；是否完成、发多少奖统一由 Mission 结算
+      closeFocusInterval()
     } else {
       setIsRunning(true)
       startTimeRef.current = Date.now()
+      // 确保绑定一个 Mission（复用激活任务，否则动态创建），并打开专注区间
+      const minutes = mode === 'free' ? dungeonDurationMin : Math.max(1, Math.round(totalTime / 60))
+      ensureDungeonMission(minutes)
+      openFocusInterval()
       setQuote(ABYSS_QUOTES[Math.floor(Math.random() * ABYSS_QUOTES.length)])
       timerRef.current = setInterval(() => {
         setTimeLeft(prev => {
@@ -119,7 +199,7 @@ export default function Dungeon({ onExit }: Props) {
         })
       }, 1000)
     }
-  }, [isRunning, isAbyssMode, mode, addFocusMs, addExp])
+  }, [isRunning, isAbyssMode, mode, totalTime, dungeonDurationMin, ensureDungeonMission, openFocusInterval, closeFocusInterval])
 
   const confirmQuitAbyss = () => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -128,9 +208,11 @@ export default function Dungeon({ onExit }: Props) {
     const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000)
 
     if (isAbyssMode) {
+      // 已专注的部分照样作为证据提交（不因中断丢失）
+      closeFocusInterval()
       addAbyssRecord({
         date: localDateStr(),
-        subject: currentTask ? currentTask.subject : '深渊重载模式',
+        subject: currentMission?.subject ?? currentMission?.title ?? '深渊重载模式',
         duration: elapsed,
         completed: false,
         quitReason: quitPenalty,
@@ -139,9 +221,8 @@ export default function Dungeon({ onExit }: Props) {
       showToast(`深渊挑战中断！惩罚：${quitPenalty}`)
       // 中断后 1.5 秒自动返回主页（经典做法：退出即回主页）
       setTimeout(() => onExit(), 1500)
-    } else if (elapsed > 0) {
-      addFocusMs(elapsed * 1000)
-      addExp(elapsed, '部分专注完成')
+    } else {
+      closeFocusInterval()
     }
   }
 
@@ -216,32 +297,33 @@ export default function Dungeon({ onExit }: Props) {
       if (timerRef.current) clearInterval(timerRef.current)
       setIsRunning(false)
       const elapsed = totalTime
-      addFocusMs(elapsed * 1000)
+
+      // 提交 DUNGEON 专注证据 → DisciplineEngine 去重合并 → MissionEvaluator 判完成 → RewardEngine 统一发奖
+      // （原直接 +400 PTS / +EXP 已迁移到 RewardEngine，杜绝双重奖励）
+      closeFocusInterval()
+      const missionAfter = useMissionStore.getState().getCurrentMission()
+      const missionCompleted = missionAfter?.status === 'COMPLETED'
 
       if (isAbyssMode) {
-        addExp(elapsed * 2, '深渊重载完美通关')
-        addPoints(400)
-        addPointRecord('earn', 400, '完成深渊重载挑战')
         // 深渊完成后检查成就（含深渊类成就）
         useStore.getState().checkAchievements()
         addAbyssRecord({
           date: localDateStr(),
-          subject: currentTask ? currentTask.subject : '深渊重载',
+          subject: currentMission?.subject ?? currentMission?.title ?? '深渊重载',
           duration: elapsed,
           completed: true,
           timestamp: Date.now()
         })
-        showToast('归档成功！深渊重载模式挑战成功！+400 PTS')
+        showToast(missionCompleted ? '深渊重载挑战成功！奖励已由 Mission 统一结算' : '深渊专注已记录')
         // 深渊完成后引导录制"深渊回响"
-        const subj = currentTask ? currentTask.subject : '深渊重载'
+        const subj = currentMission?.subject ?? currentMission?.title ?? '深渊重载'
         setEchoContext(`${subj} · 深渊 ${Math.round(elapsed / 60)}min`)
         setShowEchoRecorder(true)
       } else {
-        addExp(elapsed, '专注完成')
-        showToast('专注完成！做得很棒！')
+        showToast(missionCompleted ? '专注完成！奖励已由 Mission 统一结算' : '专注时长已记录')
       }
     }
-  }, [timeLeft, isRunning, mode, totalTime, isAbyssMode, currentTask, addFocusMs, addExp, addPoints, addPointRecord, addAbyssRecord])
+  }, [timeLeft, isRunning, mode, totalTime, isAbyssMode, currentMission, closeFocusInterval, addAbyssRecord])
 
   useEffect(() => {
     return () => {
@@ -352,6 +434,41 @@ export default function Dungeon({ onExit }: Props) {
         <div className="corner-deco tr" />
         <div className="corner-deco bl" />
         <div className="corner-deco br" />
+
+        {/* 当前任务上下文（Dungeon = Mission Focus Runtime） */}
+        {currentMission && (
+          <div style={{
+            position: 'relative', zIndex: 1, marginBottom: 16,
+            padding: '10px 12px',
+            background: isAbyssMode ? 'rgba(255,51,68,0.05)' : 'rgba(0,229,255,0.04)',
+            border: `1px solid ${isAbyssMode ? 'rgba(255,51,68,0.3)' : 'rgba(0,229,255,0.25)'}`
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 10, color: isAbyssMode ? '#ff3344' : '#00e5ff', fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", letterSpacing: 1, fontWeight: 700 }}>
+                当前任务
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif" }}>
+                本次专注 {formatTime(sessionSec)}
+              </span>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg)', fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", marginBottom: 6 }}>
+              {currentMission.title}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+              <span style={{ fontSize: 10, color: 'var(--muted)', fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif" }}>Mission</span>
+              <span style={{ fontSize: 10, color: isAbyssMode ? '#ff3344' : '#00e5ff', fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif" }}>
+                {Math.floor(currentMission.actualStudyMs / 60000)}/{currentMission.targetMinutes} min
+              </span>
+            </div>
+            <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{
+                width: `${missionProgressPct}%`, height: '100%',
+                background: isAbyssMode ? '#ff3344' : '#00e5ff',
+                transition: 'width 0.5s'
+              }} />
+            </div>
+          </div>
+        )}
 
         {/* 顶部数据栏 */}
         <div style={{

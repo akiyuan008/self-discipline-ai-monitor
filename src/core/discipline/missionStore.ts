@@ -18,7 +18,7 @@ interface MissionState {
   currentMissionId: string | null
 
   // ── actions ──
-  createMission: (m: Omit<Mission, 'id' | 'createdAt' | 'status' | 'interventionLevel' | 'actualStudyMs' | 'distractionMs' | 'evidence'> & Partial<Pick<Mission, 'status' | 'evidence'>>) => Mission
+  createMission: (m: Omit<Mission, 'id' | 'createdAt' | 'status' | 'interventionLevel' | 'actualStudyMs' | 'distractionMs' | 'evidence' | 'focusIntervals'> & Partial<Pick<Mission, 'status' | 'evidence'>>) => Mission
   setCurrentMission: (id: string | null) => void
   getMission: (id: string) => Mission | undefined
   getCurrentMission: () => Mission | undefined

@@ -45,9 +45,15 @@ export interface Mission {
   /** 目标专注分钟数 */
   targetMinutes: number
 
-  /** 实际累计（ms）—— 由 DisciplineEngine 依据 BehaviorEvent 维护 */
+  /** 实际累计（ms）—— actualStudyMs 由 focusIntervals 去重合并后派生，勿手动累加 */
   actualStudyMs: number
   distractionMs: number
+
+  /**
+   * 专注时间证据区间（FocusEvidence）。DUNGEON 与 APP_USAGE 两种来源都写入这里，
+   * 由 DisciplineEngine 统一做重叠去重后派生 actualStudyMs，杜绝双重计算。
+   */
+  focusIntervals: FocusInterval[]
 
   status: MissionStatus
   interventionLevel: InterventionLevel
@@ -63,6 +69,24 @@ export interface Mission {
   distractedSince?: number
   /** 创建时间 */
   createdAt: number
+}
+
+// ═══════════════════════════════════════════════════════════
+// FocusEvidence（专注时间证据区间）
+//   Dungeon = Focus Runtime / Evidence Provider，不再是独立计时器。
+//   DUNGEON 与 APP_USAGE 两种来源最终进入同一套时间累计，统一去重。
+// ═══════════════════════════════════════════════════════════
+export type FocusSource = 'DUNGEON' | 'APP_USAGE'
+
+export interface FocusInterval {
+  source: FocusSource
+  /** 区间起止（时间戳 ms） */
+  startedAt: number
+  endedAt: number
+  /** APP_USAGE 时携带包名；DUNGEON 时可空 */
+  packageName?: string
+  /** 可选标记：如 'abyss' / 'focus'，供 RewardEngine 识别挑战类奖励 */
+  tag?: string
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -100,6 +124,8 @@ export interface BehaviorEvent {
   /** USAGE_SAMPLE 时携带：采样窗口内的有效学习 / 分心毫秒数 */
   studyMs?: number
   distractionMs?: number
+  /** USAGE_SAMPLE 时携带：采样窗口起点（用于把聚合时长锚定成 APP_USAGE 区间） */
+  windowStart?: number
 }
 
 // ═══════════════════════════════════════════════════════════

@@ -14,7 +14,8 @@
 import { useMissionStore } from './missionStore'
 import { evaluateMission, makeEvidence } from './missionEvaluator'
 import { grantMissionReward, grantMissedPenalty } from './rewardEngine'
-import type { BehaviorEvent, Mission, InterventionLevel } from './types'
+import { computeFocusMs } from './focusMath'
+import type { BehaviorEvent, Mission, InterventionLevel, FocusInterval } from './types'
 import { useStore } from '@/stores/useStore'
 import { classifyApp } from './appCategories'
 import { logger } from '@/lib/logger'
@@ -92,6 +93,34 @@ export function attachEvidenceAndTryComplete(missionId: string, type: 'photo' | 
   tryComplete(missionId)
 }
 
+/**
+ * 统一专注时间证据入口（FocusEvidence）。
+ * DUNGEON（Dungeon 专注区间）与 APP_USAGE（学习 App 使用区间）都从这里写入。
+ * 写入后对 focusIntervals 做重叠去重合并，派生 actualStudyMs —— 杜绝双重计算。
+ * 这是"由一个地方负责去重、计算 actualStudyMs"的唯一入口。
+ */
+export function addFocusInterval(missionId: string, interval: FocusInterval) {
+  const store = useMissionStore.getState()
+  const m = store.getMission(missionId)
+  if (!m) return
+  if (m.status === 'COMPLETED' || m.status === 'MISSED') return
+  if (interval.endedAt <= interval.startedAt) return
+
+  const focusIntervals = [...(m.focusIntervals || []), interval]
+  const actualStudyMs = computeFocusMs(focusIntervals)
+  store.updateMission(missionId, { focusIntervals, actualStudyMs })
+  logger.debug('discipline', `FocusEvidence 写入`, {
+    mission: m.title, source: interval.source,
+    intervalMs: interval.endedAt - interval.startedAt, actualStudyMs
+  })
+  tryComplete(missionId)
+}
+
+/** Dungeon 结束一段专注区间时调用：把 [startedAt, endedAt] 作为 DUNGEON 证据提交 */
+export function submitDungeonFocus(missionId: string, startedAt: number, endedAt: number, tag?: string) {
+  addFocusInterval(missionId, { source: 'DUNGEON', startedAt, endedAt, tag })
+}
+
 /** 主入口：处理一个 BehaviorEvent */
 export function handleEvent(event: BehaviorEvent) {
   const store = useMissionStore.getState()
@@ -143,16 +172,26 @@ function onAppForeground(m: Mission, event: BehaviorEvent) {
   }
 }
 
-/** UsageStats 周期采样：累计有效学习 / 分心时长，并尝试完成 */
+/** UsageStats 周期采样：学习时长→APP_USAGE 区间（去重），分心时长→累计，并尝试完成 */
 function onUsageSample(m: Mission, event: BehaviorEvent) {
   const store = useMissionStore.getState()
   const studyMs = event.studyMs ?? 0
   const distractionMs = event.distractionMs ?? 0
 
-  store.updateMission(m.id, {
-    actualStudyMs: m.actualStudyMs + studyMs,
-    distractionMs: m.distractionMs + distractionMs
-  })
+  // 学习时长：锚定采样窗口生成 APP_USAGE 区间，交给统一去重入口（不再直接累加）
+  if (studyMs > 0) {
+    const ws = event.windowStart ?? (event.ts - studyMs)
+    addFocusInterval(m.id, {
+      source: 'APP_USAGE',
+      startedAt: ws,
+      endedAt: Math.min(ws + studyMs, event.ts)
+    })
+  }
+
+  // 分心时长：仅采样器产生，无双重计算风险，直接累计
+  if (distractionMs > 0) {
+    store.updateMission(m.id, { distractionMs: m.distractionMs + distractionMs })
+  }
 
   // 采样时若已分心，尝试升级干预
   if (m.status === 'DISTRACTED' || m.status === 'INTERVENTION') {

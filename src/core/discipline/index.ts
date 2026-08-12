@@ -3,6 +3,7 @@
  */
 export * from './types'
 export * from './appCategories'
+export * from './focusMath'
 export * from './missionStore'
 export * from './missionEvaluator'
 export * from './rewardEngine'
