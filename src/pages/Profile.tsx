@@ -119,7 +119,7 @@ export default function Profile({ onNavigate, onNavigateStats }: ProfileProps) {
   const syncRate = Math.min(100, Math.round(streak * 5))
 
   return (
-    <div className="safe-top" style={{ padding: '24px 20px 140px' }}>
+    <div className="safe-top animate-in" style={{ padding: '24px 20px 140px' }}>
       <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>
         PROFILE
       </div>

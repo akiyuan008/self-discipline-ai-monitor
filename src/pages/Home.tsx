@@ -63,6 +63,7 @@ export default function Home({ onNavigate }: Props) {
 
   const [hasAccess, setHasAccess] = useState(false)
   const [lateAlert, setLateAlert] = useState(false)
+  const [dismissPermission, setDismissPermission] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const checkAndRefresh = async () => {
@@ -110,7 +111,7 @@ export default function Home({ onNavigate }: Props) {
   }
 
   return (
-    <div className="safe-top" style={{ padding: '20px 16px 140px', background: 'var(--bg)', minHeight: '100vh' }}>
+    <div className="safe-top animate-in" style={{ padding: '20px 16px 140px', background: 'var(--bg)', minHeight: '100vh' }}>
       {/* 顶部控制台标题 */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
@@ -132,8 +133,8 @@ export default function Home({ onNavigate }: Props) {
         </div>
       </div>
 
-      {/* 权限提示横幅 */}
-      {!hasAccess && (
+      {/* 权限提示横幅（可关闭，本次会话不再显示） */}
+      {!hasAccess && !dismissPermission && (
         <div
           onClick={handleOpenPermissionSettings}
           style={{
@@ -145,10 +146,11 @@ export default function Home({ onNavigate }: Props) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            position: 'relative'
           }}
         >
-          <div>
+          <div style={{ paddingRight: 26 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Icon.Warning size={15} color="#ef4444" /> 未授予使用情况访问权限
             </div>
@@ -156,15 +158,28 @@ export default function Home({ onNavigate }: Props) {
               点击此处跳转设置页开启权限，以获取真实时长
             </div>
           </div>
-          <div style={{
-            fontSize: 12,
-            fontWeight: 700,
-            color: '#ef4444',
-            border: '1px solid #ef4444',
-            padding: '4px 8px',
-            borderRadius: 4
-          }}>
-            去开启
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#ef4444',
+              border: '1px solid #ef4444',
+              padding: '4px 8px',
+              borderRadius: 4,
+              whiteSpace: 'nowrap'
+            }}>
+              去开启
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); setDismissPermission(true) }}
+              aria-label="关闭"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--muted)', padding: 4, display: 'flex', alignItems: 'center'
+              }}
+            >
+              <Icon.Close size={14} color="var(--muted)" />
+            </button>
           </div>
         </div>
       )}

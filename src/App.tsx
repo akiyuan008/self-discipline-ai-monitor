@@ -81,6 +81,21 @@ export default function App() {
   // Android 物理返回键：子页面回 Home，Home 退出 App
   const pageRef = useRef(currentPage)
   pageRef.current = currentPage
+
+  // 检测键盘高度，避免 Dock 遮挡输入框
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  useEffect(() => {
+    const vv = (window as any).visualViewport
+    if (!vv) return
+    const onResize = () => {
+      const vh = window.innerHeight
+      const diff = vh - vv.height
+      setKeyboardHeight(diff > 80 ? diff - 8 : 0)
+    }
+    vv.addEventListener('resize', onResize)
+    onResize()
+    return () => vv.removeEventListener('resize', onResize)
+  }, [])
   useEffect(() => {
     const sub = CapApp.addListener('backButton', ({ canGoBack }) => {
       const page = pageRef.current
@@ -134,7 +149,7 @@ export default function App() {
       {currentPage === 'diagLogs' && <DiagLogs onBack={goBack} />}
         {currentPage === 'stats' && <Stats onBack={goBack} />}
       {onboarded && currentPage !== 'onboarding' && currentPage !== 'dungeon' && currentPage !== 'classHistory' && (
-        <Dock current={currentPage} onChange={navigate} />
+        <Dock current={currentPage} onChange={navigate} keyboardHeight={keyboardHeight} />
       )}
     </div></ThemeProvider>
   )

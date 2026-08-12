@@ -52,7 +52,7 @@ export default function ClassHistory({ onBack }: Props) {
   ]
 
   return (
-    <div className="safe-top safe-bottom" style={{
+    <div className="safe-top safe-bottom animate-in" style={{
       position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 500,
       display: 'flex', flexDirection: 'column'
     }}>

@@ -281,7 +281,7 @@ export default function Dungeon({ onExit }: Props) {
   }
 
   return (
-    <div className="safe-top safe-bottom" style={{
+    <div className="safe-top safe-bottom animate-in" style={{
       position: 'fixed', inset: 0,
       background: true ? '#07090e' : 'var(--bg)',
       zIndex: 600, display: 'flex', flexDirection: 'column',

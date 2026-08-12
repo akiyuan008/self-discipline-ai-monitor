@@ -204,12 +204,10 @@ function InputBar({ sending, onSend }: InputBarProps) {
   sendingRef.current = sending
 
   const handleSend = () => {
-    const domValue = inputRef.current?.value ?? displayValue
-    const text = domValue.trim()
+    const text = displayValue.trim()
     if (!text || sendingRef.current) return
     onSend(text)
     setDisplayValue('')
-    if (inputRef.current) inputRef.current.value = ''
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -222,19 +220,8 @@ function InputBar({ sending, onSend }: InputBarProps) {
   const handleCompositionStart = () => setIsComposing(true)
   const handleCompositionEnd = (e: CompositionEvent<HTMLInputElement>) => {
     setIsComposing(false)
-    const finalValue = e.currentTarget.value
-    setDisplayValue(finalValue)
+    setDisplayValue(e.currentTarget.value)
   }
-
-  // 定时同步DOM值到state（支持语音输入等不触发onChange的情况）
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (inputRef.current && inputRef.current.value !== displayValue) {
-        setDisplayValue(inputRef.current.value)
-      }
-    }, 100)
-    return () => clearInterval(interval)
-  }, [displayValue])
 
   return (
     <div style={{
@@ -247,7 +234,7 @@ function InputBar({ sending, onSend }: InputBarProps) {
     }}>
       <input
         ref={inputRef}
-        defaultValue={displayValue}
+        value={displayValue}
         onChange={e => setDisplayValue(e.target.value)}
         onKeyDown={handleKeyDown}
         onCompositionStart={handleCompositionStart}
@@ -375,7 +362,7 @@ export default function Chat({ onNavigateSettings }: Props) {
   }, [configured, onNavigateSettings, pushChat])
 
   return (
-    <div className="safe-top" style={{
+    <div className="safe-top animate-in" style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100dvh',

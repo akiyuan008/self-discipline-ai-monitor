@@ -150,7 +150,7 @@ export default function Quests({ onNavigate }: Props) {
   }
 
   return (
-    <div className="safe-top" style={{ padding: '20px 16px 140px', background: 'var(--bg)', minHeight: '100vh' }}>
+    <div className="safe-top animate-in" style={{ padding: '20px 16px 140px', background: 'var(--bg)', minHeight: '100vh' }}>
       {/* 顶部标题 */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',

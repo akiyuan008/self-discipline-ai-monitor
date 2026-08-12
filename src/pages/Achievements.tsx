@@ -27,7 +27,7 @@ export default function Achievements({ onBack }: Props) {
   const totalCount = achievements.length
 
   return (
-    <div className="safe-top safe-bottom" style={{
+    <div className="safe-top animate-in safe-bottom" style={{
       position: 'fixed', inset: 0, background: 'var(--bg)', zIndex: 500, overflow: 'auto'
     }}>
       <div style={{ padding: '16px 16px 32px' }}>
