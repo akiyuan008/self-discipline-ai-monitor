@@ -7,6 +7,8 @@ import { logger } from '@/lib/logger'
 import GaokaoProgress from '@/components/GaokaoProgress'
 import Icon from '@/components/Icons'
 import type { PageId } from '@/stores/useStore'
+import { useMissionStore, startMission } from '@/core/discipline'
+import type { Mission } from '@/core/discipline'
 
 interface Props {
   onNavigate?: (p: PageId) => void
@@ -51,6 +53,27 @@ function StatusLine({ label, status, ok, onClick }: { label: string; status: str
   )
 }
 
+function fmtClock(ts: number): string {
+  const d = new Date(ts)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function missionPct(m: Mission): number {
+  if (m.targetMinutes <= 0) return 0
+  return Math.min(100, Math.round((m.actualStudyMs / (m.targetMinutes * 60000)) * 100))
+}
+
+const MISSION_STATUS_META: Record<string, { label: string; color: string }> = {
+  READY: { label: 'READY 待开始', color: '#45a29e' },
+  FOCUSING: { label: 'FOCUSING 专注中', color: '#00d4ff' },
+  DISTRACTED: { label: 'DISTRACTED 已分心', color: '#ff4500' },
+  INTERVENTION: { label: 'INTERVENTION 干预中', color: '#ff4500' },
+  RECOVERING: { label: 'RECOVERING 恢复中', color: '#f59e0b' },
+  COMPLETED: { label: 'COMPLETED 已完成', color: '#45a29e' },
+  MISSED: { label: 'MISSED 已错过', color: '#8a8a8a' },
+  IDLE: { label: 'IDLE 空闲', color: '#8a8a8a' }
+}
+
 export default function Home({ onNavigate }: Props) {
   const points = useStore(s => s.points)
   const streak = useStore(s => s.streak)
@@ -60,6 +83,11 @@ export default function Home({ onNavigate }: Props) {
   const todayEntMs = useStore(s => s.todayEntMs)
   const level = useStore(s => s.level)
   const exp = useStore(s => s.exp)
+
+  // 自律核心：当前 Mission（第三阶段接入）
+  const missions = useMissionStore(s => s.missions)
+  const currentMissionId = useMissionStore(s => s.currentMissionId)
+  const currentMission = missions.find(m => m.id === currentMissionId)
 
   const [hasAccess, setHasAccess] = useState(false)
   const [lateAlert, setLateAlert] = useState(false)
@@ -183,6 +211,101 @@ export default function Home({ onNavigate }: Props) {
           </div>
         </div>
       )}
+
+      {/* 当前任务（自律核心 Mission，第三阶段接入） */}
+      <div style={{
+        background: 'var(--card-bg)', border: '1px solid var(--border)',
+        padding: '16px', marginBottom: 16, position: 'relative',
+        clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)'
+      }}>
+        <div className="corner-deco tl" />
+        <div className="corner-deco tr" />
+        <div className="corner-deco bl" />
+        <div className="corner-deco br" />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, position: 'relative', zIndex: 1 }}>
+          <div style={{ fontSize: 12, fontFamily: 'Share Tech Mono, monospace', color: '#45a29e', letterSpacing: 1 }}>
+            CURRENT MISSION
+          </div>
+          {currentMission && (
+            <div style={{ fontSize: 10, fontFamily: 'Share Tech Mono, monospace', color: MISSION_STATUS_META[currentMission.status]?.color, fontWeight: 700 }}>
+              [{MISSION_STATUS_META[currentMission.status]?.label}]
+            </div>
+          )}
+        </div>
+
+        {currentMission ? (
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{ fontSize: 19, fontWeight: 700, color: 'var(--fg)', fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", marginBottom: 4 }}>
+              {currentMission.title}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginBottom: 12 }}>
+              {fmtClock(currentMission.plannedStart)} – {fmtClock(currentMission.plannedEnd)} · 目标 {currentMission.targetMinutes} min
+              {currentMission.requiresEvidence ? ' · 需完成凭证' : ''}
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>PROGRESS</span>
+                <span style={{ fontSize: 10, color: '#45a29e', fontFamily: 'Share Tech Mono, monospace' }}>
+                  {Math.floor(currentMission.actualStudyMs / 60000)}/{currentMission.targetMinutes} min
+                </span>
+              </div>
+              <div style={{ height: 6, background: '#1a2332', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{
+                  width: `${missionPct(currentMission)}%`, height: '100%',
+                  background: 'linear-gradient(90deg, #45a29e, #00d4ff)',
+                  borderRadius: 3, transition: 'width 0.5s',
+                  boxShadow: '0 0 10px rgba(69,162,158,0.5)'
+                }} />
+              </div>
+            </div>
+
+            {currentMission.status === 'READY' && (
+              <button onClick={() => startMission(currentMission.id)} style={{
+                width: '100%', padding: '13px', background: '#ff4500',
+                border: 'none', color: '#fff',
+                fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: 2,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
+              }}>
+                <Icon.Play size={18} color="#fff" /> 开始专注
+              </button>
+            )}
+            {currentMission.status === 'FOCUSING' && (
+              <button onClick={() => onNavigate?.('dungeon')} style={{
+                width: '100%', padding: '13px', background: 'rgba(0,212,255,0.12)',
+                border: '1px solid #00d4ff', color: '#00d4ff',
+                fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: 2,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
+              }}>
+                进入专注监控
+              </button>
+            )}
+            {(currentMission.status === 'DISTRACTED' || currentMission.status === 'INTERVENTION') && (
+              <button onClick={() => onNavigate?.('dungeon')} style={{
+                width: '100%', padding: '13px', background: 'rgba(255,69,0,0.12)',
+                border: '1px solid #ff4500', color: '#ff4500',
+                fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", fontSize: 15, fontWeight: 700, letterSpacing: 2,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                clipPath: 'polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px)'
+              }}>
+                检测到分心 · 回到任务
+              </button>
+            )}
+            {currentMission.status === 'RECOVERING' && (
+              <div style={{ fontSize: 12, color: '#f59e0b', fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", textAlign: 'center', padding: '8px 0' }}>
+                正在恢复专注…
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, color: 'var(--muted)', position: 'relative', zIndex: 1, padding: '10px 0', fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif" }}>
+            暂无进行中的任务。课表任务将按时段自动生成，也可在「任务」中动态创建。
+          </div>
+        )}
+      </div>
 
       {/* 主数据面板 */}
       <div style={{
