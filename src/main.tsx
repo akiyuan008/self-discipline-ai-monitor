@@ -11,6 +11,7 @@ import { fetchUsageStats, startMonitorService, hasUsageAccess } from '@/lib/usag
 import { SCHEDULE, getPeriodTime, timeToMinutes } from '@/data/schedule'
 import { logger, installGlobalErrorHandlers } from '@/lib/logger'
 import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
+import { initDiscipline, generateTodayMissions } from '@/core/discipline'
 
 CapApp.addListener('pause', () => { autoBackup().catch(() => {}) })
 startAutoBackup()
@@ -200,6 +201,9 @@ function startScheduler() {
   generateTodayTasks()
   scheduleClassNotifications()
 
+  // 自律核心：生成今日 Missions + 启动采样/干预/错过扫描（第三阶段接入）
+  initDiscipline()
+
   // 权限就绪后启动监工前台服务（后台持续监测）
   hasUsageAccess().then(granted => {
     if (granted) startMonitorService()
@@ -230,6 +234,7 @@ startScheduler()
 CapApp.addListener('resume', () => {
   useStore.getState().dailySettle()
   generateTodayTasks()
+  generateTodayMissions()
   scheduleClassNotifications()
   checkOverdue()
   checkFullAttendance()
