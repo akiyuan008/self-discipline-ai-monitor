@@ -69,7 +69,22 @@ export interface Mission {
   distractedSince?: number
   /** 创建时间 */
   createdAt: number
+
+  // ── V3（Phase 0 骨架，均为可选，向后兼容）──
+  /** 任务类型：TIME_BASED 以时长为依据；OUTCOME_BASED 需 Evidence 验收 */
+  taskType?: TaskType
+  /** 该 Mission 下属的 Session id 列表（一个 Mission 可有多个 Session） */
+  sessionIds?: string[]
+  /** 优先级 */
+  priority?: 'low' | 'normal' | 'high'
 }
+
+// ═══════════════════════════════════════════════════════════
+// V3 任务类型
+//   TIME_BASED   —— "专注阅读 45min"：UsageStats + Focus Session 时长为主
+//   OUTCOME_BASED —— "完成第三章习题"：需 Evidence/Result 验收，时长只证明"执行过"
+// ═══════════════════════════════════════════════════════════
+export type TaskType = 'TIME_BASED' | 'OUTCOME_BASED'
 
 // ═══════════════════════════════════════════════════════════
 // FocusEvidence（专注时间证据区间）
@@ -137,4 +152,109 @@ export interface MissionRuntimeMirror {
   plannedStart: number
   plannedEnd: number
   interventionLevel: InterventionLevel
+}
+
+// ═══════════════════════════════════════════════════════════
+// V3 —— Session（一次实际执行会话）
+//
+// 核心语义（最终拍板）：
+//   一次"用户主动开始的执行过程" = 一个 Session。
+//   分心、恢复【不】创建新 Session；Session 内部含多个 FocusSegment 与 Deviation。
+//   用户明确结束（Stop）后再重新开始，才创建新的 Session。
+//
+//   Mission └── Session ─┬── FocusSegment（专注段）
+//                        ├── Deviation（偏离）
+//                        ├── Intervention（干预）
+//                        ├── Recovery（恢复）
+//                        └── Result（结果）
+// ═══════════════════════════════════════════════════════════
+
+export type SessionStatus =
+  | 'PLANNED'      // 已排程未开始
+  | 'ACTIVE'       // 正在执行（在轨）
+  | 'PAUSED'       // 暂停
+  | 'DEVIATED'     // 偏离中
+  | 'RECOVERING'   // 恢复中
+  | 'COMPLETED'    // 完成
+  | 'ABANDONED'    // 明确放弃/结束
+
+export type SessionMode = 'STANDARD' | 'ABYSS'
+
+/** Session 内的一段专注（V3 的 FocusSegment，等价于原 FocusInterval + sessionId + id） */
+export interface FocusSegment {
+  id: string
+  sessionId: string
+  source: FocusSource        // DUNGEON | APP_USAGE
+  startedAt: number
+  endedAt: number
+  packageName?: string
+  tag?: string               // 'abyss' | 'focus'
+}
+
+export type DeviationType =
+  | 'DISTRACTION'    // 被娱乐/社交吸引
+  | 'IDLE'           // 无明确 App 的放空/息屏
+  | 'LATE_START'     // 晚于 plannedStart 才开始
+  | 'EARLY_STOP'     // 提前放弃
+  | 'OVEREXTENSION'  // 过度延长
+
+export type DeviationResolvedBy = 'USER_RECOVERY' | 'INTERVENTION' | 'TIMEOUT' | 'AUTO'
+
+/** 偏离记录（V3）。Deviation ≠ App Category；带置信度与上下文。 */
+export interface Deviation {
+  id: string
+  sessionId: string
+  type: DeviationType
+  startedAt: number
+  endedAt?: number
+  durationMs: number
+  /** 0–1：由 DeviationAnalyzer 依据 category+context+duration 计算（Phase 2） */
+  confidence: number
+  /** 触发描述，如 "打开 tv.danmaku.bili" / "无操作 3min" */
+  trigger: string
+  resolvedAt?: number
+  resolvedBy?: DeviationResolvedBy
+}
+
+export type SessionOutcome = 'COMPLETED' | 'PARTIAL' | 'ABANDONED'
+export type ExecutionQuality = 'A' | 'B' | 'C' | 'D'
+
+/** Session 结果（Phase 4 完整评定；Phase 1 先落最小结构） */
+export interface SessionResult {
+  outcome: SessionOutcome
+  /** 执行率 = 实际专注 / 目标 */
+  executionRate: number
+  executionQuality?: ExecutionQuality
+  focusDurationMs: number
+  distractionDurationMs: number
+  deviationCount: number
+  recoveryCount: number
+  note?: string
+}
+
+export interface Session {
+  id: string
+  missionId: string
+
+  startedAt: number
+  endedAt?: number
+  status: SessionStatus
+  mode: SessionMode
+
+  /** 专注段（有序）；focusDurationMs 由 focusMath 去重合并派生 */
+  segments: FocusSegment[]
+  focusDurationMs: number
+  distractionDurationMs: number
+
+  /** 本 Session 的偏离记录（嵌入，保持 Session→Deviation 结构） */
+  deviations: Deviation[]
+  deviationCount: number
+  recoveryCount: number
+
+  /** 执行期干预状态（权威源在 Session，Mission 侧为镜像） */
+  interventionLevel: InterventionLevel
+  distractedSince?: number
+
+  result?: SessionResult
+  createdAt: number
 }

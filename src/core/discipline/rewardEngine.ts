@@ -6,6 +6,8 @@
  * Mission 完成 → RewardEngine → XP / PTS / Achievement。
  */
 import type { Mission } from './types'
+import { REWARD } from './config'
+import { useSessionStore } from './sessionStore'
 
 export interface RewardResult {
   points: number
@@ -20,9 +22,9 @@ export interface RewardCallbacks {
   addExp?: (amount: number, reason: string) => void
 }
 
-/** 基础 PTS（按目标时长，每分钟 1 分，下限 20） */
+/** 基础 PTS（按目标时长，每分钟 1 分，下限取 config） */
 function basePoints(m: Mission): number {
-  return Math.max(20, Math.round(m.targetMinutes))
+  return Math.max(REWARD.BASE_POINTS_MIN, Math.round(m.targetMinutes))
 }
 
 /** 基础 XP（按有效学习分钟） */
@@ -44,19 +46,21 @@ export function grantMissionReward(m: Mission, cb: RewardCallbacks): RewardResul
   xp += baseXp(m)
   reasons.push(`完成任务：${m.title}`)
 
-  // 高专注加成：分心时间占比 < 10%
+  // 高专注加成：分心时间占比低于阈值
   const totalMs = m.actualStudyMs + m.distractionMs
-  if (totalMs > 0 && m.distractionMs / totalMs < 0.1) {
-    points += 20
-    xp += 20
+  if (totalMs > 0 && m.distractionMs / totalMs < REWARD.FOCUS_BONUS_DISTRACTION_RATIO) {
+    points += REWARD.FOCUS_BONUS
+    xp += REWARD.FOCUS_BONUS
     reasons.push('高度专注加成')
   }
 
-  // 深渊挑战奖励：Mission 的专注证据含 DUNGEON(abyss) 区间 → +400 PTS
-  // （原 Dungeon 直接发 400 PTS，现迁移到 RewardEngine 统一发放，避免双重奖励）
-  const hasAbyssDungeon = (m.focusIntervals || []).some(iv => iv.source === 'DUNGEON' && iv.tag === 'abyss')
+  // 深渊挑战奖励：专注证据含 DUNGEON(abyss) 区间 → +ABYSS_BONUS PTS
+  // （V3：证据在 Session.segments，需合并 Mission 遗留 focusIntervals 一起检测）
+  const sessionSegs = useSessionStore.getState().getSessionsByMission(m.id).flatMap(s => s.segments)
+  const allFocusIntervals = [...(m.focusIntervals || []), ...sessionSegs]
+  const hasAbyssDungeon = allFocusIntervals.some(iv => iv.source === 'DUNGEON' && iv.tag === 'abyss')
   if (hasAbyssDungeon) {
-    points += 400
+    points += REWARD.ABYSS_BONUS
     reasons.push('深渊重载挑战奖励')
   }
 
@@ -70,7 +74,7 @@ export function grantMissionReward(m: Mission, cb: RewardCallbacks): RewardResul
 
 /** 任务错过的惩罚（可选，轻度，体现"恢复优先"） */
 export function grantMissedPenalty(m: Mission, cb: RewardCallbacks): RewardResult {
-  const penalty = Math.min(30, Math.round(m.targetMinutes / 2))
+  const penalty = Math.min(REWARD.MISSED_PENALTY_MAX, Math.round(m.targetMinutes / 2))
   if (penalty > 0) {
     cb.addPoints(-penalty)
     cb.addPointRecord('spend', penalty, `错过任务：${m.title}`)

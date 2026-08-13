@@ -75,6 +75,10 @@ export const useMissionStore = create<MissionState>()(
           actualStudyMs: 0,
           distractionMs: 0,
           evidence: [],
+          focusIntervals: [],
+          sessionIds: [],
+          // V3：未显式指定 taskType 时，按是否需要证据推断
+          taskType: input.requiresEvidence ? 'OUTCOME_BASED' : 'TIME_BASED',
           ...input
         } as Mission
         set(s => ({ missions: [...s.missions, mission] }))
@@ -120,8 +124,21 @@ export const useMissionStore = create<MissionState>()(
     }),
     {
       name: 'discipline-mission-store',
-      version: 1,
-      storage: createJSONStorage(() => localStorage)
+      version: 2,
+      storage: createJSONStorage(() => localStorage),
+      // V3 Phase0：为旧 Mission 补齐 sessionIds / taskType（向后兼容）
+      migrate: (persisted: any, version: number) => {
+        const p = (persisted || {}) as any
+        if (version < 2 && Array.isArray(p.missions)) {
+          p.missions = p.missions.map((m: any) => ({
+            ...m,
+            focusIntervals: m.focusIntervals || [],
+            sessionIds: m.sessionIds || [],
+            taskType: m.taskType || (m.requiresEvidence ? 'OUTCOME_BASED' : 'TIME_BASED')
+          }))
+        }
+        return p
+      }
     }
   )
 )

@@ -9,6 +9,7 @@
  * 未来 Evidence 可扩展：usageStats / photo / screenshot / manual / ai。
  */
 import type { Mission, Evidence, EvidenceType } from './types'
+import { COMPLETION, EVIDENCE_WEIGHT } from './config'
 
 export interface EvaluationResult {
   /** 是否可判定完成 */
@@ -20,17 +21,11 @@ export interface EvaluationResult {
   reason: string
 }
 
-/** 各证据类型的基准权重（可被单条 evidence.weight 覆盖） */
-const EVIDENCE_BASE_WEIGHT: Record<EvidenceType, number> = {
-  usageStats: 1.0,   // 行为监测是最可靠的证据
-  photo: 0.8,
-  screenshot: 0.7,
-  manual: 0.5,
-  ai: 0.9
-}
+/** 各证据类型的基准权重（收敛到 config；可被单条 evidence.weight 覆盖） */
+const EVIDENCE_BASE_WEIGHT: Record<EvidenceType, number> = { ...EVIDENCE_WEIGHT }
 
-/** 完成任务所需的有效学习时长占目标的比例 */
-const COMPLETION_RATIO = 0.8
+/** 完成任务所需的有效学习时长占目标的比例（收敛到 config） */
+const COMPLETION_RATIO = COMPLETION.RATIO
 
 export function makeEvidence(type: EvidenceType, payload?: string, weight?: number): Evidence {
   return {
@@ -57,7 +52,7 @@ export function evaluateMission(mission: Mission): EvaluationResult {
   // 任务需要"结果证据"（UsageStats 无法证明），且行为时长不足 → 需要证据
   if (mission.requiresEvidence) {
     const evidenceScore = mission.evidence.reduce((sum, e) => sum + e.weight, 0)
-    if (ratio >= COMPLETION_RATIO && evidenceScore >= 0.6) {
+    if (ratio >= COMPLETION_RATIO && evidenceScore >= COMPLETION.EVIDENCE_SCORE_MIN) {
       return { canComplete: true, needsEvidence: false, evidenceScore, reason: '行为时长达标且有充分证据' }
     }
     if (ratio >= COMPLETION_RATIO) {
