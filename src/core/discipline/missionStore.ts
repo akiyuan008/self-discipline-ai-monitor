@@ -7,9 +7,11 @@
  */
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { Capacitor } from '@capacitor/core'
+import { Capacitor, registerPlugin } from '@capacitor/core'
 import type { Mission, MissionRuntimeMirror, MissionSource, MissionCreatedBy } from './types'
 import { localDateStr } from '@/lib/dateUtils'
+
+const SelfDiscipline = registerPlugin<any>('SelfDiscipline')
 
 interface MissionState {
   /** 全部 Mission（含历史，持久化） */
@@ -51,10 +53,8 @@ export function toRuntimeMirror(m: Mission | undefined): MissionRuntimeMirror | 
 async function syncMirrorToAndroid(m: Mission | undefined) {
   if (Capacitor.getPlatform() !== 'android') return
   try {
-    const plugin: any = (Capacitor as any).Plugins?.SelfDiscipline
-    if (!plugin?.syncMissionMirror) return
     const mirror = toRuntimeMirror(m)
-    await plugin.syncMissionMirror({ mirror: mirror ? JSON.stringify(mirror) : '' })
+    await SelfDiscipline.syncMissionMirror({ mirror: mirror ? JSON.stringify(mirror) : '' })
   } catch {
     // 镜像同步失败不阻断业务，TS persist 仍是主状态
   }

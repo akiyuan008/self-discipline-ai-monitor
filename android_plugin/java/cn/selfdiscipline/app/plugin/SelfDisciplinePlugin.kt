@@ -21,6 +21,51 @@ class SelfDisciplinePlugin : Plugin() {
 
   private val TAG = "SelfDiscipline"
 
+  override fun load() {
+    instance = this
+  }
+
+  /**
+   * 向 TS 层发射 BehaviorEvent（APP_FOREGROUND 等），由 DisciplineEngine 消费。
+   * MonitorService（Service，非 Plugin 子类）通过本方法间接调用 notifyListeners。
+   */
+  fun emitBehaviorEvent(data: JSObject) {
+    notifyListeners(EVENT_BEHAVIOR, data)
+  }
+
+  /**
+   * 保存 Mission 最小运行时镜像（决策 #5，双保险）。
+   * TS 侧在 currentMission 变化时调用，供 MonitorService 重启后恢复上下文。
+   */
+  @PluginMethod
+  fun syncMissionMirror(call: PluginCall) {
+    val mirror = call.getString("mirror") ?: ""
+    try {
+      MissionMirror.save(context, mirror)
+      call.resolve()
+    } catch (e: Exception) {
+      Log.e(TAG, "syncMissionMirror failed", e)
+      call.reject("镜像同步失败：${e.message}")
+    }
+  }
+
+  /** 读取 Mission 最小运行时镜像 */
+  @PluginMethod
+  fun getMissionMirror(call: PluginCall) {
+    val mirror = MissionMirror.loadRaw(context) ?: ""
+    val ret = JSObject()
+    ret.put("mirror", mirror)
+    call.resolve(ret)
+  }
+
+  companion object {
+    const val EVENT_BEHAVIOR = "behaviorEvent"
+
+    @JvmStatic
+    var instance: SelfDisciplinePlugin? = null
+      private set
+  }
+
   @PluginMethod
   fun hasUsageAccess(call: PluginCall) {
     val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager

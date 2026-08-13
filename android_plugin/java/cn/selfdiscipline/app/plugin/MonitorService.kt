@@ -14,15 +14,22 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
 import android.util.Log
+import com.getcapacitor.JSObject
 import java.util.Calendar
 
 /**
  * MonitorService
  *
- * 长期前台服务：周期性轮询 UsageStats，
- * - 检测到深夜 + 仍在用娱乐类 App → 发通知 + 启动锁屏遮罩
- * - 检测到连续学习超 90 分钟 → 弹情绪关怀通知
- * - 连续低分日 → 触发"深度谈话"模式（通过 WebView 调用 AI 接口，此处简化为通知）
+ * 长期前台服务：周期性轮询 UsageStats。
+ *
+ * 【第三阶段改造】本服务不再自己维护 App 分类、也不再独立判断任务完成，
+ * 职责收敛为「行为采集 + 系统级干预」：
+ *  - 分类统一消费 AppCategories（由 config/appCategories.json 构建时生成，唯一 Source of Truth）；
+ *  - 检测到前台 App 变化 → 产 APP_FOREGROUND BehaviorEvent 发给 TS DisciplineEngine；
+ *  - 通过 MissionMirror 读取当前 Mission 最小镜像，感知"是否有任务在执行"；
+ *  - 保留深夜关怀 / 连续学习关怀等系统级健康提醒。
+ *
+ * 任务是否分心、是否干预、是否完成，统一由 TS DisciplineEngine 判定（决策 #6）。
  */
 class MonitorService : Service() {
 
@@ -58,6 +65,9 @@ class MonitorService : Service() {
       startForeground(NOTIF_ID, notif)
     }
     handler.post(poller)
+    // 重启后从最小镜像恢复"是否有 Mission 在执行"的感知（决策 #5 双保险）
+    val hasMission = MissionMirror.hasActiveMission(this)
+    Log.d(TAG, "MonitorService onCreate, activeMission=$hasMission")
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -92,35 +102,62 @@ class MonitorService : Service() {
     val pkg = latest.key
     val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
 
-    // 学习类 App：检测连续学习超 90 分钟
-    if (STUDY_PACKAGES.contains(pkg)) {
-      consecutiveStudyMin += 1
-      if (consecutiveStudyMin >= 90 && consecutiveStudyMin % 30 == 0) {
-        notifyCare("连续学习 ${consecutiveStudyMin} 分钟了，喝水动动吧～")
+    // ── 产 APP_FOREGROUND BehaviorEvent（前台 App 变化时）→ TS DisciplineEngine ──
+    if (pkg != lastForegroundPkg) {
+      emitAppForeground(pkg)
+    }
+
+    // ── 系统级健康提醒（保留原能力，分类改用统一 AppCategories）──
+    when (AppCategories.classify(pkg)) {
+      AppCategories.CATEGORY_STUDY -> {
+        consecutiveStudyMin += 1
+        if (consecutiveStudyMin >= 90 && consecutiveStudyMin % 30 == 0) {
+          notifyCare("连续学习 ${consecutiveStudyMin} 分钟了，喝水动动吧～")
+        }
       }
-    } else if (ENTERTAINMENT_PACKAGES.contains(pkg)) {
-      consecutiveStudyMin = 0
-      // 深夜（23-5）正在用娱乐类
-      if (hour >= 23 || hour < 5) {
-        notifyCare("深夜了，建议放下手机休息 5 分钟。")
-        triggerLockScreen(5)
-      }
-      // 周末/通勤时段（17-22）娱乐类累计超 1 小时
-      if (hour in 17..22) {
-        var totalMs = 0L
-        for ((pkgKey, st) in stats) {
-          if (ENTERTAINMENT_PACKAGES.contains(pkgKey)) {
-            totalMs += st.totalTimeInForeground
+      AppCategories.CATEGORY_ENTERTAINMENT, AppCategories.CATEGORY_SOCIAL -> {
+        consecutiveStudyMin = 0
+        // 深夜（23-5）正在用娱乐/社交类
+        if (hour >= 23 || hour < 5) {
+          notifyCare("深夜了，建议放下手机休息 5 分钟。")
+          triggerLockScreen(5)
+        }
+        // 晚间（17-22）娱乐类累计超 1 小时
+        if (hour in 17..22) {
+          var totalMs = 0L
+          for ((pkgKey, _) in stats) {
+            if (AppCategories.isDistraction(pkgKey)) {
+              totalMs += stats[pkgKey]?.totalTimeInForeground ?: 0L
+            }
+          }
+          if (totalMs > 60 * 60 * 1000L) {
+            notifyCare("今日娱乐时长已超 1 小时，监督人格注意到了。")
           }
         }
-        if (totalMs > 60 * 60 * 1000L) {
-          notifyCare("今日娱乐时长已超 1 小时，监督人格注意到了。")
-        }
       }
-    } else {
-      consecutiveStudyMin = 0
+      else -> {
+        consecutiveStudyMin = 0
+      }
     }
     lastForegroundPkg = pkg
+  }
+
+  /** 产 APP_FOREGROUND BehaviorEvent 发给 TS（携带统一分类结果） */
+  private fun emitAppForeground(pkg: String) {
+    try {
+      val plugin = SelfDisciplinePlugin.instance ?: return
+      val obj = JSObject()
+      obj.put("type", "APP_FOREGROUND")
+      obj.put("ts", System.currentTimeMillis())
+      obj.put("packageName", pkg)
+      obj.put("appCategory", AppCategories.classify(pkg))
+      // 附带当前 Mission 上下文（若有），便于 TS 侧判断是否需要干预
+      obj.put("hasActiveMission", MissionMirror.hasActiveMission(this))
+      plugin.emitBehaviorEvent(obj)
+      Log.d(TAG, "emit APP_FOREGROUND pkg=$pkg category=${AppCategories.classify(pkg)}")
+    } catch (e: Exception) {
+      Log.w(TAG, "emitAppForeground failed", e)
+    }
   }
 
   private fun notifyCare(text: String) {
@@ -160,18 +197,5 @@ class MonitorService : Service() {
     private const val CHANNEL_ID = "self_discipline_foreground"
     private const val CHANNEL_CARE = "self_discipline_care"
     private const val NOTIF_ID = 9001
-
-    // 真实生产环境应当从云端拉分类名单，或读 PACKAGE_NAME 列表
-    private val STUDY_PACKAGES = setOf(
-      "com.xiaodao.xiaodaoapp", "cn.com.moobo.kingmath", "com.duolingo",
-      "com.eusoft.ting", "com.eusoft.eudic", "com.khanacademy.app",
-      "mark.via.app.subwaytoefl", "com.icourse.cn"
-    )
-    private val ENTERTAINMENT_PACKAGES = setOf(
-      "com.ss.android.ugc.aweme", "com.ss.android.article.news",
-      "com.tencent.qqlive", "tv.danmaku.bili",
-      "com.miHoYo.GenshinImpact", "com.tencent.tmgp.sgame",
-      "com.netease.cloudmusic", "com.kuaishou.nebula"
-    )
   }
 }

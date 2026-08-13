@@ -4,7 +4,7 @@
  * 由 main.tsx 调用 initDiscipline() 启动。
  */
 import { LocalNotifications } from '@capacitor/local-notifications'
-import { Capacitor } from '@capacitor/core'
+import { Capacitor, registerPlugin } from '@capacitor/core'
 import { useMissionStore } from './missionStore'
 import { generateTodayMissions, pickCurrentMission } from './scheduleToMissions'
 import {
@@ -15,9 +15,31 @@ import { classifyApp } from './appCategories'
 import { logger } from '@/lib/logger'
 import type { Mission } from './types'
 
+/** 原生自律插件（Android MonitorService 通过它回传 BehaviorEvent / 接收镜像同步） */
+const SelfDiscipline = registerPlugin<any>('SelfDiscipline')
+
 let sampleTimer: ReturnType<typeof setInterval> | null = null
 let missedTimer: ReturnType<typeof setInterval> | null = null
 let lastSampleTs = 0
+
+/** 订阅原生 MonitorService 产出的 BehaviorEvent（APP_FOREGROUND），喂给 DisciplineEngine */
+function subscribeNativeBehaviorEvents() {
+  if (Capacitor.getPlatform() !== 'android') return
+  try {
+    void SelfDiscipline.addListener('behaviorEvent', (event: any) => {
+      if (!event || !event.type) return
+      handleEvent({
+        type: event.type,
+        ts: typeof event.ts === 'number' ? event.ts : Date.now(),
+        packageName: event.packageName,
+        appCategory: event.appCategory
+      })
+    })
+    logger.info('discipline', '已订阅原生 BehaviorEvent')
+  } catch (e) {
+    logger.warn('discipline', '订阅原生 BehaviorEvent 失败', { error: String(e) })
+  }
+}
 
 /** 采样窗口：从当前 Mission 开始（或上次采样）到当前 */
 async function sampleUsageForCurrentMission() {
@@ -94,11 +116,12 @@ async function notifyLevel1(m: Mission) {
 async function lockOverlay(m: Mission, level: number) {
   if (Capacitor.getPlatform() !== 'android') return
   try {
-    const plugin: any = (Capacitor as any).Plugins?.SelfDiscipline
-    if (!plugin?.lockScreen) return
     // LEVEL2: 短遮罩(可恢复)；LEVEL3: 更长恢复模式
     const minutes = level >= 3 ? 5 : 1
-    await plugin.lockScreen({ minutes, text: level >= 3 ? '进入恢复模式，回到你的任务' : '现在是学习时间，回来继续' })
+    await SelfDiscipline.lockScreen({
+      minutes,
+      text: level >= 3 ? '进入恢复模式，回到你的任务' : '现在是学习时间，回来继续'
+    })
   } catch (e) {
     logger.warn('discipline', '锁屏遮罩失败', { error: String(e) })
   }
@@ -126,6 +149,9 @@ export function initDiscipline() {
   // 2. 接线干预
   wireInterventionHandlers()
 
+  // 2.5 订阅原生 MonitorService 的 BehaviorEvent（APP_FOREGROUND）
+  subscribeNativeBehaviorEvents()
+
   // 3. 自动指向"当前该做的 Mission"（若尚未设置）
   const store = useMissionStore.getState()
   if (!store.getCurrentMission()) {
@@ -138,7 +164,8 @@ export function initDiscipline() {
   lastSampleTs = 0
   sampleTimer = setInterval(() => {
     void sampleUsageForCurrentMission()
-    void detectForegroundApp()
+    // Android 原生 MonitorService 已产 APP_FOREGROUND；仅非 Android（Web 预览）兜底检测
+    if (Capacitor.getPlatform() !== 'android') void detectForegroundApp()
     // 采样后若已达标则尝试完成
     const m = useMissionStore.getState().getCurrentMission()
     if (m) tryComplete(m.id)
