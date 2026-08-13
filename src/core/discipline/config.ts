@@ -45,19 +45,45 @@ export const EVIDENCE_WEIGHT = {
 } as const
 
 // ═══════════════════════════════════════════════════════════
-// Deviation / 置信度（Phase 2 生效，Phase 0 先定义）
+// Deviation / 置信度（Phase 2）
+//   模型：raw behavior → App Category → base confidence → context 调整 → duration 调整
+//         → final confidence → Deviation Gate（是否记为偏离）→ Intervention Gate（是否干预）
+//   硬规则：Deviation ≠ Intervention。可"记录 Deviation 但不干预"。
 // ═══════════════════════════════════════════════════════════
 export const DEVIATION = {
-  /** 短暂切换豁免：低于此时长的前台切换不形成 Deviation */
-  SHORT_SWITCH_EXEMPT_MS: 10_000,
-  /** 明确娱乐 App 持续 ≥60s 的基准置信度 */
-  CONF_ENTERTAINMENT: 0.92,
-  /** 社交 App 持续 ≥60s 的基准置信度 */
-  CONF_SOCIAL: 0.75,
-  /** 浏览器 / neutral 工具（context-dependent，不直接判分心） */
-  CONF_NEUTRAL: 0.15,
-  /** 触发 LEVEL1 所需的高置信分心持续时长 */
+  /** 短暂切换豁免：< 该时长视为 transient switch，【不创建 Deviation】（事件去抖，非"不算分心"） */
+  SHORT_SWITCH_EXEMPTION_MS: 10_000,
+
+  // ── base confidence（仅 base signal，非最终值；最终值需结合 context/duration）──
+  CONF_ENTERTAINMENT: 0.92,   // 明确娱乐 App
+  CONF_SOCIAL: 0.75,          // 社交 App
+  CONF_NEUTRAL: 0.15,         // 浏览器 / neutral 工具（context-dependent，语义中性）
+
+  // ── confidence 调整（final = base + duration + context）──
+  DURATION_ADJUST_PER_MIN: 0.04,   // 每持续 1 分钟 +0.04
+  MAX_DURATION_ADJUSTMENT: 0.20,   // duration 调整上限
+  ABYSS_CONTEXT_ADJUSTMENT: 0.05,  // Abyss 模式高 stakes
+  REPEAT_ADJUSTMENT: 0.05,         // 本 Session 已多次偏离（分心模式）
+
+  /** neutral/浏览器最终置信度上限（Phase 2 永不把浏览器单独判成高分心） */
+  NEUTRAL_CONF_CAP: 0.30,
+
+  // ── Deviation Gate：final confidence ≥ 该值才"正式成立"为 Deviation（记录层）──
+  RECORD_MIN_CONFIDENCE: 0.40,
+
+  // ── Intervention Gate：final confidence ≥ 该值才考虑干预（配合 duration 分级）──
+  INTERVENTION_MIN_CONFIDENCE: 0.60,
+
+  /** 触发 LEVEL1 所需的高置信分心持续时长（干预分级仍由 INTERVENTION.* 时长驱动） */
   HIGH_CONF_SUSTAIN_MS: 60_000,
+} as const
+
+// ═══════════════════════════════════════════════════════════
+// Session 结果判定（Phase 2 最小版；Phase 4 扩展为三态 + 执行率 + 质量等级）
+// ═══════════════════════════════════════════════════════════
+export const RESULT = {
+  /** "有意义执行"阈值：专注时长 ≥ 该值视为 PARTIAL（而非 ABANDONED） */
+  MEANINGFUL_EXECUTION_MS: 60_000,
 } as const
 
 // ═══════════════════════════════════════════════════════════

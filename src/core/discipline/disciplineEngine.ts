@@ -26,10 +26,15 @@ import { useSessionStore, RUNNING_SESSION_STATUS } from './sessionStore'
 import { evaluateMission, makeEvidence } from './missionEvaluator'
 import { grantMissionReward, grantMissedPenalty } from './rewardEngine'
 import { computeFocusMs, mergeIntervalsMs } from './focusMath'
-import { INTERVENTION, DEVIATION } from './config'
+import { INTERVENTION } from './config'
+import {
+  baseConfidenceFor, computeFinalConfidence,
+  shouldRecordDeviation, shouldConsiderIntervention, isTransient
+} from './deviationAnalyzer'
+import { resolveSessionOutcome, computeExecutionRate } from './resultResolver'
 import type { BehaviorEvent, Mission, InterventionLevel, FocusInterval, Session, Deviation } from './types'
 import { useStore } from '@/stores/useStore'
-import { classifyApp, getAppLabel } from './appCategories'
+import { classifyApp, getAppLabel, type AppCategory } from './appCategories'
 import { logger } from '@/lib/logger'
 
 // ── 干预升级阈值（收敛到 config）──
@@ -96,13 +101,6 @@ function syncMissionAggregate(missionId: string) {
   mstore.updateMission(missionId, { actualStudyMs, distractionMs })
 }
 
-/** Phase 1 的偏离置信度占位（按分类给基准值；Phase 2 由 DeviationAnalyzer 细化） */
-function deviationConfidence(category: string): number {
-  if (category === 'entertainment') return DEVIATION.CONF_ENTERTAINMENT
-  if (category === 'social') return DEVIATION.CONF_SOCIAL
-  return DEVIATION.CONF_NEUTRAL
-}
-
 // ═══════════════════════════════════════════════════════════
 // 对外 API（签名保持不变）
 // ═══════════════════════════════════════════════════════════
@@ -116,7 +114,11 @@ export function startMission(missionId: string) {
   const curSession = useSessionStore.getState().getCurrentSession()
   if (curSession && curSession.missionId !== missionId && RUNNING_SESSION_STATUS.includes(curSession.status)) {
     resolveCurrentDeviation(curSession.id, 'AUTO')
-    useSessionStore.getState().updateSession(curSession.id, { status: 'ABANDONED', endedAt: Date.now() })
+    // P1：不机械写 ABANDONED，由结果判定决定 COMPLETED/PARTIAL/ABANDONED
+    const staleMission = useMissionStore.getState().getMission(curSession.missionId)
+    const fresh = useSessionStore.getState().getSession(curSession.id)
+    const outcome = staleMission && fresh ? resolveSessionOutcome(fresh, staleMission) : 'ABANDONED'
+    useSessionStore.getState().updateSession(curSession.id, { status: outcome, endedAt: Date.now() })
   }
   useMissionStore.setState({ currentMissionId: missionId })
   // 创建一个新 Session（执行期状态全部归 Session）
@@ -139,7 +141,13 @@ export function recoverMission() {
   const session = sstore.getCurrentSession() || undefined
   if (session && RUNNING_SESSION_STATUS.includes(session.status)) {
     resolveCurrentDeviation(session.id, 'USER_RECOVERY')
-    sstore.updateSession(session.id, { status: 'RECOVERING', interventionLevel: 0, distractedSince: undefined, recoveryCount: session.recoveryCount + 1 })
+    sstore.updateSession(session.id, {
+      status: 'RECOVERING',
+      interventionLevel: 0,
+      distractedSince: undefined,
+      pendingDeviation: undefined,
+      recoveryCount: session.recoveryCount + 1
+    })
     logger.info('discipline', `Session 恢复 (recoveryCount=${session.recoveryCount + 1})`, { sessionId: session.id })
   }
   // Mission 镜像（供 UI）
@@ -229,41 +237,121 @@ export function handleEvent(event: BehaviorEvent) {
 // 内部逻辑
 // ═══════════════════════════════════════════════════════════
 
-/** App 切到前台：判断是否是分心（在当前 Session 上记录 Deviation） */
+/**
+ * App 切到前台（Phase 2 置信度流水线）：
+ *   可疑 App → 挂"偏离候选"(pendingDeviation) → 持续≥阈值且置信度过门控 → 正式成立 Deviation
+ *   学习 App → 处理 transient switch（未达阈值直接丢弃）或 Recovery。
+ */
 function onAppForeground(m: Mission, event: BehaviorEvent) {
   const pkg = event.packageName || ''
   const cat = event.appCategory ?? classifyApp(pkg)
   const isDistraction = cat === 'entertainment' || cat === 'social'
+  const isNeutral = cat === 'neutral'
   const isStudy = cat === 'study'
 
   const sstore = useSessionStore.getState()
   const session = sstore.getCurrentSession() || sstore.getRunningSessionForMission(m.id)
+  if (!session) return
+  if (session.status === 'COMPLETED' || session.status === 'ABANDONED' || session.status === 'PARTIAL') return
 
-  if (isDistraction && session && ['ACTIVE', 'RECOVERING'].includes(session.status)) {
-    // 进入偏离：记一条 DISTRACTION Deviation（置信度按分类，Phase 2 细化）
-    const now = Date.now()
-    const dev: Deviation = {
-      id: `dev-${now.toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-      sessionId: session.id,
-      type: 'DISTRACTION',
-      startedAt: now,
-      durationMs: 0,
-      confidence: deviationConfidence(cat),
-      trigger: `打开 ${getAppLabel(pkg)}`
+  if (isStudy) {
+    handleReturnToStudy(m, session)
+    return
+  }
+  if (isDistraction || isNeutral) {
+    handlePotentialDeviation(m, session, pkg, cat)
+  }
+}
+
+/** 回到学习 App：transient switch（未达阈值）直接丢弃候选；已正式成立则恢复 */
+function handleReturnToStudy(m: Mission, session: Session) {
+  const sstore = useSessionStore.getState()
+  const pd = session.pendingDeviation
+  if (pd) {
+    const elapsed = Date.now() - pd.startedAt
+    if (isTransient(elapsed)) {
+      // transient switch：打开错立刻返回 → 不创建 Deviation / 不干预 / 不记 Recovery，不污染 Session
+      sstore.updateSession(session.id, { pendingDeviation: undefined })
+      logger.debug('discipline', 'transient switch，未创建 Deviation', { pkg: pd.pkg, elapsedMs: elapsed })
+      return
     }
-    sstore.updateSession(session.id, {
-      status: 'DEVIATED',
-      distractedSince: now,
-      deviations: [...session.deviations, dev],
-      deviationCount: session.deviationCount + 1
-    })
-    // Mission 镜像（供 UI / Android 镜像）
-    useMissionStore.getState().updateMission(m.id, { status: 'DISTRACTED', distractedSince: now })
-    logger.info('discipline', `检测到偏离: ${pkg}`, { category: cat, sessionId: session.id, confidence: dev.confidence })
-    escalateIntervention(m.id)
-  } else if (isStudy && session && session.status === 'DEVIATED') {
-    // 回到学习 App → 恢复
+    // 已持续过阈值：先尝试正式成立，再按恢复处理
+    maybeFormalizeDeviation(m, session)
+  }
+  const fresh = sstore.getSession(session.id)
+  if (fresh && fresh.status === 'DEVIATED') {
     recoverMission()
+  }
+}
+
+/** 可疑 App（娱乐/社交/neutral）前台：开启或更新偏离候选（不立即成立 Deviation） */
+function handlePotentialDeviation(m: Mission, session: Session, pkg: string, cat: AppCategory) {
+  const sstore = useSessionStore.getState()
+  // 已正式成立偏离：保持现状，升级交给采样/评估
+  if (session.status === 'DEVIATED') return
+
+  const now = Date.now()
+  const base = baseConfidenceFor(cat)
+  const existing = session.pendingDeviation
+  // 多个可疑 App 间切换：保留最早起点，基准置信度取较高者
+  const pending = existing
+    ? { ...existing, pkg, category: cat, baseConfidence: Math.max(existing.baseConfidence, base) }
+    : { pkg, category: cat, startedAt: now, baseConfidence: base }
+  sstore.updateSession(session.id, { pendingDeviation: pending })
+
+  // 事件可能到达较晚（候选已持续超阈值）→ 立即尝试成立
+  const fresh = sstore.getSession(session.id)
+  if (fresh) maybeFormalizeDeviation(m, fresh)
+}
+
+/**
+ * 尝试把待定候选正式成立为 Deviation。
+ *   Deviation Gate：final confidence ≥ RECORD_MIN_CONFIDENCE 才记录（记录层）。
+ *   Intervention Gate：confidence ≥ INTERVENTION_MIN_CONFIDENCE 才考虑干预（干预层）。
+ *   → 二者分离：可"记录 Deviation 但不干预"。
+ */
+function maybeFormalizeDeviation(m: Mission, session: Session) {
+  const sstore = useSessionStore.getState()
+  const pd = session.pendingDeviation
+  if (!pd) return
+  const now = Date.now()
+  const elapsed = now - pd.startedAt
+  if (isTransient(elapsed)) return // 仍属 transient
+
+  // 置信度流水线：base → context → duration → final
+  const conf = computeFinalConfidence(pd, session, m, elapsed)
+
+  // Deviation Gate：置信度不足 → 不正式成立（浏览器/低置信场景在此被拦下）
+  if (!shouldRecordDeviation(conf)) {
+    logger.debug('discipline', '低置信候选，未成立 Deviation', { pkg: pd.pkg, conf, elapsedMs: elapsed })
+    return
+  }
+
+  const dev: Deviation = {
+    id: `dev-${now.toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    sessionId: session.id,
+    type: 'DISTRACTION',
+    startedAt: pd.startedAt,
+    durationMs: elapsed,
+    confidence: conf,
+    trigger: `打开 ${getAppLabel(pd.pkg)}`
+  }
+  sstore.updateSession(session.id, {
+    status: 'DEVIATED',
+    distractedSince: pd.startedAt,
+    pendingDeviation: undefined,
+    deviations: [...session.deviations, dev],
+    deviationCount: session.deviationCount + 1
+  })
+  // Mission 镜像（供 UI / Android 镜像）
+  useMissionStore.getState().updateMission(m.id, { status: 'DISTRACTED', distractedSince: pd.startedAt })
+  logger.info('discipline', `Deviation 成立: ${pd.pkg}`, { conf, elapsedMs: elapsed, sessionId: session.id })
+
+  // Intervention Gate：Deviation ≠ Intervention
+  if (shouldConsiderIntervention(conf)) {
+    escalateIntervention(m.id)
+  } else {
+    logger.info('discipline', '记录 Deviation 但不干预（置信度未达干预门槛）', { conf })
   }
 }
 
@@ -292,34 +380,47 @@ function onUsageSample(m: Mission, event: BehaviorEvent) {
     }
   }
 
-  // 采样时若已偏离，尝试升级干预
+  // 采样时：先尝试成立持续的偏离候选，再对已成立的偏离升级干预（置信度门控在 escalate 内）
   const s = useSessionStore.getState().getCurrentSession()
-  if (s && (s.status === 'DEVIATED' || m.status === 'INTERVENTION')) {
+  if (s && s.pendingDeviation) {
+    maybeFormalizeDeviation(m, s)
+  }
+  const s2 = useSessionStore.getState().getCurrentSession()
+  if (s2 && (s2.status === 'DEVIATED' || m.status === 'INTERVENTION')) {
     escalateIntervention(m.id)
   }
 
   tryComplete(m.id)
 }
 
-/** 手动停止：结束当前 Session（ABANDONED），Mission 回 IDLE，清指针 */
+/**
+ * 手动停止：结束当前 Session，Mission 回 IDLE，清指针。
+ * P1 修复：Stop ≠ 机械 Abandoned —— 最终 outcome 由 resolveSessionOutcome
+ * 依据实际执行结果判定 COMPLETED / PARTIAL / ABANDONED。
+ */
 function onMissionStopped(m: Mission) {
   const sstore = useSessionStore.getState()
   const session = sstore.getCurrentSession() || sstore.getRunningSessionForMission(m.id)
   if (session && RUNNING_SESSION_STATUS.includes(session.status)) {
-    // 若处于偏离，先 resolve
+    // 若处于偏离 / 有待定候选，先收尾
     resolveCurrentDeviation(session.id, 'AUTO')
+    const fresh = sstore.getSession(session.id) || session
+    const outcome = resolveSessionOutcome(fresh, m)
+    const rate = computeExecutionRate(fresh, m)
     sstore.updateSession(session.id, {
-      status: 'ABANDONED',
+      status: outcome,
       endedAt: Date.now(),
+      pendingDeviation: undefined,
       result: {
-        outcome: 'ABANDONED',
-        executionRate: m.targetMinutes > 0 ? session.focusDurationMs / (m.targetMinutes * 60000) : 0,
-        focusDurationMs: session.focusDurationMs,
-        distractionDurationMs: session.distractionDurationMs,
-        deviationCount: session.deviationCount,
-        recoveryCount: session.recoveryCount
+        outcome,
+        executionRate: rate,
+        focusDurationMs: fresh.focusDurationMs,
+        distractionDurationMs: fresh.distractionDurationMs,
+        deviationCount: fresh.deviationCount,
+        recoveryCount: fresh.recoveryCount
       }
     })
+    logger.info('discipline', `Session 结束(Stop) → ${outcome}`, { sessionId: session.id, rate })
   }
   sstore.setCurrentSession(null)
   useMissionStore.getState().updateMission(m.id, { status: 'IDLE' })
@@ -340,11 +441,17 @@ function resolveCurrentDeviation(sessionId: string, resolvedBy: Deviation['resol
   sstore.updateSession(sessionId, { deviations })
 }
 
-/** 分级干预：根据偏离持续时长升级（Session 权威，Mission 镜像） */
+/** 分级干预：Session 权威、Mission 镜像。Intervention Gate：置信度达标才干预，再按 duration 分级。 */
 function escalateIntervention(missionId: string) {
   const sstore = useSessionStore.getState()
   const session = sstore.getCurrentSession() || sstore.getRunningSessionForMission(missionId)
   if (!session || !session.distractedSince) return
+
+  // Intervention Gate：活动（未 resolve）Deviation 的置信度须达干预门槛
+  // → Deviation ≠ Intervention：低置信偏离只记录、不干预
+  const activeDev = [...session.deviations].reverse().find(d => d.resolvedAt == null)
+  const conf = activeDev?.confidence ?? 0
+  if (!shouldConsiderIntervention(conf)) return
 
   const distractedMs = Date.now() - session.distractedSince
   let level: InterventionLevel = 0
@@ -357,7 +464,7 @@ function escalateIntervention(missionId: string) {
   // Mission 镜像（供干预回调 / Android 镜像）
   const m = useMissionStore.getState().getMission(missionId)
   if (m) useMissionStore.getState().updateMission(missionId, { interventionLevel: level, status: level > 0 ? 'INTERVENTION' : m.status })
-  logger.info('discipline', `干预升级 LEVEL ${level}`, { sessionId: session.id, distractedMs })
+  logger.info('discipline', `干预升级 LEVEL ${level}`, { sessionId: session.id, distractedMs, conf })
 
   if (m) {
     if (level >= 1) handlers.onDistracted?.(m, level)

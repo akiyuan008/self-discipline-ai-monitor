@@ -175,8 +175,9 @@ export type SessionStatus =
   | 'PAUSED'       // 暂停
   | 'DEVIATED'     // 偏离中
   | 'RECOVERING'   // 恢复中
-  | 'COMPLETED'    // 完成
-  | 'ABANDONED'    // 明确放弃/结束
+  | 'COMPLETED'    // 完成（达到完成条件）
+  | 'PARTIAL'      // 部分完成（有有效执行但未达标）
+  | 'ABANDONED'    // 放弃（几乎无有效执行即结束）
 
 export type SessionMode = 'STANDARD' | 'ABYSS'
 
@@ -199,6 +200,18 @@ export type DeviationType =
   | 'OVEREXTENSION'  // 过度延长
 
 export type DeviationResolvedBy = 'USER_RECOVERY' | 'INTERVENTION' | 'TIMEOUT' | 'AUTO'
+
+/**
+ * 待定的偏离候选（transient 期间挂在 Session 上，未正式成立）。
+ * 用于实现 <SHORT_SWITCH_EXEMPTION_MS 的 transient switch 去抖：
+ * 前台切到可疑 App 时先挂候选，持续达到阈值才正式成立为 Deviation。
+ */
+export interface PendingDeviation {
+  pkg: string
+  category: 'study' | 'entertainment' | 'social' | 'neutral'
+  startedAt: number
+  baseConfidence: number
+}
 
 /** 偏离记录（V3）。Deviation ≠ App Category；带置信度与上下文。 */
 export interface Deviation {
@@ -250,6 +263,9 @@ export interface Session {
   deviations: Deviation[]
   deviationCount: number
   recoveryCount: number
+
+  /** 待定的偏离候选（transient 去抖期，未正式成立；成立后清空） */
+  pendingDeviation?: PendingDeviation
 
   /** 执行期干预状态（权威源在 Session，Mission 侧为镜像） */
   interventionLevel: InterventionLevel
