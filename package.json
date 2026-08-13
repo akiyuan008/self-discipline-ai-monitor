@@ -8,6 +8,7 @@
     "prebuild": "node scripts/gen-android-categories.mjs",
     "build": "tsc -b && vite build",
     "gen:android-categories": "node scripts/gen-android-categories.mjs",
+    "test:phase2": "node scripts/test-phase2.mjs",
     "preview": "vite preview",
     "cap:sync": "cap sync",
     "cap:add:android": "cap add android",

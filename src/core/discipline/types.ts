@@ -211,6 +211,12 @@ export interface PendingDeviation {
   category: 'study' | 'entertainment' | 'social' | 'neutral'
   startedAt: number
   baseConfidence: number
+  /**
+   * 是否存在额外上下文证据（Phase 2 恒为 false/未设置）。
+   * 未来（如浏览器 URL 语义、连续切换娱乐站点、长停留模式）可置 true，
+   * 以解除 NEUTRAL_CAP 封顶、允许基于上下文把 neutral 重新评估为更高置信度。
+   */
+  contextEvidence?: boolean
 }
 
 /** 偏离记录（V3）。Deviation ≠ App Category；带置信度与上下文。 */

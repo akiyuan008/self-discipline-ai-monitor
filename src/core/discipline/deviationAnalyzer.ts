@@ -51,8 +51,12 @@ export function computeFinalConfidence(
   // context 调整：本 Session 已多次偏离 → 分心模式，略微提高
   if (session.deviationCount >= 2) conf += DEVIATION.REPEAT_ADJUSTMENT
 
-  // neutral / 浏览器封顶：语义中性，Phase 2 永不单独判成高分心
-  if (pd.category === 'neutral') conf = Math.min(conf, DEVIATION.NEUTRAL_CONF_CAP)
+  // neutral / 浏览器封顶：语义中性，无额外上下文证据时不单独判成高分心。
+  // ⚠️ NEUTRAL_CAP 仅是"无上下文证据"时的上限：一旦存在 contextEvidence
+  // （未来如 URL 语义 / 连续切换娱乐站点 / 长停留模式），即解除封顶、允许上下文重评。
+  if (pd.category === 'neutral' && !pd.contextEvidence) {
+    conf = Math.min(conf, DEVIATION.NEUTRAL_CONF_CAP)
+  }
 
   return clamp01(conf)
 }
