@@ -31,7 +31,8 @@ const files = [
   'src/core/discipline/focusMath.ts',
   'src/core/discipline/deviationAnalyzer.ts',
   'src/core/discipline/missionEvaluator.ts',
-  'src/core/discipline/resultResolver.ts'
+  'src/core/discipline/resultResolver.ts',
+  'src/core/discipline/recoveryReward.ts'
 ]
 const out = mkdtempSync(path.join(tmpdir(), 'sd-phase2-'))
 try {
@@ -47,7 +48,8 @@ try {
 const A = require(path.join(out, 'deviationAnalyzer.js'))
 const R = require(path.join(out, 'resultResolver.js'))
 const F = require(path.join(out, 'focusMath.js'))
-const { DEVIATION, RESULT } = require(path.join(out, 'config.js'))
+const REC = require(path.join(out, 'recoveryReward.js'))
+const { DEVIATION, RESULT, RECOVERY } = require(path.join(out, 'config.js'))
 
 // ── 2. 断言工具 ──
 const min = 60000
@@ -122,6 +124,28 @@ console.log('── E. focusMath 去重 ──')
   check('E.deviation', '偏离5min被剔除=50min', F.mergeIntervalsMs(devCase) / min, 50)
   const overlap = [{ source: 'DUNGEON', startedAt: t(18, 0), endedAt: t(18, 45) }, { source: 'APP_USAGE', startedAt: t(18, 0), endedAt: t(18, 45) }]
   check('E.dualSource', '双源重叠=45(非90)', F.mergeIntervalsMs(overlap) / min, 45)
+}
+
+// ═══ F. Recovery 奖励 + 防刷（Phase 3）═══
+console.log('── F. Recovery 奖励 + 防刷 ──')
+{
+  // 防刷边界：每 Session 仅奖励前 MAX_PER_SESSION 次
+  check('F.reward1', '第1次恢复 → 发奖', REC.shouldRewardRecovery(1), true)
+  check('F.reward2', `第${RECOVERY.MAX_PER_SESSION}次恢复 → 发奖`, REC.shouldRewardRecovery(RECOVERY.MAX_PER_SESSION), true)
+  check('F.noReward', `第${RECOVERY.MAX_PER_SESSION + 1}次恢复 → 不发奖(防刷)`, REC.shouldRewardRecovery(RECOVERY.MAX_PER_SESSION + 1), false)
+  check('F.noReward0', '第0次 → 不发奖', REC.shouldRewardRecovery(0), false)
+  // grantRecoveryReward 金额与回调
+  let pts = 0, xp = 0; const records = []
+  const cb = {
+    addPoints: n => { pts += n },
+    addXp: n => { xp += n },
+    addExp: (n) => { xp += n },
+    addPointRecord: (t, a, r) => { records.push({ t, a, r }) }
+  }
+  const res = REC.grantRecoveryReward(cb)
+  check('F.pts', `发放 PTS = ${RECOVERY.BONUS_PTS}`, res.points, RECOVERY.BONUS_PTS)
+  check('F.xp', `发放 XP = ${RECOVERY.BONUS_XP}`, res.xp, RECOVERY.BONUS_XP)
+  check('F.record', '记录一条 earn 流水', records.length === 1 && records[0].t === 'earn' && records[0].a === RECOVERY.BONUS_PTS, true)
 }
 
 // ── 3. 汇总 ──

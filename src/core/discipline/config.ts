@@ -100,6 +100,19 @@ export const REWARD = {
   ABYSS_BONUS: 400,
   /** 错过任务的惩罚上限（轻度，Recovery 优先） */
   MISSED_PENALTY_MAX: 30,
-  /** Recovery 奖励（Phase 3 生效） */
-  RECOVERY_BONUS: 0, // V3 Phase3：设定每次主动恢复的小额奖励
+} as const
+
+// ═══════════════════════════════════════════════════════════
+// Recovery 奖励（Phase 3）
+//   理念：自律不是"永远不分心"，而是"分心后能回到轨道"。
+//   主动 Recovery 是正向行为，给予小额奖励强化"回来"这个动作。
+//   防刷：每个 Session 最多奖励前 MAX_PER_SESSION 次恢复。
+// ═══════════════════════════════════════════════════════════
+export const RECOVERY = {
+  /** 每次主动恢复奖励的 PTS */
+  BONUS_PTS: 10,
+  /** 每次主动恢复奖励的 XP */
+  BONUS_XP: 5,
+  /** 每个 Session 内最多奖励的恢复次数（防"故意偏离-恢复"刷分） */
+  MAX_PER_SESSION: 2,
 } as const

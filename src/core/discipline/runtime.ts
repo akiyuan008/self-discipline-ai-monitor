@@ -139,8 +139,23 @@ function wireInterventionHandlers() {
     onMissed: (m) => {
       logger.info('discipline', `任务错过 ${m.title}`)
       void notifyAiSupervision(m, 'AT_RISK')
-    }
+    },
+    onRecovered: (m, points) => { void notifyRecovered(m, points) }
   })
+}
+
+/** Recovery 正向反馈：把"回来了"的肯定以通知送达（强化回归行为） */
+async function notifyRecovered(m: Mission, points: number) {
+  try {
+    await LocalNotifications.schedule({
+      notifications: [{
+        title: 'MOSS · 恢复专注',
+        body: `很好，你回到了「${m.title}」。+${points} PTS`,
+        id: (Date.now() % 100000) + 2,
+        schedule: { at: new Date(Date.now() + 500), allowWhileIdle: true }
+      }]
+    })
+  } catch { /* ignore */ }
 }
 
 /** AI 监督：干预升级/任务错过时，把 MOSS 的一句监督话语以通知送达 */

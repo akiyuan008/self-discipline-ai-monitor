@@ -25,6 +25,7 @@ import { useMissionStore } from './missionStore'
 import { useSessionStore, RUNNING_SESSION_STATUS } from './sessionStore'
 import { evaluateMission, makeEvidence } from './missionEvaluator'
 import { grantMissionReward, grantMissedPenalty } from './rewardEngine'
+import { grantRecoveryReward, shouldRewardRecovery } from './recoveryReward'
 import { computeFocusMs, mergeIntervalsMs } from './focusMath'
 import { INTERVENTION } from './config'
 import {
@@ -50,6 +51,7 @@ export interface InterventionHandlers {
   onCompleted?: (m: Mission, points: number) => void
   onMissed?: (m: Mission) => void
   onDistracted?: (m: Mission, level: InterventionLevel) => void
+  onRecovered?: (m: Mission, points: number) => void
 }
 
 let handlers: InterventionHandlers = {}
@@ -141,14 +143,23 @@ export function recoverMission() {
   const session = sstore.getCurrentSession() || undefined
   if (session && RUNNING_SESSION_STATUS.includes(session.status)) {
     resolveCurrentDeviation(session.id, 'USER_RECOVERY')
+    const newCount = session.recoveryCount + 1
     sstore.updateSession(session.id, {
       status: 'RECOVERING',
       interventionLevel: 0,
       distractedSince: undefined,
       pendingDeviation: undefined,
-      recoveryCount: session.recoveryCount + 1
+      recoveryCount: newCount
     })
-    logger.info('discipline', `Session 恢复 (recoveryCount=${session.recoveryCount + 1})`, { sessionId: session.id })
+    logger.info('discipline', `Session 恢复 (recoveryCount=${newCount})`, { sessionId: session.id })
+
+    // Recovery 奖励：强化"分心后主动回来"（防刷：每 Session 仅前 MAX_PER_SESSION 次发奖）
+    const m = useMissionStore.getState().getCurrentMission()
+    if (shouldRewardRecovery(newCount)) {
+      const reward = grantRecoveryReward(rewardCallbacks())
+      logger.info('discipline', `Recovery 奖励 +${reward.points}PTS`, { sessionId: session.id, recoveryCount: newCount })
+      if (m) handlers.onRecovered?.(m, reward.points)
+    }
   }
   // Mission 镜像（供 UI）
   const m = useMissionStore.getState().getCurrentMission()
