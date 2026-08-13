@@ -2,6 +2,7 @@ import { useStore, type AIConfig, type ChatMessage } from '@/stores/useStore'
 import { logger } from '@/lib/logger'
 import { useGaoKaoStore } from '@/stores/gaoKaoStore'
 import { fetchUsageStats, hasUsageAccess, openUsageAccessSettings, fmtMs } from '@/lib/usageStats'
+import { useMissionStore } from '@/core/discipline/missionStore'
 
 /**
  * 前端直连用户配置的 OpenAI 兼容 API
@@ -21,6 +22,7 @@ const SYSTEM_PROMPT = `你是 MOSS，用户的个人成长监督 AI。
 - 语气果断，像一个严厉但关心的教练。
 - 当用户说"扣我积分"、"奖励我"、"加积分"时，必须调用 add_points 工具，不要只口头答应。
 - 当用户说"加个任务"、"我想做XXX"时，必须调用 add_quest 工具。
+- 当用户说"我想专注完成XXX"、"给我安排个专注任务"、"今晚想把XXX看完"这类要立即专注的事时，必须调用 create_mission 工具，把它纳入自律系统监控。
 - 当用户说"加个成就"、"我想挑战XXX"时，必须调用 add_achievement 工具。
 - 当用户说"完成任务"时，必须调用 complete_quest 工具。
 - 当用户说"看看手机使用"、"我是不是在偷懒"时，必须调用 check_phone_usage 工具。
@@ -237,6 +239,23 @@ const TOOLS = [
         required: []
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_mission',
+      description: '动态创建一个专注 Mission（监督任务）。当用户说"我今晚想把函数第三章看完"、"给我加个45分钟背单词任务"、"帮我安排一个专注任务"时调用。创建的 Mission 会进入统一自律系统，自动监控、发现分心、干预、判完成并发奖。',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: '任务标题，4-15字，如"函数第三章"' },
+          subject: { type: 'string', description: '科目/主题，如"数学"（可选）' },
+          minutes: { type: 'number', description: '目标专注分钟数，建议25-90' },
+          delayMin: { type: 'number', description: '多少分钟后开始；0或省略=立即可开始（可选）' }
+        },
+        required: ['title', 'minutes']
+      }
+    }
   }
 ]
 
@@ -334,6 +353,27 @@ async function executeTool(name: string, args: any): Promise<string> {
       case 'request_usage_permission': {
         await openUsageAccessSettings()
         return JSON.stringify({ ok: true, msg: '已跳转到使用情况访问权限设置页面，请引导用户开启权限后返回。' })
+      }
+      case 'create_mission': {
+        const title = String(args.title || '未命名任务')
+        const minutes = Math.max(1, Math.min(480, Math.round(Number(args.minutes) || 30)))
+        const delayMin = Math.max(0, Math.round(Number(args.delayMin) || 0))
+        const start = Date.now() + delayMin * 60000
+        const m = useMissionStore.getState().createMission({
+          title,
+          subject: args.subject ? String(args.subject) : title,
+          source: 'AI',
+          createdBy: 'AI',
+          plannedStart: start,
+          plannedEnd: start + minutes * 60000,
+          targetMinutes: minutes,
+          requiresEvidence: false
+        })
+        return JSON.stringify({
+          ok: true,
+          mission_id: m.id,
+          msg: `任务「${title}」已创建（${minutes}分钟${delayMin > 0 ? `，${delayMin}分钟后开始` : '，可立即开始'}），已纳入自律系统监控。`
+        })
       }
       case 'update_subject_score': {
         const subjectName = String(args.subject || '')

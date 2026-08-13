@@ -10,6 +10,7 @@ import { generateTodayMissions, pickCurrentMission } from './scheduleToMissions'
 import {
   handleEvent, setInterventionHandlers, scanMissedMissions, tryComplete
 } from './disciplineEngine'
+import { aiSupervise } from './aiSupervisor'
 import { fetchUsageStats } from '@/lib/usageStats'
 import { classifyApp } from './appCategories'
 import { logger } from '@/lib/logger'
@@ -130,15 +131,32 @@ async function lockOverlay(m: Mission, level: number) {
 function wireInterventionHandlers() {
   setInterventionHandlers({
     onLevel1: (m) => { void notifyLevel1(m) },
-    onLevel2: (m) => { void lockOverlay(m, 2) },
-    onLevel3: (m) => { void lockOverlay(m, 3) },
+    onLevel2: (m) => { void lockOverlay(m, 2); void notifyAiSupervision(m, 'DISTRACTED') },
+    onLevel3: (m) => { void lockOverlay(m, 3); void notifyAiSupervision(m, 'DISTRACTED') },
     onCompleted: (m, points) => {
       logger.info('discipline', `任务完成 ${m.title} +${points}`)
     },
     onMissed: (m) => {
       logger.info('discipline', `任务错过 ${m.title}`)
+      void notifyAiSupervision(m, 'AT_RISK')
     }
   })
+}
+
+/** AI 监督：干预升级/任务错过时，把 MOSS 的一句监督话语以通知送达 */
+async function notifyAiSupervision(m: Mission, reason: 'DISTRACTED' | 'AT_RISK') {
+  try {
+    const r = await aiSupervise(m, reason)
+    if (!r?.message) return
+    await LocalNotifications.schedule({
+      notifications: [{
+        title: 'MOSS · 监督',
+        body: r.message,
+        id: (Date.now() % 100000) + 1,
+        schedule: { at: new Date(Date.now() + 500), allowWhileIdle: true }
+      }]
+    })
+  } catch { /* AI 监督失败不阻断干预 */ }
 }
 
 /** 初始化自律核心（main.tsx 调用） */
