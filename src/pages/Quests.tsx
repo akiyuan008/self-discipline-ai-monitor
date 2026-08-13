@@ -9,6 +9,8 @@ import { showToast } from '@/components/Toast'
 import { logger } from '@/lib/logger'
 import Icon from '@/components/Icons'
 import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
+import { useMissionStore, startMission } from '@/core/discipline'
+import type { Mission } from '@/core/discipline'
 
 interface Props {
   onNavigate?: (p: PageId) => void
@@ -26,6 +28,12 @@ function fmtDur(mins: number): string {
   return rem > 0 ? `${h}小时${rem}分` : `${h}小时`
 }
 
+// 时间戳 → HH:MM
+function fmtClock(ts: number): string {
+  const d = new Date(ts)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 export default function Quests({ onNavigate }: Props) {
   const points = useStore(s => s.points)
   const setDungeonDuration = useStore(s => s.setDungeonDuration)
@@ -39,6 +47,56 @@ export default function Quests({ onNavigate }: Props) {
 
   const [now, setNow] = useState(new Date())
   const [verifying, setVerifying] = useState<string | null>(null)
+
+  // ── 动态 Mission（source=USER）创建与展示 ──
+  const missions = useMissionStore(s => s.missions)
+  const currentMissionId = useMissionStore(s => s.currentMissionId)
+  const [showDynForm, setShowDynForm] = useState(false)
+  const [dynTitle, setDynTitle] = useState('')
+  const [dynMinutes, setDynMinutes] = useState(45)
+  const [dynStart, setDynStart] = useState('')  // HH:MM，留空 = 现在
+
+  // 今日动态 Missions（USER/AI 来源）
+  const dynamicMissions = useMemo(() => {
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+    const dayEnd = dayStart + 86400000
+    return missions
+      .filter(m => m.source === 'USER' || m.source === 'AI')
+      .filter(m => m.plannedStart >= dayStart && m.plannedStart < dayEnd)
+      .sort((a, b) => a.plannedStart - b.plannedStart)
+  }, [missions, now])
+
+  function handleCreateDynamic() {
+    const title = dynTitle.trim()
+    if (!title) { showToast('请输入任务内容') ; return }
+    const minutes = Math.max(1, Math.min(480, Math.round(dynMinutes)))
+    // 解析开始时间（HH:MM），留空 = 现在
+    let startTs = Date.now()
+    const hm = dynStart.trim().match(/^(\d{1,2}):(\d{2})$/)
+    if (hm) {
+      const h = Math.min(23, parseInt(hm[1], 10))
+      const mi = Math.min(59, parseInt(hm[2], 10))
+      startTs = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, mi).getTime()
+    }
+    const store = useMissionStore.getState()
+    const m = store.createMission({
+      title,
+      subject: title,
+      source: 'USER',
+      createdBy: 'USER',
+      plannedStart: startTs,
+      plannedEnd: startTs + minutes * 60000,
+      targetMinutes: minutes,
+      requiresEvidence: false
+    })
+    // 若当前没有激活任务，设为当前任务（便于 Home 展示与衔接）
+    const cur = store.getCurrentMission()
+    const ACTIVE = ['READY', 'FOCUSING', 'DISTRACTED', 'RECOVERING', 'INTERVENTION']
+    if (!cur || !ACTIVE.includes(cur.status)) store.setCurrentMission(m.id)
+    setDynTitle(''); setDynStart(''); setShowDynForm(false)
+    showToast('动态任务已创建')
+    logger.info('mission', `动态 Mission 创建: ${title}`, { minutes, startTs })
+  }
 
   // 30s 刷新一次时间
   useEffect(() => {
@@ -187,6 +245,88 @@ export default function Quests({ onNavigate }: Props) {
           allSettled={allSettled}
         />
       )}
+
+      {/* ═══ 动态任务（USER/AI Mission）═══ */}
+      <div style={{ marginTop: 20 }}>
+        <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 3, height: 14, background: '#f59e0b' }} />
+          <div style={{ fontSize: 12, color: '#f59e0b', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 2 }}>
+            DYNAMIC MISSIONS
+          </div>
+          <div style={{ flex: 1, height: 1, background: 'rgba(245,158,11,0.2)' }} />
+          <button
+            onClick={() => setShowDynForm(v => !v)}
+            style={{
+              background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.4)', color: '#f59e0b',
+              fontSize: 12, fontWeight: 700, padding: '5px 10px', cursor: 'pointer',
+              fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", clipPath: CLIP_SM
+            }}
+          >
+            {showDynForm ? '收起' : '+ 动态任务'}
+          </button>
+        </div>
+
+        {showDynForm && (
+          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', padding: 14, marginBottom: 10, clipPath: CLIP, position: 'relative' }}>
+            <div className="corner-deco tl" style={{ width: 10, height: 10, borderWidth: 1 }} />
+            <div className="corner-deco tr" style={{ width: 10, height: 10, borderWidth: 1 }} />
+            <div className="corner-deco bl" style={{ width: 10, height: 10, borderWidth: 1 }} />
+            <div className="corner-deco br" style={{ width: 10, height: 10, borderWidth: 1 }} />
+            <input
+              value={dynTitle}
+              onChange={e => setDynTitle(e.target.value)}
+              placeholder="任务内容，如：函数第三章 / 背单词 / 一套理综卷"
+              style={{
+                width: '100%', boxSizing: 'border-box', padding: '10px 12px', marginBottom: 10,
+                background: 'var(--bg-alt)', border: '1px solid var(--border)', color: 'var(--fg)',
+                fontSize: 14, fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", outline: 'none'
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+              {[25, 40, 45, 60, 90].map(v => (
+                <button key={v} onClick={() => setDynMinutes(v)} style={{
+                  padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontWeight: dynMinutes === v ? 700 : 400,
+                  background: dynMinutes === v ? 'rgba(245,158,11,0.18)' : 'var(--bg-alt)',
+                  border: `1px solid ${dynMinutes === v ? '#f59e0b' : 'var(--border)'}`,
+                  color: dynMinutes === v ? '#f59e0b' : 'var(--fg)',
+                  fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", clipPath: CLIP_SM
+                }}>
+                  {v}分
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+              <span style={{ fontSize: 12, color: 'var(--muted)', fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif" }}>开始</span>
+              <input
+                value={dynStart}
+                onChange={e => setDynStart(e.target.value)}
+                placeholder="留空=现在（或 19:00）"
+                style={{
+                  flex: 1, padding: '8px 12px', background: 'var(--bg-alt)', border: '1px solid var(--border)',
+                  color: 'var(--fg)', fontSize: 13, fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", outline: 'none'
+                }}
+              />
+            </div>
+            <button onClick={handleCreateDynamic} style={{
+              width: '100%', padding: '12px', background: '#f59e0b', border: 'none', color: '#0d1117',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: 1,
+              fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", clipPath: CLIP_SM
+            }}>
+              创建任务
+            </button>
+          </div>
+        )}
+
+        {dynamicMissions.length === 0 && !showDynForm && (
+          <div style={{ textAlign: 'center', padding: '16px', color: 'var(--muted)', fontSize: 12, fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif" }}>
+            暂无动态任务，点上方「+ 动态任务」临时加一个
+          </div>
+        )}
+
+        {dynamicMissions.map(m => (
+          <DynamicMissionCard key={m.id} m={m} isCurrent={currentMissionId === m.id} onStart={() => startMission(m.id)} />
+        ))}
+      </div>
 
       {/* ═══ 纵向时间轴（B）═══ */}
       <div style={{ marginTop: 20, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -441,6 +581,61 @@ function Timeline({ resolved, now, verifyingId, onVerify, onAbyss }: {
           </div>
         )
       })}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════
+// 动态任务卡片（USER/AI Mission）
+// ═══════════════════════════════════════════════════════════
+const DYN_STATUS: Record<string, { label: string; color: string }> = {
+  READY: { label: '待开始', color: '#45a29e' },
+  FOCUSING: { label: '专注中', color: '#00d4ff' },
+  DISTRACTED: { label: '已分心', color: '#ff4500' },
+  INTERVENTION: { label: '干预中', color: '#ff4500' },
+  RECOVERING: { label: '恢复中', color: '#f59e0b' },
+  COMPLETED: { label: '已完成', color: '#45a29e' },
+  MISSED: { label: '已错过', color: '#8a8a8a' },
+  IDLE: { label: '空闲', color: '#8a8a8a' }
+}
+
+function DynamicMissionCard({ m, isCurrent, onStart }: { m: Mission; isCurrent: boolean; onStart: () => void }) {
+  const st = DYN_STATUS[m.status] ?? DYN_STATUS.IDLE
+  const pct = m.targetMinutes > 0 ? Math.min(100, Math.round((m.actualStudyMs / (m.targetMinutes * 60000)) * 100)) : 0
+  const actionable = m.status === 'READY' || m.status === 'DISTRACTED' || m.status === 'RECOVERING'
+  return (
+    <div style={{
+      background: 'var(--card-bg)', border: `1px solid ${isCurrent ? st.color : 'var(--border)'}`,
+      padding: '12px 14px', marginBottom: 8, clipPath: CLIP, position: 'relative'
+    }}>
+      <div className="corner-deco tl" style={{ width: 10, height: 10, borderWidth: 1, borderColor: st.color }} />
+      <div className="corner-deco br" style={{ width: 10, height: 10, borderWidth: 1, borderColor: st.color }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg)', fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif" }}>
+          {m.title}
+        </div>
+        <span style={{ fontSize: 10, color: st.color, border: `1px solid ${st.color}`, padding: '2px 6px', fontFamily: 'Share Tech Mono, monospace', whiteSpace: 'nowrap' }}>
+          {st.label}
+        </span>
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginBottom: 8 }}>
+        {fmtClock(m.plannedStart)} – {fmtClock(m.plannedEnd)} · {m.targetMinutes}min · {m.source === 'AI' ? 'AI 生成' : '手动创建'}
+      </div>
+      {m.status !== 'READY' && (
+        <div style={{ height: 4, background: 'var(--bg-alt)', borderRadius: 2, overflow: 'hidden', marginBottom: 8 }}>
+          <div style={{ width: `${pct}%`, height: '100%', background: st.color, transition: 'width 0.5s' }} />
+        </div>
+      )}
+      {actionable && (
+        <button onClick={onStart} style={{
+          width: '100%', padding: '9px', background: `${st.color}15`, border: `1px solid ${st.color}`, color: st.color,
+          fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: 1,
+          fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", clipPath: CLIP_SM,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+        }}>
+          <Icon.Play size={14} color={st.color} /> {m.status === 'READY' ? '开始任务' : '回到任务'}
+        </button>
+      )}
     </div>
   )
 }
