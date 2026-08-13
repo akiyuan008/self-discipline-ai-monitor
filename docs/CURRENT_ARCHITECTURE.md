@@ -1,275 +1,346 @@
-# CURRENT_ARCHITECTURE.md — 当前架构分析
+# CURRENT_ARCHITECTURE.md — 自律核心架构（重构后 · 权威版本）
 
-> 重构前置文档（第一阶段：只理解，不改代码）。
-> 目标：为把本项目从"功能集合"重构成"AI 自律监工系统"提供准确的现状基线。
-> 阅读完请确认后，再进入第二阶段重构。
+> 本文档描述第三阶段重构完成后的**当前架构**。
+> 重构前的基线分析见 `docs/ARCHITECTURE_BASELINE_pre_refactor.md`（含旧架构问题清单）。
+>
+> 一句话概括：本项目已从"功能集合"重构为**以 Mission 为中心的 AI 自律监工系统**。
+> 用户只需表达目标并开始任务，之后 App 自动监控 → 发现分心 → 分级干预 → 帮助恢复 → 判定完成 → 统一发奖 → 进入下一任务。
 
 ---
 
-## 0. 技术栈总览
+## 0. 核心设计哲学
+
+1. **Mission 是唯一中心对象。** 课表、用户手动、AI 三种来源最终都统一成同一个 `Mission` 模型，贯穿首页/任务/Dungeon/监控/AI。禁止维护多套 CurrentTask/CurrentMission。
+2. **事实与判断分离。** Android / UsageStats / Dungeon 只产"事实"（BehaviorEvent / FocusEvidence），不加积分、不扣分、不判完成。所有判断集中在 DisciplineEngine / MissionEvaluator。
+3. **证据驱动的完成判定。** 完成不靠用户手动打卡，而靠行为证据（有效学习时长 + 可选 Evidence）。拍照只是 Evidence Provider 之一，不是默认完成条件。
+4. **统一去重。** Dungeon 专注时间与学习 App 使用时间是两套证据源，由 `focusMath` 区间合并统一计算 `actualStudyMs`，**绝不重复累加**。
+5. **Recovery > Punishment。** 分心干预分级（LEVEL 0/1/2/3），第一次分心只提醒不惩罚，核心目标是帮用户回到任务。
+6. **奖励统一发放。** 所有 XP/PTS/成就由 RewardEngine 在 Mission 完成时统一发放，页面/Android/AI 都不直接发奖。
+
+---
+
+## 1. 技术栈
 
 | 层 | 技术 | 说明 |
 |---|---|---|
 | 前端框架 | React 18 + TypeScript + Vite | SPA |
 | 移动端封装 | Capacitor 6 | Web → Android APK |
-| 状态管理 | zustand + persist（localStorage） | 两个 store |
-| Android 原生 | Kotlin 插件（`android_plugin/`） | UsageStats / 前台服务 / 锁屏 |
-| AI | OpenAI 兼容接口（通义/DashScope） | 双 AI：MOSS 监工 + 二号验证官 |
-| 通知 | @capacitor/local-notifications | 课程提醒 |
-| 持久化 | localStorage（zustand persist） | 2 个 store key |
+| 状态管理 | zustand + persist（localStorage） | useStore / classTaskStore / **missionStore** |
+| **自律核心** | `src/core/discipline/`（纯 TS） | Mission / 状态机 / 证据去重 / 评估 / 奖励 |
+| Android 原生 | Kotlin 插件（`android_plugin/`） | UsageStats / 前台服务 / 锁屏 / 行为事件 |
+| App 分类 SSOT | `config/appCategories.json` | TS 与 Android 构建时共用，单一数据源 |
+| AI | OpenAI 兼容接口 | MOSS 监工 + 二号验证官 + AI Supervisor |
+| 通知 | @capacitor/local-notifications | 课程提醒 / 干预提醒 / AI 监督话语 |
 
-**两个持久化 store：**
-- `cyber-survival-store`（`useStore`）：积分 / 连签 / XP / 成就 / AI 配置 / 聊天 / 主题 / 高考
-- `class-task-store`（`classTaskStore`）：课程任务 / 核验记录 / 监测记录 / 深渊记录 / 通知设置
-
----
-
-## 1. 当前架构
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                       React 前端 (Capacitor WebView)        │
-│  ┌──────────┬──────────┬──────────┬──────────┬──────────┐ │
-│  │  Home    │ Quests   │ Dungeon  │  Chat    │ Profile  │ │
-│  │ 首页仪表盘 │ 任务中心  │ 深渊专注  │ AI监工对话│ 个人中心  │ │
-│  └──────────┴──────────┴──────────┴──────────┴──────────┘ │
-│         Shop / Achievements / Stats / ClassHistory / ...   │
-├──────────────────────────────────────────────────────────┤
-│              useStore (zustand)      classTaskStore (zustand)│
-│   积分/连签/XP/成就/AI配置/聊天/主题   课程任务/核验/监测/深渊   │
-├──────────────────────────────────────────────────────────┤
-│         main.tsx 调度器（setInterval 轮询驱动）             │
-│   monitorUsage(5min) / checkOverdue(60s) /                 │
-│   checkFullAttendance(23:50) / dailySettle / 通知           │
-├──────────────────────────────────────────────────────────┤
-│              Capacitor Bridge (SelfDiscipline 插件)         │
-├──────────────────────────────────────────────────────────┤
-│                    Android 原生层                           │
-│  SelfDisciplinePlugin.kt   MonitorService.kt (前台服务)     │
-│  getUsageStats/hasAccess/   每60s轮询UsageStats            │
-│  openSettings/lockScreen/   深夜娱乐→锁屏 / 连学90min→关怀   │
-│  start/stopMonitorService                                   │
-└──────────────────────────────────────────────────────────┘
-```
-
-**页面职责现状：**
-| 页面 | 现状 |
-|---|---|
-| Home | 仪表盘：今日学习时长/目标进度/权限状态/高考倒计时/快捷入口 |
-| Quests | 任务中心：按 SCHEDULE 展示当日课程，开始/打卡核验 |
-| Dungeon | 深渊专注：计时器，读 `currentTask`，完成/中断记 abyssRecord |
-| Chat | MOSS 对话 + 工具调用 |
-| Profile | 个人中心/档案/学习档案入口 |
-| Shop/Achievements/Stats/ClassHistory/DiagLogs/PointsDetail | 商店/成就/统计/历史/诊断日志/积分明细 |
+**持久化 Source of Truth：**
+- TypeScript `missionStore`（persist 到 localStorage）是 Mission 业务状态的唯一权威。
+- Android 侧仅保存**最小运行时镜像**（MissionMirror，SharedPreferences），供 MonitorService 重启后恢复感知，不含业务判断。
 
 ---
 
-## 2. 当前数据流
+## 2. 总体架构
 
-### 2.1 使用统计（UsageStats）数据流
 ```
-Android UsageStatsManager
-  → SelfDisciplinePlugin.getUsageStats(startTs,endTs)
-  → usageStats.ts fetchUsageStats()
-      → 用 appClassification.ts 把包名分成 study / ent
-  → main.tsx monitorUsage()（每 5 分钟轮询一次）
-      → classStore.updateMonitorState(studyMs, entMs)   // 娱乐超学习→警告→-50分
-      → mainStore.syncUsage(study, ent)                  // todayStudyMs/todayEntMs
-      → 增量发 XP：addExp + addStudyMs（用 localStorage STUDY_EXP_KEY 去重）
+┌────────────────────────────────────────────────────────────────────┐
+│                     React 前端 (Capacitor WebView)                   │
+│  ┌──────────┬──────────┬──────────┬──────────┬──────────┐          │
+│  │  Home    │ Quests   │ Dungeon  │  Chat    │ Profile  │          │
+│  │当前Mission│课表+动态  │Focus     │ MOSS对话 │ 个人中心 │          │
+│  │卡片+开始  │Mission创建│Runtime   │+建Mission│          │          │
+│  └──────────┴──────────┴──────────┴──────────┴──────────┘          │
+│                        ↓ 读 / 写                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │              src/core/discipline/  （自律核心）                │   │
+│  │  missionStore(Mission SoT) ── disciplineEngine(状态机)        │   │
+│  │  focusMath(区间去重) ── missionEvaluator(证据判完成)          │   │
+│  │  rewardEngine(统一发奖) ── aiSupervisor(AI监督) ── runtime    │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                        ↑ BehaviorEvent / FocusEvidence               │
+├────────────────────────────────────────────────────────────────────┤
+│              Capacitor Bridge (SelfDiscipline 插件)                  │
+│   getUsageStats / syncMissionMirror / lockScreen / behaviorEvent    │
+├────────────────────────────────────────────────────────────────────┤
+│                       Android 原生层                                  │
+│  MonitorService.kt  前台服务：前台App检测→产 APP_FOREGROUND 事件      │
+│  AppCategories.kt   构建时从 appCategories.json 生成（分类 SSOT）     │
+│  MissionMirror.kt   最小 Mission 镜像（重启双保险）                   │
+│  LockScreenActivity 锁屏遮罩（LEVEL2/3 执行手段）                    │
+└────────────────────────────────────────────────────────────────────┘
 ```
-
-**关键点：** UsageStats 统计窗口永远是 **今天 00:00 → 当前时间**（全天累计），**不是按任务/Mission 窗口**。
-
-### 2.2 任务数据流
-```
-SCHEDULE（静态配置，按 dayOfWeek 排课）
-  → classTaskStore.generateTodayTasks()   // 每天生成 12 节 ClassTask
-  → classTasks[]（status: pending/started/completed/overdue/absent）
-```
-
-### 2.3 持久化
-- 两个 store 都 persist 到 localStorage，`merge` 时保留用户进度、补充新增字段。
-- 照片 base64 已改存外部 Filesystem（`MOSS_Photos/`），localStorage 只存路径。
 
 ---
 
-## 3. 当前任务流
+## 3. Mission 统一模型
+
+### 3.1 三种来源，一个模型
 
 ```
-SCHEDULE 排课
-  ↓ generateTodayTasks()（每天一次）
-ClassTask(pending)
-  ↓ 用户在 Quests 点"开始"
-startClassTask() → status=started, 设 currentTask
-  ↓ 用户在 Quests 点"拍照核验"
-handleTakePhoto() → verifyClassPhoto()（AI 二号打分）
-  ↓ 通过
-completeClassTask() → status=completed, 加积分+XP, 记 taskHistory
-  ↓
-（超时未完成）checkOverdue()（60s轮询）→ markTaskOverdue → status=overdue, 扣分
+固定课表 (SCHEDULE)  ─┐
+用户手动 (USER)      ─┼──→  统一 Mission 模型  ──→  DisciplineEngine
+AI 动态  (AI)        ─┘
 ```
 
-**任务状态机（classTaskStore 私有）：**
-```
-pending → started → completed
-              ↘ overdue（超时）
-              ↘ absent（缺课）
-```
+`Mission.source: 'SCHEDULE' | 'USER' | 'AI'`，另有 `createdBy: 'SYSTEM' | 'USER' | 'AI'`。
 
-> ⚠️ 这是**任务侧**的状态机，与"用户实际在做什么"（专注/分心）**完全无关**。
-> 任务完成靠**用户手动拍照核验**，不靠行为监测。
-
----
-
-## 4. 当前监控流
-
-**有两套并行监控，且互不通信：**
-
-**A. Android 原生 MonitorService.kt（前台服务，每 60s）**
-```
-pollUsage()
-  → 当前前台 App ∈ STUDY_PACKAGES → consecutiveStudyMin++，连学≥90min→关怀通知
-  → 当前前台 App ∈ ENTERTAINMENT_PACKAGES
-       深夜(23-5)→通知+锁屏 / 晚间(17-22)娱乐累计>1h→通知
-```
-
-**B. Web 侧 main.tsx monitorUsage（每 5 分钟）**
-```
-fetchUsageStats(00:00→now)
-  → updateMonitorState：entMs > studyMs 且 >2min → warning++
-       warning≥2 → -50 分（"检测到长时间娱乐"）
-```
-
-> ⚠️ **两套监控各自独立**：
-> - Android 侧直接发通知/锁屏，**不产生事件给 TS**
-> - Web 侧只算"今天娱乐是否超学习"，**和具体任务无关**
-> - **没有"当前任务期间用户是否在分心"的判断**
-
----
-
-## 5. 当前 AI 流
-
-**双 AI 架构：**
-| AI | 配置字段 | 用途 |
+| 来源 | 生成方式 | 入口 |
 |---|---|---|
-| MOSS（监工） | `ai` | Chat 对话 + 工具调用（add_points/add_quest/complete_quest/check_phone_usage…） |
-| 二号验证官 | `ai2` | 打卡照片核验（verifyClassPhoto） |
+| SCHEDULE | `scheduleToMissions.generateTodayMissions()` 按课表幂等生成当日任务 | 运行时自动 |
+| USER | Quests 页「+ 动态任务」表单 → `createMission` | 用户手动 |
+| AI | MOSS chat `create_mission` 工具 / `aiSupervisor.createAiMission` | AI 主动 |
 
-**Chat 工具调用（ai.ts）：** `add_points` / `add_quest` / `complete_quest` / `add_achievement` / `update_achievement` / `unlock_achievement` / `check_phone_usage` / `update_subject_score` / `add_milestone` / `generate_weekly_plan` / `request_usage_permission` 等约 14 个工具。
+### 3.2 状态机（唯一定义，所有页面共用）
 
-**verifyClassPhoto（verifyAI.ts）：** 照片 base64 → AI 多模态打分 → pass/fail + score。无 AI key 时降级为"未核验"。
+```
+READY → FOCUSING → DISTRACTED → INTERVENTION → RECOVERING → FOCUSING
+                       │                                        │
+                       └────────────→ COMPLETED ←───────────────┘
+READY（错过窗口）→ MISSED        任意 → IDLE（手动停止）
+```
 
-> ⚠️ AI 目前**只在用户主动对话时**工作，**不主动监控行为、不主动干预**。AI 不知道"当前任务""用户正在用什么 App""分心了多久"。
-
----
-
-## 6. 当前奖励流
-
-| 触发 | 奖励/惩罚 | 触发点 |
-|---|---|---|
-| 课程打卡完成 | baseReward + bonus(限时+AI分) | completeClassTask |
-| 深渊完成 | +400 分 + XP | Dungeon 计时归零 |
-| 学习时长（监控） | +XP（增量） | main.tsx monitorUsage |
-| 全勤 | +150 分（连签加成） | checkFullAttendance (23:50) |
-| 连签达标 | streak+1, +100XP | dailySettle |
-| 成就解锁 | +200 分 + XP | checkAchievements |
-| 课程逾期 | -penalty | checkOverdue |
-| 长时间娱乐 | -50 分 | monitorUsage |
-
-> ⚠️ 奖励由**多个分散的函数**直接 `addPoints/addExp`，没有统一的 RewardEngine。
-
----
-
-## 7. 当前存在的主要问题（对应重构目标）
-
-### 🔴 P0：没有"当前任务（Mission）"的统一定义
-- `currentTask` 只存在于 classTaskStore，且只表示"已开始的课程任务"。
-- Dungeon 读 `currentTask` 但**自己维护计时器/状态**，任务状态分散。
-- **没有一个"用户当前真正该做的事"的中心对象**贯穿 Home/Dungeon/监控/AI。
-
-### 🔴 P0：任务 ≠ 行为，完成靠手动
-- 任务完成靠**用户手动拍照核验**，不是行为监测自动判定。
-- 系统**不知道用户是否真的在做当前任务**，只靠用户自觉打卡。
-
-### 🔴 P0：两套 App 分类，不一致
-- Kotlin `MonitorService.kt` 有 `STUDY_PACKAGES`/`ENTERTAINMENT_PACKAGES`（16+8 个包）。
-- TS `appClassification.ts` 有**另一套更大**的分类（含关键词模糊匹配）。
-- **同一 App 在 Android 和 TS 可能分到不同类别** → 监控和统计口径不一致。
-
-### 🔴 P0：监控不产生 BehaviorEvent，直接干预
-- MonitorService 直接发通知/锁屏，Web 侧 monitorUsage 直接扣分。
-- **没有统一的 BehaviorEvent 事件流**，无法做"分心→分级干预→恢复"。
-
-### 🟠 P1：UsageStats 只按"全天"统计
-- `fetchUsageStats(00:00→now)` 是全天累计，**无法回答"当前数学任务期间学了多久"**。
-- 缺少 Mission 窗口的有效学习/分心时长统计。
-
-### 🟠 P1：无分级干预
-- 第一次分心就可能 -50 分（monitorUsage），**没有 LEVEL 0/1/2/3 分级干预**。
-- 目标是"恢复用户"而非"惩罚用户"，当前是惩罚导向。
-
-### 🟠 P1：Dungeon 自维护任务状态
-- Dungeon 用自己的 `timeLeft/isRunning/mode`，不读中心 Mission。
-- 违反"不让 Dungeon 维护自己的任务状态"。
-
-### 🟠 P1：AI 不感知行为
-- AI（MOSS）不知道当前 Mission、实际学习时长、分心时长、当前 App。
-- AI 无法"主动干预"，只能被动应答。
-
-### 🟡 P2：奖励分散
-- 奖励逻辑散落在 `completeClassTask` / `monitorUsage` / `checkFullAttendance` / `dailySettle` / `checkAchievements` 等多处，直接调 `addPoints/addExp`，无统一 RewardEngine。
-
-### 🟡 P2：状态恢复
-- 任务/积分靠 localStorage persist 能恢复，但"当前 Mission 进行中"的中间态（FOCUSING/DISTRACTED）重启后可能丢失。
-
----
-
-## 8. 本方案准备修改哪些地方（重构蓝图）
-
-> 对应你的四阶段方案。核心：新增 `src/core/discipline/`，把现有功能全部变成 DisciplineEngine 的外围。
-
-### 新增核心模块 `src/core/discipline/`
-- **`Mission`**：当前真正要做的一件事（title/subject/plannedStart/plannedEnd/targetMinutes/actualStudyMs/distractionMs/status/interventionLevel…）
-- **`BehaviorEvent`**：所有真实行为统一成事件（APP_FOREGROUND / APP_BACKGROUND / SCREEN_ON/OFF / MISSION_STARTED/STOPPED…）。**Android 和 UsageStats 只提供事实，不加 XP、不扣分、不判完成。**
-- **`DisciplineEngine`**：`handleEvent(event)` 统一处理 → 判断该做什么/实际在做什么/是否分心/算有效学习/更新 Mission/决定干预/判完成/发奖励/进入下一任务。
-- **统一状态机**：`READY → FOCUSING → DISTRACTED → INTERVENTION → RECOVERING → COMPLETED`（+ `IDLE`/`MISSED`）。所有页面不再自定义任务状态。
-
-### 现有功能接入方式（不删除，改造成外围）
-| 模块 | 改造方向 |
+| 状态 | 含义 |
 |---|---|
-| Home | 首屏改为"我现在应该做什么"（当前 Mission + 剩余时间 + 开始专注），次要显示统计/XP/PTS |
-| Quests | 只负责创建/查看 Mission 和计划，**不再自己判完成、不点击发奖** |
-| Dungeon | 改为"当前 Mission 的执行界面"，读 `disciplineStore.currentMission`，不再自维护 currentTask |
-| UsageStats | 支持按 Mission 窗口统计（missionStart→now），产出有效学习/分心/其他时长，只做数据源 |
-| Android Monitor | 只产 BehaviorEvent（前台 App/App 切换/屏幕状态/系统干预），**不在 Android 加积分/扣分/判完成** |
-| App 分类 | 统一成单一数据源 `config/appCategories.json`（study/entertainment/social/neutral），Android 和 TS 共用 |
-| AI | 保留 Chat + Tool，新增 **AI Supervisor**：接收当前 Mission/目标/实际学习/分心/当前App/剩余时间/干预等级/最近行为，负责判断如何干预/生成提醒/恢复方案。**AI 不伪造数据，事实由程序提供** |
-| 干预 | LEVEL 0 正常 / 1 轻提醒 / 2 强提醒 / 3 恢复模式。第一次分心只提醒不扣分，核心是**恢复用户** |
-| Reward | XP/PTS/成就保留，但统一由 Mission 完成 → RewardEngine 发放，页面不直接发奖 |
+| READY | 就绪，未开始 |
+| FOCUSING | 正在专注执行 |
+| DISTRACTED | 检测到分心 |
+| INTERVENTION | 系统正在干预 |
+| RECOVERING | 用户正在恢复 |
+| COMPLETED | 已完成（证据达标） |
+| MISSED | 错过窗口 |
+| IDLE | 空闲（无当前任务） |
 
-### 绝对不做（对应你的"绝对不要做"）
-- 不一开始重写整个项目；不删除现有功能
-- 不让每个页面维护自己的 currentTask
-- 不让 Dungeon 维护任务状态
-- 不让 Quest 点击直接发奖
-- 不让 Android 直接扣分
-- 不让 AI 编造学习时间/无行为数据时判完成
-- 不让 TS 和 Android 维护两套分类
-- 不在第一次分心就惩罚
-- 不为架构漂亮大改无关代码
+### 3.3 干预分级（Recovery > Punishment）
 
----
+| 等级 | 触发（分心持续时长） | 手段 |
+|---|---|---|
+| LEVEL 0 | 不干预 | 无 |
+| LEVEL 1 | ≥ 1 分钟 | 普通通知提醒 |
+| LEVEL 2 | ≥ 5 分钟 | 强提醒 + 锁屏遮罩（**允许立即恢复**）+ AI 监督话语 |
+| LEVEL 3 | ≥ 15 分钟 | 强制恢复模式（更长遮罩，可限制娱乐 App）+ AI 监督话语 |
 
-## 9. 待你确认的关键决策点
-
-在进入第二阶段前，请确认以下几点（影响实现方式）：
-
-1. **Mission 来源**：Mission 是继续用现在的"固定课表 SCHEDULE"自动生成，还是改成"用户/AI 动态创建目标"？还是两者并存（课表自动生成 + 用户可加自定义 Mission）？
-2. **打卡核验是否保留**：现在靠拍照 + AI 核验。重构后"完成判定"交给 DisciplineEngine（行为监测），那拍照核验是**保留作为可选加强验证**，还是**完全由行为监测取代**？
-3. **两套 App 分类合并**：合并成单一 `appCategories.json` 时，以哪套为准？（建议以 TS 侧更完整的为准，Android 侧读取同一份）
-4. **干预的执行手段**：分心干预目前是"通知 + 锁屏遮罩"。重构后 LEVEL 2/3 强干预，是否沿用锁屏遮罩？
-5. **Mission 持久化粒度**：Mission 中间态（FOCUSING/DISTRACTED）需要跨 App 重启 / Android Service 重启保留，确认用 localStorage persist 是否足够（还是需要 Android 侧也存一份）。
+> 第一次分心只提醒、不扣分、不锁死。
 
 ---
 
-> 确认以上理解和决策点后，我将进入第二阶段：搭建 `src/core/discipline/`（Mission / BehaviorEvent / DisciplineEngine），并逐模块接入。
+## 4. FocusEvidence 与统一去重（本次重构的核心创新）
+
+### 4.1 两套证据源，一个累计系统
+
+用户专注时长有两个来源，**绝不能分别累加**（否则 45min 会变 90min）：
+
+```
+Mission 开始
+  ├─ 进入 Dungeon 专注 ──→ DUNGEON evidence（FocusInterval）
+  └─ 使用学习 App ──────→ APP_USAGE evidence（FocusInterval，来自 UsageStats）
+          ↓ 两者都写入 Mission.focusIntervals
+   focusMath.mergeIntervalsMs（区间合并去重）
+          ↓
+   actualStudyMs（唯一次计算，不重复）
+```
+
+### 4.2 FocusInterval 结构
+
+```ts
+interface FocusInterval {
+  source: 'DUNGEON' | 'APP_USAGE'
+  startedAt: number
+  endedAt: number
+  packageName?: string   // APP_USAGE 携带
+  tag?: string           // 'abyss' | 'focus'（供 RewardEngine 识别挑战奖励）
+}
+```
+
+### 4.3 去重算法（`focusMath.mergeIntervalsMs`）
+
+经典区间合并：排序后逐个吸收重叠，重叠部分只计一次。
+
+| 场景 | 输入 | 结果 |
+|---|---|---|
+| Dungeon 中途切出 | `19:00–19:20` + `19:25–19:50`（中间 5min 刷 B 站） | **45min**（分心 5min 单独计 distractionMs） |
+| 两源完全重叠 | Dungeon `45min` + UsageStats `45min` | **45min**（不是 90） |
+| 部分重叠 | `0–30` + `20–50` | **50min** |
+
+### 4.4 Dungeon 如何产证据（Focus Runtime）
+
+Dungeon 不再是独立计时器，而是 **Mission 的 Focus Runtime / Evidence Provider**：
+- 计时运行 **且** App 在前台 → 打开一个 DUNGEON 区间。
+- App 切后台（`pause`）→ 立即关闭区间并提交；回到前台（`resume`）→ 重新打开。
+- 计时归零 / 手动停止 / 退出 → 关闭区间提交。
+- 每段区间经 `submitDungeonFocus` → `addFocusInterval`（去重 + 派生 actualStudyMs + 尝试完成）。
+
+> 因此"中途切出去刷 B 站那段时间"自动不算专注——靠 pause/resume 生命周期切分。
+
+### 4.5 UsageStats 如何产证据
+
+`runtime.ts` 采样器每 60s：
+- `fetchUsageStats(windowStart, now)` 得窗口内学习/分心聚合时长（收敛到窗口内）。
+- 学习时长 → 锚定窗口生成 `APP_USAGE` 区间 → `addFocusInterval`（去重）。
+- 分心时长 → 累计 `distractionMs`（仅采样器产生，无双重计算风险）。
+- 只对**激活态**任务采样（FOCUSING/RECOVERING/DISTRACTED/INTERVENTION），READY/IDLE 不计。
+
+> Android 端我们的 App 包名归类为 neutral，因此在 Dungeon 期间 UsageStats 学习时长≈0，天然不与 Dungeon 重叠；即便重叠，区间合并也会去重。双保险。
+
+---
+
+## 5. DisciplineEngine 数据流
+
+```
+Android MonitorService ──→ APP_FOREGROUND（前台App变化，带分类）┐
+UsageStats 采样器 ────────→ USAGE_SAMPLE（学习/分心时长）        │
+Dungeon Focus Runtime ───→ DUNGEON FocusInterval               │
+                                                                 ↓
+                              DisciplineEngine.handleEvent(event)
+                                                                 ↓
+              判断"该做什么 / 实际在做什么 / 是否分心"
+                                                                 ↓
+              更新 Mission 状态（状态机）+ 分级干预（LEVEL 0/1/2/3）
+                                                                 ↓
+              MissionEvaluator（证据判完成）→ RewardEngine（统一发奖）
+                                                                 ↓
+                              进入下一任务
+```
+
+**关键约束：** 页面、Android、AI 都**不自己判断任务完成**，统一交给 MissionEvaluator。
+
+---
+
+## 6. 模块职责（最终分工）
+
+| 模块 | 职责 | 不做 |
+|---|---|---|
+| **Mission** | 当前目标的载体 | — |
+| **BehaviorEvent** | 描述用户实际行为的事实 | 不加 XP、不扣分、不判完成 |
+| **FocusEvidence** | 专注时间区间证据 | 不直接累加，交去重 |
+| **DisciplineEngine** | 核心状态机：收事件、判分心、分级干预 | — |
+| **UsageStats** | 学习/分心时长数据源 | 不判完成 |
+| **Android Monitor** | 行为采集 + 系统级干预执行 | 不加积分、不判完成、不维护分类 |
+| **AI Supervisor** | 监督策略：监督话语 / ai 证据 / 动态 Mission | 不伪造数据、不直接判完成发奖 |
+| **Evidence** | 完成证据（usageStats/photo/screenshot/manual/ai） | — |
+| **MissionEvaluator** | 证据驱动的完成判定 | — |
+| **RewardEngine** | XP / PTS / Achievement 统一发放 | — |
+
+---
+
+## 7. 子系统详解
+
+### 7.1 课表 → Mission（scheduleToMissions.ts）
+- `generateTodayMissions()`：按当日课表幂等生成 SCHEDULE Mission（启动时 + resume 时）。
+- 试卷/作业/背诵类自动标记 `requiresEvidence`。
+- `pickCurrentMission()`：选取当前该做的任务（提前 15 分钟可开始）。
+
+### 7.2 动态 Mission（Quests）
+- 「+ 动态任务」表单：标题 + 时长快选 + 开始时间 → `createMission(source=USER)`。
+- 今日 USER/AI Mission 以 `DynamicMissionCard` 列表展示（状态/进度/开始按钮）。
+- 课表时间轴（遗留 classTasks）保留并存。
+
+### 7.3 AI（Chat + AI Supervisor）
+- **MOSS chat** 新增 `create_mission` 工具：用户说"今晚想把函数第三章看完"→ MOSS 建 source=AI 的 Mission。
+- **aiSupervisor.ts**：
+  - `aiSupervise`：干预升级（LEVEL2/3）/任务将错过时，MOSS 给一句监督话语（Recovery 优先），以通知送达。
+  - `aiJudgeEvidence`：对 requiresEvidence 任务，AI 依用户描述判定，产 `ai` 类证据 → 触发完成判定。
+  - `createAiMission`：AI 动态建 Mission。
+- AI 未配置/调用失败时**静默降级**，不阻断干预。
+
+### 7.4 Dungeon（Focus Runtime）
+- 保留 25/45 UI 与体验、深渊战绩记录（addAbyssRecord）。
+- **不再直接完成 Mission、不再直接发 400 PTS / EXP**——改为提交 DUNGEON 证据，由 Mission 系统统一结算。
+- 顶部新增「当前任务」上下文条：任务标题 + Mission 进度（x/y min）+ 本次专注时长。
+- 进入时若有激活 Mission，自动同步深渊模式与目标时长；无任务则动态创建（source=USER）。
+- `addFocusMs` 保留（今日进度/连签）——`syncUsage` 用 max 与学习 App 时长天然去重。
+
+### 7.5 Android 原生
+- **MonitorService.kt**：前台服务每 60s 轮询；前台 App 变化 → 产 `APP_FOREGROUND` BehaviorEvent（带统一分类）经 Capacitor 发给 TS。保留深夜关怀/连续学习关怀等系统级健康提醒。不再自己判完成。
+- **AppCategories.kt**：由 `config/appCategories.json` **构建时生成**（`scripts/gen-android-categories.mjs`，挂在 `prebuild`，CI 每次 build 自动重生成）。分类唯一 Source of Truth，TS 与 Android 共用，不再两套名单。
+- **MissionMirror.kt**：最小 Mission 镜像（missionId/status/plannedStart/plannedEnd/interventionLevel）存 SharedPreferences，MonitorService 重启后恢复感知。
+- **SelfDisciplinePlugin.kt**：新增 `syncMissionMirror` / `getMissionMirror`；companion instance + `emitBehaviorEvent`（供 Service 经 Plugin 发事件）。
+
+### 7.6 完成判定（missionEvaluator.ts）
+- 默认完成 = 有效学习时长达标（`actualStudyMs / targetMinutes ≥ 80%`），**不需要拍照**。
+- `requiresEvidence` 任务（试卷/作业/背诵）：行为达标 + Evidence 分数足够才完成；不足时提示补充证据（拍照/AI/manual）。
+- Evidence 基准权重：usageStats 1.0 / ai 0.9 / photo 0.8 / screenshot 0.7 / manual 0.5。
+
+### 7.7 统一奖励（rewardEngine.ts）
+- Mission 完成 → `grantMissionReward`：基础 PTS（按目标时长）+ 基础 XP（按有效学习分钟）+ 高专注加成（分心<10%）。
+- **深渊挑战奖励**：Mission 证据含 `DUNGEON + abyss` 标记 → 额外 +400 PTS（原 Dungeon 直接发的 400 迁移至此，杜绝双重奖励）。
+- 错过任务 → `grantMissedPenalty`（轻度，体现恢复优先）。
+
+---
+
+## 8. 文件地图
+
+```
+src/core/discipline/
+  types.ts               Mission/BehaviorEvent/FocusInterval/Evidence/状态机/干预等级/镜像
+  appCategories.ts       分类加载器（消费 config/appCategories.json）
+  focusMath.ts           区间合并去重（mergeIntervalsMs / computeFocusMs）
+  missionStore.ts        Mission 业务 SoT（zustand persist + Android 镜像同步）
+  missionEvaluator.ts    证据驱动完成判定
+  rewardEngine.ts        统一奖励发放（含深渊 400PTS 规则）
+  disciplineEngine.ts    核心状态机（handleEvent / addFocusInterval / 分级干预）
+  scheduleToMissions.ts  课表 → SCHEDULE Mission 生成器
+  aiSupervisor.ts        AI 监督策略（监督话语 / ai 证据 / 动态 Mission）
+  runtime.ts             运行时：采样 / 前台检测 / 干预接线 / 原生事件订阅 / initDiscipline
+  index.ts               barrel 导出
+
+config/appCategories.json           App 分类唯一数据源（study/entertainment/social/neutral）
+scripts/gen-android-categories.mjs  JSON → AppCategories.kt 生成器（prebuild 钩子）
+
+android_plugin/java/.../plugin/
+  AppCategories.kt       （生成）分类，与 TS 共用
+  MissionMirror.kt       最小 Mission 镜像存取
+  MonitorService.kt      前台服务：产 APP_FOREGROUND 事件 + 系统级健康提醒
+  SelfDisciplinePlugin.kt Capacitor 插件（含镜像同步 / 事件发射）
+  LockScreenActivity.kt  锁屏遮罩（LEVEL2/3 执行手段）
+  BootReceiver.kt        开机自启
+```
+
+---
+
+## 9. 持久化与状态恢复
+
+- **业务状态 SoT**：`missionStore` persist 到 localStorage（currentMissionId 唯一当前任务指针）。
+- **Android 最小镜像**：`currentMission` 变化时经 `syncMissionMirror` 同步到 SharedPreferences；MonitorService 重启后据此知道"当前是否有 Mission 在执行"，再向 TS 同步。
+- 双保险：App UI 被回收但 MonitorService 仍在时，Android 侧仍保有最小上下文。
+
+---
+
+## 10. 遗留系统与迁移说明
+
+重构遵循"不删除现有功能"，以下为**仍并存的遗留系统**及后续收编方向：
+
+| 遗留 | 现状 | 后续方向 |
+|---|---|---|
+| `classTaskStore`（课程任务/打卡核验） | Quests 时间轴仍用它；拍照核验仍走二号 AI | 逐步并入 Mission（核验 → Evidence） |
+| `main.tsx monitorUsage`（全天学习 XP） | 仍为学习 App 时长发被动 XP | 决定是否收编进 RewardEngine |
+| Quests 课程时间轴 | 与动态 Mission 列表并存 | 统一到 Mission 时间轴 |
+| `useStore.quests`（add_quest） | MOSS 的 add_quest 工具仍用它 | 与 Mission 体系对齐 |
+
+> ⚠️ 已知并存：遗留 `monitorUsage` 的被动学习 XP 与 Mission 完成奖励可能同时发放。当前按"不删现有功能"保留，属待决取舍。
+
+---
+
+## 11. 已拍板的关键决策（不再摇摆）
+
+1. **Mission 来源**：课表 + 用户动态 + AI 动态三者并存，统一成一个 Mission 模型（source 字段区分）。禁止多套 CurrentTask/CurrentMission。
+2. **拍照核验**：保留，但从默认完成机制降级为**可选 Evidence Provider**。默认完成 = 行为监测达标。Evidence 可扩展 Photo/Screenshot/UsageStats/Manual/AI。
+3. **App 分类**：TypeScript `config/appCategories.json` 为唯一 Source of Truth，Android 构建时消费同一份，不维护独立分类。
+4. **分心干预**：保留通知 + 锁屏遮罩，但分级 LEVEL 0/1/2/3，第一次分心不强锁。核心是 Recovery，不是 Punishment。
+5. **Mission 持久化**：TS persist 为业务 SoT；Android 只存最小运行时镜像（missionId/status/plannedStart/plannedEnd/interventionLevel），不实现 MissionEvaluator/RewardEngine。
+6. **Dungeon 定位**（关键修正）：Dungeon = Mission 的 **Focus Runtime / Focus Evidence Provider**，不是独立计时器。Dungeon 时间与 UsageStats 时间统一成 FocusEvidence，由 focusMath 区间去重，绝不双重计算。原 400 PTS 迁移到 RewardEngine。
+
+---
+
+## 12. 验证状态与后续
+
+- TypeScript 全量编译通过，Vite 构建通过。
+- 区间去重经用户场景实测：`20+25=45`、完全重叠=45（非90）、部分重叠=50。
+- Android Kotlin 由 CI（`gradlew assembleDebug`）编译验证，已通过。
+- 新 APK 经 GitHub Actions 构建并发布到 Release。
+
+**建议真机验证：**
+1. 课表任务到点出现在首页，点「开始专注」进 Dungeon 计时。
+2. Dungeon 专注时长正确累计进 Mission；中途切出再回来不重复计算。
+3. Quests 动态创建任务、开始任务。
+4. MOSS 对话「给我安排个 45 分钟背单词」→ 建出 source=AI 的 Mission。
+5. 分心后 LEVEL 升级（通知 → 遮罩 → AI 监督话语）。
+
+**后续迭代方向：** Quests 时间轴并入 Mission、拍照核验并入 Evidence、monitorUsage 收编、AI Supervisor 主动生成恢复方案。
