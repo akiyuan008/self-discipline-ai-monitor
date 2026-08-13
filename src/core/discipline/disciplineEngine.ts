@@ -32,7 +32,7 @@ import {
   baseConfidenceFor, computeFinalConfidence,
   shouldRecordDeviation, shouldConsiderIntervention, isTransient
 } from './deviationAnalyzer'
-import { resolveSessionOutcome, computeExecutionRate } from './resultResolver'
+import { resolveSessionOutcome, evaluateSessionResult, evaluateMissionAggregateResult } from './resultResolver'
 import type { BehaviorEvent, Mission, InterventionLevel, FocusInterval, Session, Deviation } from './types'
 import { useStore } from '@/stores/useStore'
 import { classifyApp, getAppLabel, type AppCategory } from './appCategories'
@@ -416,22 +416,17 @@ function onMissionStopped(m: Mission) {
     // 若处于偏离 / 有待定候选，先收尾
     resolveCurrentDeviation(session.id, 'AUTO')
     const fresh = sstore.getSession(session.id) || session
-    const outcome = resolveSessionOutcome(fresh, m)
-    const rate = computeExecutionRate(fresh, m)
+    // Phase 4：完整评估（三态 + 执行率 + 质量综合评分）
+    const result = evaluateSessionResult(fresh, m)
     sstore.updateSession(session.id, {
-      status: outcome,
+      status: result.outcome,
       endedAt: Date.now(),
       pendingDeviation: undefined,
-      result: {
-        outcome,
-        executionRate: rate,
-        focusDurationMs: fresh.focusDurationMs,
-        distractionDurationMs: fresh.distractionDurationMs,
-        deviationCount: fresh.deviationCount,
-        recoveryCount: fresh.recoveryCount
-      }
+      result
     })
-    logger.info('discipline', `Session 结束(Stop) → ${outcome}`, { sessionId: session.id, rate })
+    logger.info('discipline', `Session 结束(Stop) → ${result.outcome} (quality=${result.executionQuality})`, {
+      sessionId: session.id, rate: result.executionRate, qualityScore: result.qualityScore
+    })
   }
   sstore.setCurrentSession(null)
   useMissionStore.getState().updateMission(m.id, { status: 'IDLE' })
@@ -494,22 +489,17 @@ export function tryComplete(missionId: string) {
   const result = evaluateMission(m)
   if (!result.canComplete) return
 
-  // 收尾当前 Session（Phase 1 最小 result；Phase 4 完整评定三态+质量）
+  // 收尾当前 Session（Phase 4：Mission 完成时聚合全部 Session 评估整体执行质量）
   const sstore = useSessionStore.getState()
   const session = sstore.getCurrentSession() || sstore.getRunningSessionForMission(missionId)
   if (session && RUNNING_SESSION_STATUS.includes(session.status)) {
     resolveCurrentDeviation(session.id, 'AUTO')
+    const allSessions = sstore.getSessionsByMission(missionId)
+    const aggResult = evaluateMissionAggregateResult(allSessions, m)
     sstore.updateSession(session.id, {
       status: 'COMPLETED',
       endedAt: Date.now(),
-      result: {
-        outcome: 'COMPLETED',
-        executionRate: m.targetMinutes > 0 ? Math.min(1, session.focusDurationMs / (m.targetMinutes * 60000)) : 1,
-        focusDurationMs: session.focusDurationMs,
-        distractionDurationMs: session.distractionDurationMs,
-        deviationCount: session.deviationCount,
-        recoveryCount: session.recoveryCount
-      }
+      result: aggResult
     })
     sstore.setCurrentSession(null)
   }

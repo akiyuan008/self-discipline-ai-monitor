@@ -238,12 +238,20 @@ export interface Deviation {
 export type SessionOutcome = 'COMPLETED' | 'PARTIAL' | 'ABANDONED'
 export type ExecutionQuality = 'A' | 'B' | 'C' | 'D'
 
-/** Session 结果（Phase 4 完整评定；Phase 1 先落最小结构） */
+/** Session 结果（Phase 4 完整评定：三态 + 执行率 + 质量综合评分） */
 export interface SessionResult {
   outcome: SessionOutcome
   /** 执行率 = 实际专注 / 目标 */
   executionRate: number
   executionQuality?: ExecutionQuality
+  /** QualityScore 综合评分 0–1（Phase 4） */
+  qualityScore?: number
+  /** FocusRatio = 专注/(专注+分心)（Phase 4） */
+  focusRatio?: number
+  /** RecoveryRate = 恢复/偏离，无偏离=1（Phase 4） */
+  recoveryRate?: number
+  /** DeviationScore = max(0,1-偏离次数/5)（Phase 4） */
+  deviationScore?: number
   focusDurationMs: number
   distractionDurationMs: number
   deviationCount: number

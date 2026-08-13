@@ -87,6 +87,34 @@ export const RESULT = {
 } as const
 
 // ═══════════════════════════════════════════════════════════
+// Execution Quality 综合评分（Phase 4）
+//   QualityScore = ExecutionRate×W_RATE + FocusRatio×W_FOCUS
+//                + RecoveryRate×W_RECOVERY + DeviationScore×W_DEVIATION
+//   DeviationScore = max(0, 1 - deviationCount/DEVIATION_NORMALIZER)
+//   RecoveryRate = recoveryCount/deviationCount；无偏离时 = 1（避免 0/0）
+//   设计意图：Recovery（回来能力）被正向计入，而非只看偏离次数。
+// ═══════════════════════════════════════════════════════════
+export const QUALITY = {
+  W_RATE: 0.40,
+  W_FOCUS: 0.30,
+  W_RECOVERY: 0.20,
+  W_DEVIATION: 0.10,
+  /** DeviationScore 归一化分母：偏离 5 次 → DeviationScore=0 */
+  DEVIATION_NORMALIZER: 5,
+
+  /** 档位阈值 */
+  GRADE_A: 0.85,
+  GRADE_B: 0.70,
+  GRADE_C: 0.50,
+
+  // ── 硬门槛（防止"只靠时间达标"掩盖执行质量）──
+  /** FocusRatio < 该值 → 最高只能 C */
+  FOCUS_RATIO_CAP_C: 0.40,
+  /** ExecutionRate < 该值 → 直接 D */
+  EXECUTION_RATE_GATE_D: 0.50,
+} as const
+
+// ═══════════════════════════════════════════════════════════
 // 奖励（RewardEngine）
 // ═══════════════════════════════════════════════════════════
 export const REWARD = {

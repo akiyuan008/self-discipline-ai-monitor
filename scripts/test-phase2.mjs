@@ -31,6 +31,7 @@ const files = [
   'src/core/discipline/focusMath.ts',
   'src/core/discipline/deviationAnalyzer.ts',
   'src/core/discipline/missionEvaluator.ts',
+  'src/core/discipline/resultEvaluator.ts',
   'src/core/discipline/resultResolver.ts',
   'src/core/discipline/recoveryReward.ts'
 ]
@@ -49,7 +50,8 @@ const A = require(path.join(out, 'deviationAnalyzer.js'))
 const R = require(path.join(out, 'resultResolver.js'))
 const F = require(path.join(out, 'focusMath.js'))
 const REC = require(path.join(out, 'recoveryReward.js'))
-const { DEVIATION, RESULT, RECOVERY } = require(path.join(out, 'config.js'))
+const EV = require(path.join(out, 'resultEvaluator.js'))
+const { DEVIATION, RESULT, RECOVERY, QUALITY, COMPLETION } = require(path.join(out, 'config.js'))
 
 // ── 2. 断言工具 ──
 const min = 60000
@@ -109,7 +111,7 @@ console.log('── D. resultResolver 三态（Stop≠Abandoned）──')
   check('D.completed', 'Stop 但已完成目标 → COMPLETED', R.resolveSessionOutcome(sFocus05m, mDone), 'COMPLETED')
   check('D.partial', 'Stop 有有效执行(2min) → PARTIAL', R.resolveSessionOutcome(sFocus2m, mNotDone), 'PARTIAL')
   check('D.abandoned', 'Stop 几乎无执行(0.5min) → ABANDONED', R.resolveSessionOutcome(sFocus05m, mNotDone), 'ABANDONED')
-  check('D.rate', 'executionRate 20/60min=0.33', Math.round(R.computeExecutionRate({ focusDurationMs: 20 * min }, mNotDone) * 100) / 100, 0.33)
+  check('D.rate', 'executionRate 20/60min=0.33', Math.round(R.sessionExecutionRate({ focusDurationMs: 20 * min }, mNotDone) * 100) / 100, 0.33)
 }
 
 // ═══ E. focusMath 去重 ═══
@@ -146,6 +148,58 @@ console.log('── F. Recovery 奖励 + 防刷 ──')
   check('F.pts', `发放 PTS = ${RECOVERY.BONUS_PTS}`, res.points, RECOVERY.BONUS_PTS)
   check('F.xp', `发放 XP = ${RECOVERY.BONUS_XP}`, res.xp, RECOVERY.BONUS_XP)
   check('F.record', '记录一条 earn 流水', records.length === 1 && records[0].t === 'earn' && records[0].a === RECOVERY.BONUS_PTS, true)
+}
+
+// ═══ G. Execution Quality 综合评分（Phase 4）═══
+console.log('── G. Execution Quality 综合评分 ──')
+{
+  const M = (focus, distr, dev, rec, target) => ({
+    focusDurationMs: focus * min, distractionDurationMs: distr * min,
+    deviationCount: dev, recoveryCount: rec, targetMs: target * min
+  })
+  const r3 = x => Math.round(x * 1000) / 1000
+
+  // G1 用户A(偏离3恢复3) vs 用户B(偏离1恢复0)：Recovery 能力应被奖励
+  const userA = EV.evaluateExecution(M(54, 6, 3, 3, 60))  // rate0.9 focusRatio0.9 recoveryRate1 devScore0.4
+  const userB = EV.evaluateExecution(M(54, 6, 1, 0, 60))  // rate0.9 focusRatio0.9 recoveryRate0 devScore0.8
+  check('G1.A_grade', 'A(强恢复力) → 档位A', userA.quality, 'A')
+  check('G1.B_grade', 'B(少偏离无恢复) → 档位B', userB.quality, 'B')
+  check('G1.A>B', 'A 综合分 > B（回来能力被奖励）', userA.qualityScore > userB.qualityScore, true)
+  check('G1.A_score', 'A qualityScore≈0.87', r3(userA.qualityScore), 0.87)
+  check('G1.B_score', 'B qualityScore≈0.71', r3(userB.qualityScore), 0.71)
+
+  // G2 硬门槛：rate0.95 但 focusRatio0.35 → 不能 A（最高C）
+  const g2 = EV.evaluateExecution(M(57, 106, 0, 0, 60))
+  check('G2.notA', 'rate0.95+focusRatio0.35 → 非A', g2.quality === 'A', false)
+  check('G2.capC', 'FocusRatio<0.40 → 压到C', g2.quality, 'C')
+
+  // G3 硬门槛：ExecutionRate<0.50 → 直接D（即使其它维度满分）
+  const g3 = EV.evaluateExecution(M(25, 0, 0, 0, 60))
+  check('G3.rateGateD', 'rate0.42(其余满分) → D', g3.quality, 'D')
+
+  // G4 无偏离 → RecoveryRate=1（避免0/0），满分→A
+  const g4 = EV.evaluateExecution(M(60, 0, 0, 0, 60))
+  check('G4.recoveryRate1', '无偏离 RecoveryRate=1', g4.recoveryRate, 1)
+  check('G4.fullA', '满分 → A，score=1', g4.quality === 'A' && r3(g4.qualityScore) === 1, true)
+
+  // G5 三态结果
+  check('G5.completed', '48/60(rate0.8) → COMPLETED', EV.evaluateExecution(M(48, 6, 0, 0, 60)).outcome, 'COMPLETED')
+  check('G5.partial', '42/60(rate0.7) → PARTIAL', EV.evaluateExecution(M(42, 6, 0, 0, 60)).outcome, 'PARTIAL')
+  check('G5.abandoned', '0.5min(无意义) → ABANDONED', EV.evaluateExecution(M(0.5, 0, 0, 0, 60)).outcome, 'ABANDONED')
+
+  // G6 边界
+  check('G6.target0', 'target=0 且有专注 → rate=1', EV.computeExecutionRate(M(5, 0, 0, 0, 0)), 1)
+  check('G6.focusRatio_empty', '无数据 focusRatio=1', EV.computeFocusRatio(M(0, 0, 0, 0, 60)), 1)
+  check('G6.devScore', '偏离5次 → DeviationScore=0', EV.computeDeviationScore(M(0, 0, 5, 0, 60)), 0)
+  check('G6.devScore_clamp', '偏离>5次 → DeviationScore≥0', EV.computeDeviationScore(M(0, 0, 8, 0, 60)) >= 0, true)
+
+  // G7 档位阈值边界（clean 会话：focusRatio=1/recovery=1/devScore=1 → score=rate*0.4+0.6）
+  //    rate=0.625 → score=0.85 → A；rate=0.62 → score=0.848 → B
+  const abA = EV.evaluateExecution(M(62.5, 0, 0, 0, 100))
+  check('G7.AB_A', 'score=0.85 → A', abA.quality, 'A')
+  const abB = EV.evaluateExecution(M(62, 0, 0, 0, 100))
+  check('G7.AB_B', 'score=0.848 → B', abB.quality, 'B')
+  check('G7.AB_score', 'score 恰在 0.85 边界', r3(abA.qualityScore) === 0.85 && r3(abB.qualityScore) === 0.848, true)
 }
 
 // ── 3. 汇总 ──
