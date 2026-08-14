@@ -16,8 +16,10 @@ import { useStore } from '@/stores/useStore'
 import { buildChatUrl } from '@/lib/ai'
 import { useMissionStore } from './missionStore'
 import { addRecommendation } from './disciplineEngine'
+import { useReviewStore } from './reviewStore'
+import { aggregateReviews } from './dailyReview'
 import { logger } from '@/lib/logger'
-import type { Mission } from './types'
+import type { Mission, AiInsight, InsightRange, ReviewAggregate } from './types'
 
 /** 读取已配置的 AI（MOSS 引擎）；未配置返回 null */
 function getAi() {
@@ -133,4 +135,105 @@ export function createAiMission(opts: {
   })
   logger.info('aiSupervisor', `AI 动态创建 Mission: ${opts.title}`, { minutes: opts.minutes, delayMin: opts.delayMin || 0 })
   return m
+}
+
+// ═══════════════════════════════════════════════════════════
+// AI Insight（V3 Phase 6）—— On-Demand，不参与 DailyReview 基础计算
+// 负责：Pattern Detection / Explanation / Risk / Suggestion / NextPlan Recommendation
+// 支持范围：TODAY / LAST_7_DAYS / LAST_30_DAYS
+// ═══════════════════════════════════════════════════════════
+
+/** 日期字符串(yyyy-mm-dd) 加/减 n 天 */
+function shiftDate(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dt = new Date(y, m - 1, d + days)
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+}
+
+function rangeToDays(range: InsightRange): number {
+  if (range === 'LAST_7_DAYS') return 7
+  if (range === 'LAST_30_DAYS') return 30
+  return 1
+}
+
+/** 把聚合数据压成给 AI 的简明文本 */
+function describeAggregate(agg: ReviewAggregate, range: InsightRange): string {
+  if (agg.days === 0) return '（该范围内无 DailyReview 数据）'
+  const qd = agg.qualityDistribution
+  const focusMin = Math.round(agg.totalFocusMs / 60000)
+  return [
+    `范围:${range} 覆盖${agg.days}天`,
+    `总专注:${focusMin}分钟 平均执行率:${(agg.avgExecutionRate * 100).toFixed(0)}%`,
+    `完成任务:${agg.totalCompleted}/${agg.totalCommitted}个承诺 平均可靠度:${(agg.avgReliabilityScore * 100).toFixed(0)}%`,
+    `总偏离:${agg.totalDeviations}次 总恢复:${agg.totalRecoveries}次 平均恢复率:${(agg.avgRecoveryRate * 100).toFixed(0)}%`,
+    `质量分布:A=${qd.A} B=${qd.B} C=${qd.C} D=${qd.D}`
+  ].join('；')
+}
+
+/**
+ * 按需生成 AI Insight。
+ *   - 已存在同 (baseDate, range) 的 Insight → 直接返回（不重复调 AI）。
+ *   - 否则读取范围内 DailyReview 快照 → 聚合 → 调 AI → 保存并返回。
+ *   - AI 不计算 DailyReview；只基于已存在的确定性快照做解释与建议。
+ */
+export async function generateAiInsight(baseDate: string, range: InsightRange): Promise<AiInsight | null> {
+  const rstore = useReviewStore.getState()
+
+  // On-Demand 缓存：已存在则直接读取
+  const cached = rstore.getAiInsight(baseDate, range)
+  if (cached) return cached
+
+  if (!getAi()) {
+    logger.warn('aiSupervisor', 'generateAiInsight: 未配置 AI，无法生成 Insight')
+    return null
+  }
+
+  // 读取范围内的 DailyReview 快照并聚合
+  const days = rangeToDays(range)
+  const startDate = shiftDate(baseDate, -(days - 1))
+  const reviews = rstore.getReviewsInRange(startDate, baseDate)
+  const agg = aggregateReviews(reviews)
+
+  const prompt = `你是用户的自律教练 MOSS。下面是用户最近的结构化执行数据（已确定性统计，勿重新计算）。请基于数据给出：
+1) patternDetection 行为模式（如"晚间易分心""数学恢复率高"）
+2) explanation 解释（为什么会这样）
+3) risk 风险（持续下去的问题）
+4) suggestion 具体可执行建议
+5) nextPlanRecommendation 次日计划建议（可含建议任务）
+数据：${describeAggregate(agg, range)}
+输出 JSON：{"patternDetection":"...","explanation":"...","risk":"...","suggestion":"...","nextPlanRecommendation":"..."}。每项40字内，不用emoji。`
+
+  const text = await oneShot(
+    [
+      { role: 'system', content: '你是数据驱动的自律教练。只基于给定数据输出 JSON，不编造数据。' },
+      { role: 'user', content: prompt }
+    ],
+    500,
+    0.5
+  )
+
+  const insight: AiInsight = {
+    id: `ins-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    baseDate,
+    range,
+    rawText: text,
+    createdAt: Date.now()
+  }
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (jsonMatch) {
+    try {
+      const p = JSON.parse(jsonMatch[0])
+      insight.patternDetection = p.patternDetection
+      insight.explanation = p.explanation
+      insight.risk = p.risk
+      insight.suggestion = p.suggestion
+      insight.nextPlanRecommendation = p.nextPlanRecommendation
+    } catch {
+      logger.warn('aiSupervisor', 'AI Insight JSON 解析失败，保留 rawText')
+    }
+  }
+
+  rstore.saveAiInsight(insight)
+  logger.info('aiSupervisor', `AI Insight 生成(${range})`, { baseDate, days: agg.days })
+  return insight
 }

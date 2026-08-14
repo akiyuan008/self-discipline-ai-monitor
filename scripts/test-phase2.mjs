@@ -34,7 +34,8 @@ const files = [
   'src/core/discipline/evidenceEvaluator.ts',
   'src/core/discipline/resultEvaluator.ts',
   'src/core/discipline/resultResolver.ts',
-  'src/core/discipline/recoveryReward.ts'
+  'src/core/discipline/recoveryReward.ts',
+  'src/core/discipline/dailyReview.ts'
 ]
 const out = mkdtempSync(path.join(tmpdir(), 'sd-phase2-'))
 try {
@@ -54,6 +55,7 @@ const REC = require(path.join(out, 'recoveryReward.js'))
 const EV = require(path.join(out, 'resultEvaluator.js'))
 const HE = require(path.join(out, 'evidenceEvaluator.js'))
 const ME = require(path.join(out, 'missionEvaluator.js'))
+const DR = require(path.join(out, 'dailyReview.js'))
 const { DEVIATION, RESULT, RECOVERY, QUALITY, COMPLETION, EVIDENCE } = require(path.join(out, 'config.js'))
 
 // ── 2. 断言工具 ──
@@ -66,6 +68,7 @@ function check(id, name, actual, expect) {
 }
 const sess = (mode, deviationCount) => ({ mode: mode || 'STANDARD', deviationCount: deviationCount || 0 })
 const mission = { subject: '数学' }
+const r3 = x => Math.round(x * 1000) / 1000
 
 console.log('阈值: SHORT_SWITCH_EXEMPTION_MS=%dms  RECORD_MIN=%s  INTERVENTION_MIN=%s  NEUTRAL_CAP=%s  MEANINGFUL_EXECUTION_MS=%dms',
   DEVIATION.SHORT_SWITCH_EXEMPTION_MS, DEVIATION.RECORD_MIN_CONFIDENCE, DEVIATION.INTERVENTION_MIN_CONFIDENCE,
@@ -160,7 +163,6 @@ console.log('── G. Execution Quality 综合评分 ──')
     focusDurationMs: focus * min, distractionDurationMs: distr * min,
     deviationCount: dev, recoveryCount: rec, targetMs: target * min
   })
-  const r3 = x => Math.round(x * 1000) / 1000
 
   // G1 用户A(偏离3恢复3) vs 用户B(偏离1恢复0)：Recovery 能力应被奖励
   const userA = EV.evaluateExecution(M(54, 6, 3, 3, 60))  // rate0.9 focusRatio0.9 recoveryRate1 devScore0.4
@@ -253,6 +255,55 @@ console.log('── H. Evidence 双层模型 + AI Recommendation ──')
   check('H9.accepted_complete', 'OUTCOME+AI ACCEPTED(时长足) → 可完成', ME.evaluateMission(Mout(60, [], [rec('ACCEPTED', 'pass', 0.7)])).canComplete, true)
   check('H9.photo_complete', 'OUTCOME+photo0.8(时长足) → 可完成', ME.evaluateMission(Mout(60, [objEv('photo', 0.8)], [])).canComplete, true)
   check('H9.time_short', 'OUTCOME+photo0.8 但时长不足 → 不可完成', ME.evaluateMission(Mout(30, [objEv('photo', 0.8)], [])).canComplete, false)
+}
+
+// ═══ I. DailyReview 确定性聚合（Phase 6，纯函数，不调 AI）═══
+console.log('── I. DailyReview 确定性聚合 ──')
+{
+  const mkMission = (id, status, targetMin, startedAt) => ({ id, status, targetMinutes: targetMin, startedAt, actualStudyMs: 0 })
+  const mkSession = (mid, focus, distr, dev, rec) => ({ missionId: mid, focusDurationMs: focus * min, distractionDurationMs: distr * min, deviationCount: dev, recoveryCount: rec, status: 'COMPLETED', segments: [] })
+
+  // I1 missionOutcome
+  check('I1.completed', 'status COMPLETED → COMPLETED', DR.missionOutcome(mkMission('m1', 'COMPLETED', 60), []), 'COMPLETED')
+  check('I1.missed', 'status MISSED → ABANDONED', DR.missionOutcome(mkMission('m2', 'MISSED', 60), []), 'ABANDONED')
+  check('I1.notStarted', '无session无startedAt → NOT_STARTED', DR.missionOutcome(mkMission('m3', 'READY', 60), []), 'NOT_STARTED')
+  check('I1.partial', 'session专注30min → PARTIAL', DR.missionOutcome(mkMission('m4', 'FOCUSING', 60, 1), [mkSession('m4', 30, 5, 1, 1)]), 'PARTIAL')
+  check('I1.abandoned', 'session专注0.5min → ABANDONED', DR.missionOutcome(mkMission('m5', 'FOCUSING', 60, 1), [mkSession('m5', 0.5, 0, 0, 0)]), 'ABANDONED')
+
+  // I2 generateDailyReviewCore
+  const missions = [
+    mkMission('a', 'COMPLETED', 60, 1),  // 完成, focus60
+    mkMission('b', 'FOCUSING', 60, 1),   // 部分, focus30
+    mkMission('c', 'MISSED', 60),        // 放弃
+    mkMission('d', 'READY', 60)          // 未开始
+  ]
+  const sessions = [mkSession('a', 60, 10, 2, 2), mkSession('b', 30, 5, 1, 1)]
+  const review = DR.generateDailyReviewCore({
+    date: '2026-08-14', missions, sessions,
+    plannedMissionIds: ['a', 'b', 'c', 'd'], committedMissionIds: ['a', 'b', 'c']
+  })
+  check('I2.planned', 'planned=4', review.planned, 4)
+  check('I2.committed', 'committed=3', review.committed, 3)
+  check('I2.started', 'started=2', review.started, 2)
+  check('I2.completed', 'completed=1', review.completed, 1)
+  check('I2.partial', 'partial=1', review.partial, 1)
+  check('I2.abandoned', 'abandoned=1', review.abandoned, 1)
+  check('I2.focus', 'focusTime=90min', review.focusTimeMs, 90 * min)
+  check('I2.dev', 'deviationCount=3', review.deviationCount, 3)
+  check('I2.rec', 'recoveryCount=3', review.recoveryCount, 3)
+  check('I2.recRate', 'recoveryRate=1(3/3)', review.recoveryRate, 1)
+  check('I2.execRate', 'executionRate=90/240=0.375', r3(review.executionRate), 0.375)
+  check('I2.reliability', 'reliability=(1+0.5*1)/3=0.5', r3(review.reliabilityScore), 0.5)
+  check('I2.quality_D', 'rate0.375<0.5 硬门槛 → D', review.executionQuality, 'D')
+
+  // I3 aggregateReviews（7天/30天聚合）
+  const agg = DR.aggregateReviews([review, { ...review, date: '2026-08-13' }])
+  check('I3.days', 'days=2', agg.days, 2)
+  check('I3.totalFocus', 'totalFocus=180min', agg.totalFocusMs, 180 * min)
+  check('I3.avgRate', 'avgExecutionRate=0.375', r3(agg.avgExecutionRate), 0.375)
+  check('I3.qualityDist', '质量分布总和=2', Object.values(agg.qualityDistribution).reduce((s, x) => s + x, 0), 2)
+  const aggEmpty = DR.aggregateReviews([])
+  check('I3.empty', '空 → days=0, recoveryRate=1', aggEmpty.days === 0 && aggEmpty.avgRecoveryRate === 1, true)
 }
 
 // ── 3. 汇总 ──

@@ -36,6 +36,8 @@ import { resolveSessionOutcome, evaluateSessionResult, evaluateMissionAggregateR
 import type { BehaviorEvent, Mission, InterventionLevel, FocusInterval, Session, Deviation, VerificationRecommendation } from './types'
 import { useStore } from '@/stores/useStore'
 import { classifyApp, getAppLabel, type AppCategory } from './appCategories'
+import { useDayPlanStore } from './dayPlanStore'
+import { localDateStr } from '@/lib/dateUtils'
 import { logger } from '@/lib/logger'
 
 // ── 干预升级阈值（收敛到 config）──
@@ -126,6 +128,8 @@ export function startMission(missionId: string) {
   // 创建一个新 Session（执行期状态全部归 Session）
   const session = ensureRunningSession(missionId)
   useSessionStore.setState({ currentSessionId: session.id })
+  // DayPlan 进入 EXECUTING（有 Session 开始执行）
+  useDayPlanStore.getState().markExecuting(localDateStr())
   // Mission 计划级：镜像 FOCUSING（供 UI/Android 镜像），重置执行期累计
   mstore.updateMission(missionId, { status: 'FOCUSING', startedAt: Date.now(), distractionMs: 0, distractedSince: undefined })
   handleEvent({ type: 'MISSION_STARTED', ts: Date.now() })

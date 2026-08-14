@@ -11,6 +11,9 @@ import {
   handleEvent, setInterventionHandlers, scanMissedMissions, tryComplete
 } from './disciplineEngine'
 import { aiSupervise } from './aiSupervisor'
+import { ensureDayPlan, finalizeDailyReview } from './reviewService'
+import { useReviewStore } from './reviewStore'
+import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
 import { fetchUsageStats } from '@/lib/usageStats'
 import { classifyApp } from './appCategories'
 import { logger } from '@/lib/logger'
@@ -178,6 +181,15 @@ async function notifyAiSupervision(m: Mission, reason: 'DISTRACTED' | 'AT_RISK')
 export function initDiscipline() {
   // 1. 生成今日 Missions
   generateTodayMissions()
+
+  // 1.5 DayPlan / DailyReview（Phase 6）：
+  //     - 跨天：为昨天生成确定性 DailyReview 快照（若尚未生成）
+  //     - 当日：确保 DayPlan 存在并与今日 Mission 同步（默认 PLANNED，需用户 Commitment）
+  const yd = yesterdayDateStr()
+  if (!useReviewStore.getState().getDailyReviewByDate(yd)) {
+    finalizeDailyReview(yd)
+  }
+  ensureDayPlan(localDateStr())
 
   // 2. 接线干预
   wireInterventionHandlers()

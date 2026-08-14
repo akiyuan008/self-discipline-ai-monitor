@@ -324,3 +324,103 @@ export interface Session {
   result?: SessionResult
   createdAt: number
 }
+
+// ═══════════════════════════════════════════════════════════
+// V3 Phase 6 —— DayPlan / Commitment / DailyReview / AI Insight
+//
+// 架构边界：Schedule → Mission → DayPlan → Commitment → Session
+//           → Result → DailyReview → AI Insight → NextPlan
+// Schedule/Mission/DayPlan 各司其职，不同层 Source of Truth。
+// ═══════════════════════════════════════════════════════════
+
+/** DayPlan 状态机：PLANNED → COMMITTED → EXECUTING → RESULT */
+export type DayPlanStatus = 'PLANNED' | 'COMMITTED' | 'EXECUTING' | 'RESULT'
+
+/** 用户对单个 Mission 的承诺动作 */
+export type CommitmentAction = 'COMMITTED' | 'SKIPPED' | 'RESCHEDULED'
+
+/** 单个 Mission 的承诺记录（真实用户意愿，非系统生成） */
+export interface MissionCommitment {
+  missionId: string
+  action: CommitmentAction
+  ts: number
+}
+
+export interface DayPlan {
+  id: string
+  date: string                 // yyyy-mm-dd
+  missionIds: string[]
+  commitments: MissionCommitment[]
+  status: DayPlanStatus
+  committedAt?: number
+  createdAt: number
+}
+
+/**
+ * DailyReview —— Day End 的确定性数据聚合快照（不含 AI）。
+ * 保存后即为事实快照。
+ */
+export interface DailyReview {
+  date: string
+  planned: number
+  committed: number
+  started: number
+  completed: number
+  partial: number
+  abandoned: number
+  /** 全天执行率 = 总专注 / 总目标（封顶 1） */
+  executionRate: number
+  focusTimeMs: number
+  deviationCount: number
+  recoveryCount: number
+  /** recoveryCount/deviationCount；无偏离=1 */
+  recoveryRate: number
+  /** 全天聚合执行质量档位（复用 Phase 4 模型） */
+  executionQuality: ExecutionQuality
+  /** 可靠度 = 承诺的兑现程度（completed + 0.5*partial）/ committed */
+  reliabilityScore: number
+  generatedAt: number
+}
+
+/** AI Insight 聚合范围 */
+export type InsightRange = 'TODAY' | 'LAST_7_DAYS' | 'LAST_30_DAYS'
+
+/**
+ * AI Insight —— 按需生成（On-Demand），不参与 DailyReview 基础计算。
+ * 负责：Pattern Detection / Explanation / Risk / Suggestion / NextPlan Recommendation。
+ */
+export interface AiInsight {
+  id: string
+  baseDate: string
+  range: InsightRange
+  patternDetection?: string
+  explanation?: string
+  risk?: string
+  suggestion?: string
+  nextPlanRecommendation?: string
+  rawText?: string
+  createdAt: number
+}
+
+/** 多日 DailyReview 聚合（7天/30天） */
+export interface ReviewAggregate {
+  days: number
+  totalFocusMs: number
+  avgExecutionRate: number
+  totalDeviations: number
+  totalRecoveries: number
+  avgRecoveryRate: number
+  totalCompleted: number
+  totalCommitted: number
+  avgReliabilityScore: number
+  /** 各质量档位出现次数分布 */
+  qualityDistribution: Record<ExecutionQuality, number>
+}
+
+/** NextPlan 建议（AI Insight 产出，未来用于生成次日计划） */
+export interface NextPlanSuggestion {
+  /** AI 建议的调整说明 */
+  adjustments: string
+  /** 建议的 Mission 列表（可选，供未来一键生成次日计划） */
+  suggestedMissions?: Array<{ title: string; minutes: number; taskType: TaskType }>
+}
