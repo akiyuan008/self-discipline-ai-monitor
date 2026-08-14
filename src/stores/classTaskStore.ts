@@ -3,6 +3,7 @@ import { useStore } from '@/stores/useStore'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { SCHEDULE, getPeriodTime, timeToMinutes, canStartClass, canCheckInClass } from '@/data/schedule'
 import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
+import { startMissionForClassTask } from '@/core/discipline/legacyBridge'
 
 export interface ClassTask {
   id: string
@@ -103,7 +104,7 @@ interface ClassTaskState {
   markTaskAbsent: (taskId: string) => number
   addPointsWithToast: (amount: number, reason: string) => void
   checkFullAttendance: () => number
-  updateMonitorState: (studyMs: number, entMs: number) => void
+  updateMonitorState: (studyMs: number, entMs: number) => boolean
   setNotification: (setting: Partial<NotificationSetting>) => void
   addVerifyRecord: (record: Omit<VerifyRecord, 'verifiedAt'>) => void
   addMonitorHistory: (record: MonitorHistory) => void
@@ -164,6 +165,9 @@ export const useClassTaskStore = create<ClassTaskState>()(
           ),
           currentTask: s.classTasks.find(t => t.id === taskId) || null
         }))
+        // Phase 7：currentTask → missionStore。把对应 SCHEDULE Mission 设为当前 Mission，
+        // 执行状态归 Session/missionStore（单一事实来源）。currentTask 仅作遗留兼容保留。
+        startMissionForClassTask(task.period)
       },
 
       completeClassTask: (taskId: string, photoUrl?: string, aiReview?: string, aiScore?: number) => {
@@ -281,19 +285,22 @@ export const useClassTaskStore = create<ClassTaskState>()(
         const monitor = state.monitorState
         const now = Date.now()
         let warningCount = monitor.warningCount
-        let isPunished = monitor.isPunished
-        let pointsChange = state.lastPointsChange
+        const wasPunished = monitor.isPunished
+        let isPunished = wasPunished
 
         if (entMs > studyMs && entMs > 2 * 60 * 1000) {
           warningCount += 1
           if (warningCount >= 2 && !isPunished) {
             isPunished = true
-            pointsChange = { amount: -50, reason: '检测到长时间娱乐', time: now }
           }
         } else if (studyMs > entMs) {
           warningCount = 0
           isPunished = false
         }
+
+        // Phase 7：不再产生 -50 扣分（lastPointsChange 不更新）；
+        // 返回"本次调用是否刚进入 punished"，由调用方记录 CommitmentBreak（不扣 PTS）。
+        const justPunished = isPunished && !wasPunished
 
         const today = localDateStr()
         const newMonitor: MonitorState = {
@@ -317,9 +324,9 @@ export const useClassTaskStore = create<ClassTaskState>()(
 
         set({
           monitorState: newMonitor,
-          lastPointsChange: pointsChange,
           monitorHistory: [...otherMonitor, monitorRecord].slice(-60)
         })
+        return justPunished
       },
 
       setNotification: (setting: Partial<NotificationSetting>) => {

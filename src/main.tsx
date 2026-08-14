@@ -11,7 +11,7 @@ import { fetchUsageStats, startMonitorService, hasUsageAccess } from '@/lib/usag
 import { SCHEDULE, getPeriodTime, timeToMinutes } from '@/data/schedule'
 import { logger, installGlobalErrorHandlers } from '@/lib/logger'
 import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
-import { initDiscipline, generateTodayMissions } from '@/core/discipline'
+import { initDiscipline, generateTodayMissions, recordMonitorCommitmentBreak } from '@/core/discipline'
 
 CapApp.addListener('pause', () => { autoBackup().catch(() => {}) })
 startAutoBackup()
@@ -132,7 +132,7 @@ async function monitorUsage() {
     const studyMs = study.reduce((sum, x) => sum + x.totalMs, 0)
     const entMs = ent.reduce((sum, x) => sum + x.totalMs, 0)
 
-    classStore.updateMonitorState(studyMs, entMs)
+    const justPunished = classStore.updateMonitorState(studyMs, entMs)
     mainStore.syncUsage(study, ent)
 
     // 学习奖励经验值：只发放增量（避免每次轮询把累计时长重复计入）
@@ -146,16 +146,10 @@ async function monitorUsage() {
       setGrantedStudyMinutes(studyMinutes)
     }
 
-    const monitor = classStore.monitorState
-    if (monitor.isPunished && monitor.warningCount >= 2) {
-      const lastChange = mainStore.lastPointsChange
-      const alreadyPunished = lastChange &&
-        lastChange.reason === '检测到长时间娱乐' &&
-        (Date.now() - lastChange.time < 10 * 60 * 1000)
-      if (!alreadyPunished) {
-        mainStore.addPoints(-50)
-        mainStore.addPointRecord('spend', 50, '检测到长时间娱乐')
-      }
+    // Phase 7：移除"-50 扣分"。entertainment>study 进入 punished 时，
+    // 只记录 CommitmentBreak 事实（不扣 PTS，Recovery > Punishment）。
+    if (justPunished) {
+      recordMonitorCommitmentBreak('检测到长时间娱乐（娱乐时长超过学习时长）')
     }
   } catch (e) {
     logger.error('monitor', '使用统计拉取失败', { error: String(e) })

@@ -424,3 +424,20 @@ export interface NextPlanSuggestion {
   /** 建议的 Mission 列表（可选，供未来一键生成次日计划） */
   suggestedMissions?: Array<{ title: string; minutes: number; taskType: TaskType }>
 }
+
+// ═══════════════════════════════════════════════════════════
+// V3 Phase 7 —— CommitmentBreak（承诺中断事件）
+//   替代旧"entertainment > study → -50 PTS"惩罚：
+//   只记录事实（commitmentBreak=true），不扣 PTS（Recovery > Punishment）。
+// ═══════════════════════════════════════════════════════════
+export interface CommitmentBreak {
+  id: string
+  /** 触发时正在执行的 Mission（若有） */
+  missionId?: string
+  /** 触发时正在执行的 Session（若有） */
+  sessionId?: string
+  detectedAt: number
+  reason: string
+  /** 关联的 Deviation（若有） */
+  relatedDeviationId?: string
+}

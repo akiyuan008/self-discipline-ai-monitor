@@ -7,11 +7,13 @@
  */
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { DailyReview, AiInsight, InsightRange } from './types'
+import type { DailyReview, AiInsight, InsightRange, CommitmentBreak } from './types'
 
 interface ReviewState {
   dailyReviews: DailyReview[]
   aiInsights: AiInsight[]
+  /** 承诺中断事件（Phase 7：替代 -50 惩罚，只记录事实不扣分） */
+  commitmentBreaks: CommitmentBreak[]
 
   saveDailyReview: (review: DailyReview) => void
   getDailyReviewByDate: (date: string) => DailyReview | undefined
@@ -20,6 +22,9 @@ interface ReviewState {
 
   saveAiInsight: (insight: AiInsight) => void
   getAiInsight: (baseDate: string, range: InsightRange) => AiInsight | undefined
+
+  recordCommitmentBreak: (cb: CommitmentBreak) => void
+  getCommitmentBreaks: () => CommitmentBreak[]
 }
 
 export const useReviewStore = create<ReviewState>()(
@@ -27,6 +32,7 @@ export const useReviewStore = create<ReviewState>()(
     (set, get) => ({
       dailyReviews: [],
       aiInsights: [],
+      commitmentBreaks: [],
 
       saveDailyReview: (review) => {
         set(s => ({
@@ -51,7 +57,13 @@ export const useReviewStore = create<ReviewState>()(
       },
 
       getAiInsight: (baseDate, range) =>
-        get().aiInsights.find(i => i.baseDate === baseDate && i.range === range)
+        get().aiInsights.find(i => i.baseDate === baseDate && i.range === range),
+
+      recordCommitmentBreak: (cb) => {
+        set(s => ({ commitmentBreaks: [...s.commitmentBreaks, cb].slice(-200) }))
+      },
+
+      getCommitmentBreaks: () => get().commitmentBreaks
     }),
     {
       name: 'discipline-review-store',
