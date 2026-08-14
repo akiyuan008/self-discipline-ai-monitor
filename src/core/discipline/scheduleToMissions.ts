@@ -3,16 +3,10 @@
  * 固定课表 → Mission 生成器（source: SCHEDULE）。
  * 动态 Mission（USER/AI）由用户/AI 通过 createMission 创建，最终都进入同一个 Mission 系统。
  */
-import { SCHEDULE, getPeriodTime, timeToMinutes } from '@/data/schedule'
+import { SCHEDULE, getPeriodTime } from '@/data/schedule'
 import { useMissionStore } from './missionStore'
 import { localDateStr } from '@/lib/dateUtils'
 import type { Mission } from './types'
-
-/** 判断课程是否需要"结果证据"（UsageStats 无法证明的任务） */
-function needsEvidence(subject: string): boolean {
-  // 试卷/作业/背诵类任务需要额外证据；普通课程靠行为监测即可
-  return /试卷|作业|背诵|默写/.test(subject)
-}
 
 /**
  * 为今天生成 SCHEDULE Missions（幂等：已生成过则跳过）。
@@ -47,7 +41,8 @@ export function generateTodayMissions(): Mission[] {
       plannedStart: start,
       plannedEnd: end,
       targetMinutes,
-      requiresEvidence: needsEvidence(cls.subject)
+      // Phase 9：课程完成需拍照核验证据（OUTCOME），Evidence 为统一 SoT
+      requiresEvidence: true
     })
     created.push(mission)
   }

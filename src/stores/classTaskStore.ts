@@ -3,7 +3,7 @@ import { useStore } from '@/stores/useStore'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { SCHEDULE, getPeriodTime, timeToMinutes, canStartClass, canCheckInClass } from '@/data/schedule'
 import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
-import { startMissionForClassTask } from '@/core/discipline/legacyBridge'
+import { startMissionForClassTask, submitCoursePhotoEvidenceForTask } from '@/core/discipline/legacyBridge'
 
 export interface ClassTask {
   id: string
@@ -175,6 +175,14 @@ export const useClassTaskStore = create<ClassTaskState>()(
         const state = get()
         const task = state.classTasks.find(t => t.id === taskId)
         if (!task) return 0
+
+        // Phase 9：拍照核验 → 统一 Evidence（photo + AI VerificationRecommendation → ResultEvaluator）。
+        // completeClassTask 仅在核验通过时调用 → aiPassed=true。幂等（refId 去重）。
+        // 完成事实由 Mission(Evidence) 承载；下方 ClassTask.status 仅作遗留展示兼容。
+        submitCoursePhotoEvidenceForTask(
+          { period: task.period },
+          { classTaskId: task.id, photoPath: photoUrl, aiPassed: true, aiScore, aiReview }
+        )
 
         let bonus = 0
         const period = getPeriodTime(task.period)

@@ -14,6 +14,7 @@ import { useMissionStore } from './missionStore'
 import { useSessionStore } from './sessionStore'
 import { useReviewStore } from './reviewStore'
 import { startMission } from './disciplineEngine'
+import { submitCoursePhotoEvidence } from './courseEvidence'
 import { getPeriodTime } from '@/data/schedule'
 import { localDateStr } from '@/lib/dateUtils'
 import { logger } from '@/lib/logger'
@@ -39,7 +40,7 @@ export function recordMonitorCommitmentBreak(reason: string): CommitmentBreak {
 }
 
 /** 依据课表节次找到当日对应的 SCHEDULE Mission */
-function findMissionForPeriod(period: number): Mission | undefined {
+export function findMissionForPeriod(period: number): Mission | undefined {
   const periodDef = getPeriodTime(period)
   if (!periodDef) return undefined
   const [sh, sm] = periodDef.startTime.split(':').map(Number)
@@ -65,4 +66,22 @@ export function startMissionForClassTask(period: number): void {
   if (mission.status === 'COMPLETED' || mission.status === 'MISSED') return
   startMission(mission.id)
   logger.info('legacyBridge', `课程任务 → Mission 桥接`, { period, missionId: mission.id, title: mission.title })
+}
+
+/**
+ * 课程拍照核验 → Evidence（Phase 9）。
+ * 由 classTaskStore.completeClassTask 调用：按节次定位当日 Mission，
+ * 把照片证据 + AI 核验建议提交给统一 Evidence/ResultEvaluator。
+ * CourseTask 不再独立"拍照即完成"；完成事实由 Mission(Evidence) 承载。
+ */
+export function submitCoursePhotoEvidenceForTask(
+  task: { period: number },
+  opts: { classTaskId: string; photoPath?: string; aiPassed: boolean; aiScore?: number; aiReview?: string }
+): { completed: boolean } {
+  const mission = findMissionForPeriod(task.period)
+  if (!mission) {
+    logger.debug('legacyBridge', `拍照核验未找到第${task.period}节 Mission，跳过证据提交`)
+    return { completed: false }
+  }
+  return submitCoursePhotoEvidence(mission.id, opts)
 }

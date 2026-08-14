@@ -35,7 +35,8 @@ const files = [
   'src/core/discipline/resultEvaluator.ts',
   'src/core/discipline/resultResolver.ts',
   'src/core/discipline/recoveryReward.ts',
-  'src/core/discipline/dailyReview.ts'
+  'src/core/discipline/dailyReview.ts',
+  'src/core/discipline/courseEvidenceCore.ts'
 ]
 const out = mkdtempSync(path.join(tmpdir(), 'sd-phase2-'))
 try {
@@ -56,6 +57,7 @@ const EV = require(path.join(out, 'resultEvaluator.js'))
 const HE = require(path.join(out, 'evidenceEvaluator.js'))
 const ME = require(path.join(out, 'missionEvaluator.js'))
 const DR = require(path.join(out, 'dailyReview.js'))
+const CEC = require(path.join(out, 'courseEvidenceCore.js'))
 
 // ── 第二段编译：unifiedMissionView（依赖 data/schedule，公共根为 src/，单独 outDir）──
 const umvFiles = [
@@ -372,6 +374,47 @@ console.log('── J. Unified Mission View ──')
   check('J9.planned', '无承诺未开始 → PLANNED', UMV.deriveViewStatus(mkM({ status: 'READY' }), [], 'PLANNED'), 'PLANNED')
   check('J9.missed', 'MISSED → ABANDONED', UMV.deriveViewStatus(mkM({ status: 'MISSED' }), [], 'PLANNED'), 'ABANDONED')
   check('J9.course_completed', '课程已完成(legacy) → COMPLETED', UMV.deriveViewStatus(mkM({ status: 'READY' }), [], 'PLANNED', { status: 'completed' }), 'COMPLETED')
+}
+
+// ═══ K. Course Evidence（Phase 9：证据构造 + 幂等 + 新旧回归）═══
+console.log('── K. Course Evidence ──')
+{
+  const baseOpts = { missionId: 'm1', classTaskId: 'ct-2026-1', photoPath: 'MOSS_Photos/p1.jpg', ts: 1000, recId: 'rec1' }
+
+  // K1 AI 通过 → photo weight=0.8 + recommendation ACCEPTED
+  const passed = CEC.buildCoursePhotoEvidence({ ...baseOpts, aiPassed: true, aiScore: 92, aiReview: '认真' })
+  check('K1.ev_weight', '通过 → photo weight=0.8', passed.evidence.weight, 0.8)
+  check('K1.ev_tier', 'photo tier=OBJECTIVE', passed.evidence.tier, 'OBJECTIVE')
+  check('K1.ev_refId', 'refId=classTaskId(溯源)', passed.evidence.refId, 'ct-2026-1')
+  check('K1.rec_accepted', '通过 → recommendation ACCEPTED', passed.recommendation.status, 'ACCEPTED')
+  check('K1.rec_verdict', 'aiVerdict=pass', passed.recommendation.aiVerdict, 'pass')
+  check('K1.rec_conf', 'confidence=92/100=0.92', passed.recommendation.confidence, 0.92)
+
+  // K2 AI 未过 → photo weight=0（不计客观分）+ REJECTED
+  const failed = CEC.buildCoursePhotoEvidence({ ...baseOpts, aiPassed: false, aiScore: 30, aiReview: '非学习场景' })
+  check('K2.ev_weight0', '未过 → photo weight=0', failed.evidence.weight, 0)
+  check('K2.rec_rejected', '未过 → REJECTED', failed.recommendation.status, 'REJECTED')
+  check('K2.rec_verdict', 'aiVerdict=fail', failed.recommendation.aiVerdict, 'fail')
+
+  // K3 legacy 状态映射（保持原事实）
+  check('K3.verified', 'passed=true → ACCEPTED(VERIFIED)', CEC.mapLegacyVerifyStatus(true), 'ACCEPTED')
+  check('K3.rejected', 'passed=false → REJECTED', CEC.mapLegacyVerifyStatus(false), 'REJECTED')
+
+  // K4 幂等：refId 去重
+  check('K4.empty', '空证据 → hasPhoto=false', CEC.hasPhotoEvidenceForRef([], 'ct-x'), false)
+  check('K4.dup', '已有同 refId photo → hasPhoto=true(幂等跳过)', CEC.hasPhotoEvidenceForRef([passed.evidence], 'ct-2026-1'), true)
+  check('K4.otherRef', '不同 refId → hasPhoto=false', CEC.hasPhotoEvidenceForRef([passed.evidence], 'ct-other'), false)
+
+  // K5 confidence 钳制
+  check('K5.clamp_high', 'aiScore=150 → confidence=1', CEC.buildCoursePhotoEvidence({ ...baseOpts, aiPassed: true, aiScore: 150 }).recommendation.confidence, 1)
+
+  // K6 新旧数据回归：ACCEPTED photo → evaluateEvidence 验证通过；REJECTED → 不通过
+  const rAccepted = HE.evaluateEvidence([passed.evidence], [passed.recommendation])
+  check('K6.accepted_verified', 'ACCEPTED photo → verified=true', rAccepted.verified, true)
+  const rRejected = HE.evaluateEvidence([failed.evidence], [failed.recommendation])
+  check('K6.rejected_notVerified', 'REJECTED photo(weight0) → verified=false', rRejected.verified, false)
+  // 旧数据（Phase5 前 ai weight0.9）迁移后：AI 不再作为高权客观证据（buildCoursePhotoEvidence 只给 0.8/0）
+  check('K6.ai_not_objective', '迁移后 photo 权重仅 0.8/0，无 0.9', passed.evidence.weight !== 0.9 && failed.evidence.weight !== 0.9, true)
 }
 
 // ── 3. 汇总 ──

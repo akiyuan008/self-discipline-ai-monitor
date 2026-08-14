@@ -135,6 +135,8 @@ export interface Evidence {
   payload?: string
   /** type==='ai' 时：指向对应 VerificationRecommendation（不直接计入客观分） */
   recommendationId?: string
+  /** 通用溯源引用（如课程任务 id），用于幂等迁移与来源追踪（V3 Phase 9） */
+  refId?: string
 }
 
 /** AI 核验建议的状态：待确认 / 已接受 / 已拒绝 */

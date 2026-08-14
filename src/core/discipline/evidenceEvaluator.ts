@@ -49,8 +49,8 @@ export function tierOf(e: Evidence): EvidenceTier {
 
 /** 客观层证据的基准权重 */
 function objectiveWeight(e: Evidence): number {
-  // 优先用证据自带 weight；否则按类型取默认
-  if (typeof e.weight === 'number' && e.weight > 0) return e.weight
+  // 优先用证据自带 weight（含显式 0，如"被拒照片不计分"）；仅 weight 未定义时按类型取默认
+  if (typeof e.weight === 'number') return e.weight
   switch (e.type) {
     case 'usageStats': return EVIDENCE.WEIGHT_USAGE_STATS
     case 'photo': return EVIDENCE.WEIGHT_PHOTO
