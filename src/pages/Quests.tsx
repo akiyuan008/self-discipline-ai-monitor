@@ -8,9 +8,9 @@ import { savePhoto } from '@/lib/photoStorage'
 import { showToast } from '@/components/Toast'
 import { logger } from '@/lib/logger'
 import Icon from '@/components/Icons'
-import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
-import { useMissionStore, startMission } from '@/core/discipline'
-import type { Mission } from '@/core/discipline'
+import { localDateStr } from '@/lib/dateUtils'
+import { useMissionStore, startMission, useSessionStore, useDayPlanStore, buildUnifiedMissionView } from '@/core/discipline'
+import type { MissionView, MissionViewStatus } from '@/core/discipline'
 
 interface Props {
   onNavigate?: (p: PageId) => void
@@ -51,20 +51,12 @@ export default function Quests({ onNavigate }: Props) {
   // ── 动态 Mission（source=USER）创建与展示 ──
   const missions = useMissionStore(s => s.missions)
   const currentMissionId = useMissionStore(s => s.currentMissionId)
+  const sessions = useSessionStore(s => s.sessions)
+  const dayPlans = useDayPlanStore(s => s.dayPlans)
   const [showDynForm, setShowDynForm] = useState(false)
   const [dynTitle, setDynTitle] = useState('')
   const [dynMinutes, setDynMinutes] = useState(45)
   const [dynStart, setDynStart] = useState('')  // HH:MM，留空 = 现在
-
-  // 今日动态 Missions（USER/AI 来源）
-  const dynamicMissions = useMemo(() => {
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
-    const dayEnd = dayStart + 86400000
-    return missions
-      .filter(m => m.source === 'USER' || m.source === 'AI')
-      .filter(m => m.plannedStart >= dayStart && m.plannedStart < dayEnd)
-      .sort((a, b) => a.plannedStart - b.plannedStart)
-  }, [missions, now])
 
   function handleCreateDynamic() {
     const title = dynTitle.trim()
@@ -130,6 +122,22 @@ export default function Quests({ onNavigate }: Props) {
     () => todayTasks.map(task => ({ task, r: resolveTaskState(task, now) })),
     [todayTasks, now]
   )
+
+  // ── Phase 8：统一 Mission View（Course + Dynamic + Schedule + DayPlan 去重映射）──
+  const dayPlan = useMemo(() => dayPlans.find(p => p.date === today), [dayPlans, today])
+  const unifiedViews = useMemo(() => buildUnifiedMissionView({
+    date: today,
+    missions,
+    courseTasks: todayTasks.map(t => ({ id: t.id, period: t.period, date: t.date, subject: t.subject, status: t.status })),
+    sessions,
+    dayPlan
+  }), [today, missions, todayTasks, sessions, dayPlan])
+  // 课程项的 legacy 解析状态（供统一时间轴展示拍照核验/深渊动作）
+  const resolvedMap = useMemo(() => {
+    const map: Record<string, { task: any; r: any }> = {}
+    for (const x of resolved) map[x.task.id] = x
+    return map
+  }, [resolved])
 
   // ── 当前任务（C 的核心）：按优先级挑出唯一主任务 ──
   const mission = useMemo(() => {
@@ -317,34 +325,34 @@ export default function Quests({ onNavigate }: Props) {
           </div>
         )}
 
-        {dynamicMissions.length === 0 && !showDynForm && (
-          <div style={{ textAlign: 'center', padding: '16px', color: 'var(--muted)', fontSize: 12, fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif" }}>
-            暂无动态任务，点上方「+ 动态任务」临时加一个
-          </div>
-        )}
-
-        {dynamicMissions.map(m => (
-          <DynamicMissionCard key={m.id} m={m} isCurrent={currentMissionId === m.id} onStart={() => startMission(m.id)} />
-        ))}
+        {/* Phase 8：动态任务列表并入下方统一时间轴，此处仅保留创建表单 */}
       </div>
 
-      {/* ═══ 纵向时间轴（B）═══ */}
+      {/* ═══ 统一时间轴（Phase 8：Course + Dynamic 单一列表，Mission 统一身份，去重）═══ */}
       <div style={{ marginTop: 20, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ width: 3, height: 14, background: '#45a29e' }} />
         <div style={{ fontSize: 12, color: '#45a29e', fontFamily: 'Share Tech Mono, monospace', letterSpacing: 2 }}>
-          TODAY TIMELINE
+          UNIFIED TIMELINE
         </div>
         <div style={{ flex: 1, height: 1, background: 'rgba(69,162,158,0.2)' }} />
       </div>
 
-      {todayTasks.length === 0 && (
+      {unifiedViews.length === 0 && (
         <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace' }}>
           <div style={{ fontSize: 13 }}>NO MISSIONS ASSIGNED</div>
           <div style={{ fontSize: 10, marginTop: 6, opacity: 0.5 }}>SYSTEM IDLE</div>
         </div>
       )}
 
-      <Timeline resolved={resolved} now={now} verifyingId={verifying} onVerify={handleTakePhoto} onAbyss={enterAbyss} />
+      <UnifiedTimeline
+        views={unifiedViews}
+        resolvedMap={resolvedMap}
+        currentMissionId={currentMissionId}
+        verifyingId={verifying}
+        onVerify={handleTakePhoto}
+        onAbyss={enterAbyss}
+        onStartMission={(id) => startMission(id)}
+      />
     </div>
   )
 }
@@ -493,14 +501,25 @@ function SettlementCard({ total, done, missed, allSettled }: { total: number; do
 }
 
 // ═══════════════════════════════════════════════════════════
-// 纵向时间轴（B）
+// 统一时间轴（Phase 8）—— Course + Dynamic 单一列表，Mission 统一身份
 // ═══════════════════════════════════════════════════════════
-function Timeline({ resolved, now, verifyingId, onVerify, onAbyss }: {
-  resolved: Array<{ task: any; r: any }>
-  now: Date
+const VIEW_STATUS: Record<MissionViewStatus, { label: string; color: string }> = {
+  PLANNED: { label: '已计划', color: '#8a9bb0' },
+  COMMITTED: { label: '已承诺', color: '#45a29e' },
+  EXECUTING: { label: '执行中', color: '#00d4ff' },
+  COMPLETED: { label: '已完成', color: '#22c55e' },
+  PARTIAL: { label: '部分完成', color: '#f59e0b' },
+  ABANDONED: { label: '已放弃', color: '#8a8a8a' }
+}
+
+function UnifiedTimeline({ views, resolvedMap, currentMissionId, verifyingId, onVerify, onAbyss, onStartMission }: {
+  views: MissionView[]
+  resolvedMap: Record<string, { task: any; r: any }>
+  currentMissionId: string | null
   verifyingId: string | null
-  onVerify: (id: string) => void
-  onAbyss: (id: string) => void
+  onVerify: (classTaskId: string) => void
+  onAbyss: (classTaskId: string) => void
+  onStartMission: (missionId: string) => void
 }) {
   return (
     <div style={{ position: 'relative', paddingLeft: 44 }}>
@@ -509,133 +528,155 @@ function Timeline({ resolved, now, verifyingId, onVerify, onAbyss }: {
         position: 'absolute', left: 15, top: 8, bottom: 8, width: 2,
         background: 'linear-gradient(180deg, #22c55e, #45a29e, #ff4500, #5a6a7a)'
       }} />
-
-      {resolved.map(({ task, r }) => {
-        const period = getPeriodTime(task.period)
-        const timeStr = period ? `${period.startTime}` : ''
-        const isPast = ['DONE', 'MISSED'].includes(r.state)
-        const isCurrent = ['LIVE', 'VERIFY', 'GRACE'].includes(r.state)
-
+      {views.map(v => {
+        const courseEntry = v.classTaskId ? resolvedMap[v.classTaskId] : undefined
+        if (courseEntry) {
+          return (
+            <CourseTimelineItem
+              key={v.id} task={courseEntry.task} r={courseEntry.r}
+              verifyingId={verifyingId} onVerify={onVerify} onAbyss={onAbyss}
+            />
+          )
+        }
         return (
-          <div key={task.id} style={{ position: 'relative', marginBottom: 10 }}>
-            {/* 节点圆点 */}
-            <div style={{
-              position: 'absolute', left: -36, top: 12, width: 14, height: 14, borderRadius: '50%',
-              background: r.state === 'DONE' ? '#22c55e' : r.state === 'MISSED' ? '#ff4444' : 'var(--bg)',
-              border: `2px solid ${r.color}`,
-              boxShadow: isCurrent ? `0 0 10px ${r.color}` : 'none',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              {isCurrent && <div style={{ width: 5, height: 5, borderRadius: '50%', background: r.color, animation: 'breathe 2s infinite' }} />}
-            </div>
-
-            {/* 时间标签 */}
-            <div style={{
-              position: 'absolute', left: -44, top: 32, width: 34, textAlign: 'right',
-              fontSize: 9, color: isPast ? 'var(--muted)' : r.color,
-              fontFamily: 'Share Tech Mono, monospace', opacity: isPast ? 0.5 : 1
-            }}>{timeStr}</div>
-
-            {/* 课程条目 */}
-            <div style={{
-              background: 'var(--card-bg)',
-              border: `1px solid ${isCurrent ? r.color : 'var(--border)'}`,
-              padding: '10px 12px', clipPath: CLIP_SM,
-              opacity: isPast ? 0.55 : 1,
-              display: 'flex', alignItems: 'center', gap: 10
-            }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{
-                    fontSize: 14, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1,
-                    textDecoration: r.state === 'MISSED' ? 'line-through' : 'none'
-                  }}>{task.subject}</span>
-                  <span style={{
-                    fontSize: 9, padding: '1px 5px', background: `${r.color}12`,
-                    border: `1px solid ${r.color}40`, color: r.color,
-                    fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif"
-                  }}>{r.label}</span>
-                </div>
-                <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginTop: 1 }}>
-                  P{task.period} · {r.state === 'DONE' ? `+${task.baseReward + (task.bonusReward || 0)}` : r.state === 'MISSED' ? `-${task.penalty}` : `+${task.baseReward}`}
-                  {task.aiScore != null && r.state === 'DONE' ? ` · AI ${task.aiScore}` : ''}
-                </div>
-              </div>
-
-              {/* 行内操作（仅当前态） */}
-              {isCurrent && r.state === 'LIVE' && (
-                <button onClick={() => onAbyss(task.id)} style={{
-                  padding: '6px 10px', background: `${r.color}12`, border: `1px solid ${r.color}`, color: r.color,
-                  fontFamily: 'Share Tech Mono, monospace', fontSize: 10, cursor: 'pointer', clipPath: CLIP_SM,
-                  display: 'flex', alignItems: 'center', gap: 4
-                }}><Icon.Play size={11} color={r.color} />深渊</button>
-              )}
-              {isCurrent && (r.state === 'VERIFY' || r.state === 'GRACE') && (
-                <button onClick={() => onVerify(task.id)} disabled={verifyingId === task.id} style={{
-                  padding: '6px 10px', background: `${r.color}12`, border: `1px solid ${r.color}`, color: r.color,
-                  fontFamily: 'Share Tech Mono, monospace', fontSize: 10, cursor: 'pointer', clipPath: CLIP_SM,
-                  display: 'flex', alignItems: 'center', gap: 4, opacity: verifyingId === task.id ? 0.5 : 1
-                }}><Icon.Camera size={11} color={r.color} />核验</button>
-              )}
-            </div>
-          </div>
+          <DynamicTimelineItem
+            key={v.id} view={v} isCurrent={currentMissionId === v.id}
+            onStart={() => onStartMission(v.id)}
+          />
         )
       })}
     </div>
   )
 }
 
-// ═══════════════════════════════════════════════════════════
-// 动态任务卡片（USER/AI Mission）
-// ═══════════════════════════════════════════════════════════
-const DYN_STATUS: Record<string, { label: string; color: string }> = {
-  READY: { label: '待开始', color: '#45a29e' },
-  FOCUSING: { label: '专注中', color: '#00d4ff' },
-  DISTRACTED: { label: '已分心', color: '#ff4500' },
-  INTERVENTION: { label: '干预中', color: '#ff4500' },
-  RECOVERING: { label: '恢复中', color: '#f59e0b' },
-  COMPLETED: { label: '已完成', color: '#45a29e' },
-  MISSED: { label: '已错过', color: '#8a8a8a' },
-  IDLE: { label: '空闲', color: '#8a8a8a' }
+/** 课程项（沿用 legacy 解析状态，保留拍照核验/深渊动作；Phase 9 再迁移 Evidence） */
+function CourseTimelineItem({ task, r, verifyingId, onVerify, onAbyss }: {
+  task: any; r: any; verifyingId: string | null
+  onVerify: (id: string) => void; onAbyss: (id: string) => void
+}) {
+  const period = getPeriodTime(task.period)
+  const timeStr = period ? `${period.startTime}` : ''
+  const isPast = ['DONE', 'MISSED'].includes(r.state)
+  const isCurrent = ['LIVE', 'VERIFY', 'GRACE'].includes(r.state)
+  return (
+    <div style={{ position: 'relative', marginBottom: 10 }}>
+      <div style={{
+        position: 'absolute', left: -36, top: 12, width: 14, height: 14, borderRadius: '50%',
+        background: r.state === 'DONE' ? '#22c55e' : r.state === 'MISSED' ? '#ff4444' : 'var(--bg)',
+        border: `2px solid ${r.color}`,
+        boxShadow: isCurrent ? `0 0 10px ${r.color}` : 'none',
+        display: 'flex', alignItems: 'center', justifyContent: 'center'
+      }}>
+        {isCurrent && <div style={{ width: 5, height: 5, borderRadius: '50%', background: r.color, animation: 'breathe 2s infinite' }} />}
+      </div>
+      <div style={{
+        position: 'absolute', left: -44, top: 32, width: 34, textAlign: 'right',
+        fontSize: 9, color: isPast ? 'var(--muted)' : r.color,
+        fontFamily: 'Share Tech Mono, monospace', opacity: isPast ? 0.5 : 1
+      }}>{timeStr}</div>
+      <div style={{
+        background: 'var(--card-bg)',
+        border: `1px solid ${isCurrent ? r.color : 'var(--border)'}`,
+        padding: '10px 12px', clipPath: CLIP_SM,
+        opacity: isPast ? 0.55 : 1,
+        display: 'flex', alignItems: 'center', gap: 10
+      }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{
+              fontSize: 14, fontWeight: 700, fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif", letterSpacing: 1,
+              textDecoration: r.state === 'MISSED' ? 'line-through' : 'none'
+            }}>{task.subject}</span>
+            <span style={{
+              fontSize: 9, padding: '1px 5px', background: `${r.color}12`,
+              border: `1px solid ${r.color}40`, color: r.color,
+              fontFamily: "'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+            }}>{r.label}</span>
+          </div>
+          <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginTop: 1 }}>
+            P{task.period} · {r.state === 'DONE' ? `+${task.baseReward + (task.bonusReward || 0)}` : r.state === 'MISSED' ? `-${task.penalty}` : `+${task.baseReward}`}
+            {task.aiScore != null && r.state === 'DONE' ? ` · AI ${task.aiScore}` : ''}
+          </div>
+        </div>
+        {isCurrent && r.state === 'LIVE' && (
+          <button onClick={() => onAbyss(task.id)} style={{
+            padding: '6px 10px', background: `${r.color}12`, border: `1px solid ${r.color}`, color: r.color,
+            fontFamily: 'Share Tech Mono, monospace', fontSize: 10, cursor: 'pointer', clipPath: CLIP_SM,
+            display: 'flex', alignItems: 'center', gap: 4
+          }}><Icon.Play size={11} color={r.color} />深渊</button>
+        )}
+        {isCurrent && (r.state === 'VERIFY' || r.state === 'GRACE') && (
+          <button onClick={() => onVerify(task.id)} disabled={verifyingId === task.id} style={{
+            padding: '6px 10px', background: `${r.color}12`, border: `1px solid ${r.color}`, color: r.color,
+            fontFamily: 'Share Tech Mono, monospace', fontSize: 10, cursor: 'pointer', clipPath: CLIP_SM,
+            display: 'flex', alignItems: 'center', gap: 4, opacity: verifyingId === task.id ? 0.5 : 1
+          }}><Icon.Camera size={11} color={r.color} />核验</button>
+        )}
+      </div>
+    </div>
+  )
 }
 
-function DynamicMissionCard({ m, isCurrent, onStart }: { m: Mission; isCurrent: boolean; onStart: () => void }) {
-  const st = DYN_STATUS[m.status] ?? DYN_STATUS.IDLE
-  const pct = m.targetMinutes > 0 ? Math.min(100, Math.round((m.actualStudyMs / (m.targetMinutes * 60000)) * 100)) : 0
-  const actionable = m.status === 'READY' || m.status === 'DISTRACTED' || m.status === 'RECOVERING'
+/** 动态任务项（USER/AI Mission，统一身份） */
+function DynamicTimelineItem({ view, isCurrent, onStart }: {
+  view: MissionView; isCurrent: boolean; onStart: () => void
+}) {
+  const st = VIEW_STATUS[view.viewStatus]
+  const pct = Math.min(100, Math.round(view.executionRate * 100))
+  const isFinal = ['COMPLETED', 'PARTIAL', 'ABANDONED'].includes(view.viewStatus)
+  const actionable = ['PLANNED', 'COMMITTED', 'EXECUTING'].includes(view.viewStatus)
   return (
-    <div style={{
-      background: 'var(--card-bg)', border: `1px solid ${isCurrent ? st.color : 'var(--border)'}`,
-      padding: '12px 14px', marginBottom: 8, clipPath: CLIP, position: 'relative'
-    }}>
-      <div className="corner-deco tl" style={{ width: 10, height: 10, borderWidth: 1, borderColor: st.color }} />
-      <div className="corner-deco br" style={{ width: 10, height: 10, borderWidth: 1, borderColor: st.color }} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg)', fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif" }}>
-          {m.title}
-        </div>
-        <span style={{ fontSize: 10, color: st.color, border: `1px solid ${st.color}`, padding: '2px 6px', fontFamily: 'Share Tech Mono, monospace', whiteSpace: 'nowrap' }}>
-          {st.label}
-        </span>
+    <div style={{ position: 'relative', marginBottom: 10 }}>
+      <div style={{
+        position: 'absolute', left: -36, top: 12, width: 14, height: 14, borderRadius: '50%',
+        background: view.viewStatus === 'COMPLETED' ? '#22c55e' : view.viewStatus === 'ABANDONED' ? '#8a8a8a' : 'var(--bg)',
+        border: `2px solid ${st.color}`,
+        boxShadow: view.viewStatus === 'EXECUTING' ? `0 0 10px ${st.color}` : 'none',
+        display: 'flex', alignItems: 'center', justifyContent: 'center'
+      }}>
+        {view.viewStatus === 'EXECUTING' && <div style={{ width: 5, height: 5, borderRadius: '50%', background: st.color, animation: 'breathe 2s infinite' }} />}
       </div>
-      <div style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginBottom: 8 }}>
-        {fmtClock(m.plannedStart)} – {fmtClock(m.plannedEnd)} · {m.targetMinutes}min · {m.source === 'AI' ? 'AI 生成' : '手动创建'}
-      </div>
-      {m.status !== 'READY' && (
-        <div style={{ height: 4, background: 'var(--bg-alt)', borderRadius: 2, overflow: 'hidden', marginBottom: 8 }}>
-          <div style={{ width: `${pct}%`, height: '100%', background: st.color, transition: 'width 0.5s' }} />
+      <div style={{
+        position: 'absolute', left: -44, top: 32, width: 34, textAlign: 'right',
+        fontSize: 9, color: isFinal ? 'var(--muted)' : st.color,
+        fontFamily: 'Share Tech Mono, monospace', opacity: isFinal ? 0.5 : 1
+      }}>{fmtClock(view.plannedStart)}</div>
+      <div style={{
+        background: 'var(--card-bg)',
+        border: `1px solid ${isCurrent ? st.color : 'var(--border)'}`,
+        padding: '10px 12px', clipPath: CLIP_SM,
+        opacity: isFinal ? 0.6 : 1
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", letterSpacing: 0.5 }}>
+                {view.title}
+              </span>
+              <span style={{
+                fontSize: 9, padding: '1px 5px', background: `${st.color}12`,
+                border: `1px solid ${st.color}40`, color: st.color,
+                fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif"
+              }}>{st.label}</span>
+            </div>
+            <div style={{ fontSize: 9, color: 'var(--muted)', fontFamily: 'Share Tech Mono, monospace', marginTop: 1 }}>
+              {fmtClock(view.plannedStart)}–{fmtClock(view.plannedEnd)} · {view.targetMinutes}min · {view.source === 'AI' ? 'AI' : view.source === 'USER' ? '手动' : '课表'}
+            </div>
+          </div>
+          {actionable && (
+            <button onClick={onStart} style={{
+              padding: '6px 10px', background: `${st.color}12`, border: `1px solid ${st.color}`, color: st.color,
+              fontFamily: 'Share Tech Mono, monospace', fontSize: 10, cursor: 'pointer', clipPath: CLIP_SM,
+              display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap'
+            }}><Icon.Play size={11} color={st.color} />{view.viewStatus === 'EXECUTING' ? '回到任务' : '开始'}</button>
+          )}
         </div>
-      )}
-      {actionable && (
-        <button onClick={onStart} style={{
-          width: '100%', padding: '9px', background: `${st.color}15`, border: `1px solid ${st.color}`, color: st.color,
-          fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: 1,
-          fontFamily: "'Inter','PingFang SC','Microsoft YaHei',sans-serif", clipPath: CLIP_SM,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
-        }}>
-          <Icon.Play size={14} color={st.color} /> {m.status === 'READY' ? '开始任务' : '回到任务'}
-        </button>
-      )}
+        {!isFinal && pct > 0 && (
+          <div style={{ height: 3, background: 'var(--bg-alt)', borderRadius: 2, overflow: 'hidden', marginTop: 6 }}>
+            <div style={{ width: `${pct}%`, height: '100%', background: st.color, transition: 'width 0.5s' }} />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

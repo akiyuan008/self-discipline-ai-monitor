@@ -56,6 +56,25 @@ const EV = require(path.join(out, 'resultEvaluator.js'))
 const HE = require(path.join(out, 'evidenceEvaluator.js'))
 const ME = require(path.join(out, 'missionEvaluator.js'))
 const DR = require(path.join(out, 'dailyReview.js'))
+
+// ── 第二段编译：unifiedMissionView（依赖 data/schedule，公共根为 src/，单独 outDir）──
+const umvFiles = [
+  'src/core/discipline/config.ts',
+  'src/core/discipline/types.ts',
+  'src/core/discipline/unifiedMissionView.ts',
+  'src/data/schedule.ts'
+]
+const outUmv = mkdtempSync(path.join(tmpdir(), 'sd-umv-'))
+try {
+  execSync(
+    `node node_modules/typescript/bin/tsc ${umvFiles.join(' ')} --module commonjs --target ES2020 --outDir ${outUmv} --skipLibCheck --esModuleInterop`,
+    { cwd: root, stdio: 'pipe' }
+  )
+} catch (e) {
+  console.error('❌ unifiedMissionView 编译失败：\n' + (e.stdout?.toString() || e.message))
+  process.exit(1)
+}
+const UMV = require(path.join(outUmv, 'core/discipline/unifiedMissionView.js'))
 const { DEVIATION, RESULT, RECOVERY, QUALITY, COMPLETION, EVIDENCE } = require(path.join(out, 'config.js'))
 
 // ── 2. 断言工具 ──
@@ -304,6 +323,55 @@ console.log('── I. DailyReview 确定性聚合 ──')
   check('I3.qualityDist', '质量分布总和=2', Object.values(agg.qualityDistribution).reduce((s, x) => s + x, 0), 2)
   const aggEmpty = DR.aggregateReviews([])
   check('I3.empty', '空 → days=0, recoveryRate=1', aggEmpty.days === 0 && aggEmpty.avgRecoveryRate === 1, true)
+}
+
+// ═══ J. Unified Mission View（Phase 8：去重 + 状态映射）═══
+console.log('── J. Unified Mission View ──')
+{
+  const nowD = new Date()
+  const pad2 = n => String(n).padStart(2, '0')
+  const todayStr = `${nowD.getFullYear()}-${pad2(nowD.getMonth() + 1)}-${pad2(nowD.getDate())}`
+  const tsAt = (h, m) => new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate(), h, m).getTime()
+  const mkM = (o) => ({
+    actualStudyMs: 0, distractionMs: 0, focusIntervals: [], evidence: [], sessionIds: [],
+    requiresEvidence: false, interventionLevel: 0, createdAt: 1, ...o
+  })
+
+  // 课表 Mission（第1节 08:00）+ 对应 ClassTask；动态 Mission；无 Mission 的课程(第5节)
+  const schedMission = mkM({ id: 'sm1', title: '数学 · 第1节', subject: '数学', source: 'SCHEDULE', plannedStart: tsAt(8, 0), plannedEnd: tsAt(9, 0), targetMinutes: 60, status: 'READY' })
+  const dynMission = mkM({ id: 'dm1', title: '背单词', subject: '背单词', source: 'USER', plannedStart: tsAt(19, 0), plannedEnd: tsAt(19, 45), targetMinutes: 45, status: 'READY' })
+  const doneMission = mkM({ id: 'dm2', title: '已完成任务', subject: 'x', source: 'USER', plannedStart: tsAt(10, 0), plannedEnd: tsAt(10, 30), targetMinutes: 30, status: 'COMPLETED' })
+  const courseTask1 = { id: 'ct1', period: 1, date: todayStr, subject: '数学', status: 'pending' }
+  const courseTask5 = { id: 'ct5', period: 5, date: todayStr, subject: '生物', status: 'pending' }
+  const dayPlan = { id: 'dp', date: todayStr, missionIds: ['sm1', 'dm1', 'dm2'], commitments: [{ missionId: 'dm1', action: 'COMMITTED', ts: 1 }], status: 'COMMITTED', createdAt: 1 }
+
+  const views = UMV.buildUnifiedMissionView({
+    date: todayStr,
+    missions: [schedMission, dynMission, doneMission],
+    courseTasks: [courseTask1, courseTask5],
+    sessions: [],
+    dayPlan
+  })
+
+  check('J1.count', '视图数=4（3 Mission，ct1并入sm1，ct5兜底+1）', views.length, 4)
+  check('J2.join', 'ct1 并入 sm1（classTaskId=ct1）', views.find(v => v.id === 'sm1')?.classTaskId === 'ct1', true)
+  check('J3.dedup', 'period1 只有一条（无重复 COURSE 副本）', views.filter(v => v.classTaskId === 'ct1').length, 1)
+  check('J4.courseOnly', 'ct5 无 Mission → source=COURSE', views.find(v => v.classTaskId === 'ct5')?.source, 'COURSE')
+  check('J5.dyn_committed', 'dm1 dayPlan已承诺 → COMMITTED', views.find(v => v.id === 'dm1')?.viewStatus, 'COMMITTED')
+  check('J6.done', 'dm2 已完成 → COMPLETED', views.find(v => v.id === 'dm2')?.viewStatus, 'COMPLETED')
+  check('J7.sort', '按 plannedStart 升序', views[0].plannedStart <= views[views.length - 1].plannedStart, true)
+
+  // 有 ACTIVE Session → EXECUTING
+  const execMission = mkM({ id: 'em1', title: '执行中', subject: 'x', source: 'USER', plannedStart: tsAt(14, 0), plannedEnd: tsAt(15, 0), targetMinutes: 60, status: 'FOCUSING' })
+  const activeSession = { id: 'ses1', missionId: 'em1', status: 'ACTIVE', focusDurationMs: 10 * 60000, distractionDurationMs: 0, deviationCount: 0, recoveryCount: 0, segments: [], createdAt: 1 }
+  const views2 = UMV.buildUnifiedMissionView({ date: todayStr, missions: [execMission], courseTasks: [], sessions: [activeSession], dayPlan: undefined })
+  check('J8.executing', 'ACTIVE Session + FOCUSING → EXECUTING', views2[0].viewStatus, 'EXECUTING')
+  check('J8.progress', 'executionRate=10/60≈0.167', Math.round(views2[0].executionRate * 1000) / 1000, 0.167)
+
+  // 状态映射覆盖：deriveViewStatus 直接测
+  check('J9.planned', '无承诺未开始 → PLANNED', UMV.deriveViewStatus(mkM({ status: 'READY' }), [], 'PLANNED'), 'PLANNED')
+  check('J9.missed', 'MISSED → ABANDONED', UMV.deriveViewStatus(mkM({ status: 'MISSED' }), [], 'PLANNED'), 'ABANDONED')
+  check('J9.course_completed', '课程已完成(legacy) → COMPLETED', UMV.deriveViewStatus(mkM({ status: 'READY' }), [], 'PLANNED', { status: 'completed' }), 'COMPLETED')
 }
 
 // ── 3. 汇总 ──
