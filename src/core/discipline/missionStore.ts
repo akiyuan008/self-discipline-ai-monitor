@@ -77,6 +77,7 @@ export const useMissionStore = create<MissionState>()(
           evidence: [],
           focusIntervals: [],
           sessionIds: [],
+          recommendations: [],
           // V3：未显式指定 taskType 时，按是否需要证据推断
           taskType: input.requiresEvidence ? 'OUTCOME_BASED' : 'TIME_BASED',
           ...input
@@ -124,18 +125,49 @@ export const useMissionStore = create<MissionState>()(
     }),
     {
       name: 'discipline-mission-store',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
-      // V3 Phase0：为旧 Mission 补齐 sessionIds / taskType（向后兼容）
+      // V3 迁移：
+      //   v2 → 补 focusIntervals / sessionIds / taskType
+      //   v3 → Phase5：为 evidence 补 tier；把旧 'ai' 证据转成 VerificationRecommendation(PENDING)，
+      //        使其不再计入客观证据分（保留读取兼容，等待用户确认）
       migrate: (persisted: any, version: number) => {
         const p = (persisted || {}) as any
-        if (version < 2 && Array.isArray(p.missions)) {
-          p.missions = p.missions.map((m: any) => ({
-            ...m,
-            focusIntervals: m.focusIntervals || [],
-            sessionIds: m.sessionIds || [],
-            taskType: m.taskType || (m.requiresEvidence ? 'OUTCOME_BASED' : 'TIME_BASED')
-          }))
+        if (Array.isArray(p.missions)) {
+          p.missions = p.missions.map((m: any) => {
+            const mission = { ...m }
+            if (version < 2) {
+              mission.focusIntervals = mission.focusIntervals || []
+              mission.sessionIds = mission.sessionIds || []
+              mission.taskType = mission.taskType || (mission.requiresEvidence ? 'OUTCOME_BASED' : 'TIME_BASED')
+            }
+            if (version < 3) {
+              const recommendations = Array.isArray(mission.recommendations) ? [...mission.recommendations] : []
+              mission.evidence = (Array.isArray(mission.evidence) ? mission.evidence : []).map((e: any) => {
+                const tier = e.tier || (
+                  e.type === 'manual' ? 'USER_ASSERTION'
+                    : e.type === 'ai' ? 'AI_RECOMMENDATION'
+                      : 'OBJECTIVE'
+                )
+                if (e.type === 'ai') {
+                  const recId = `rec-mig-${(e.ts || Date.now()).toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+                  recommendations.push({
+                    id: recId,
+                    missionId: mission.id,
+                    aiVerdict: 'pass', // 旧 ai 证据均为"通过"时写入
+                    confidence: typeof e.weight === 'number' ? e.weight : 0.3,
+                    reason: e.payload,
+                    status: 'PENDING',
+                    createdAt: e.ts || Date.now()
+                  })
+                  return { ...e, tier, recommendationId: recId }
+                }
+                return { ...e, tier }
+              })
+              mission.recommendations = recommendations
+            }
+            return mission
+          })
         }
         return p
       }

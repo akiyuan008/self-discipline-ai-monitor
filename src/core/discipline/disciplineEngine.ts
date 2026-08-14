@@ -33,7 +33,7 @@ import {
   shouldRecordDeviation, shouldConsiderIntervention, isTransient
 } from './deviationAnalyzer'
 import { resolveSessionOutcome, evaluateSessionResult, evaluateMissionAggregateResult } from './resultResolver'
-import type { BehaviorEvent, Mission, InterventionLevel, FocusInterval, Session, Deviation } from './types'
+import type { BehaviorEvent, Mission, InterventionLevel, FocusInterval, Session, Deviation, VerificationRecommendation } from './types'
 import { useStore } from '@/stores/useStore'
 import { classifyApp, getAppLabel, type AppCategory } from './appCategories'
 import { logger } from '@/lib/logger'
@@ -174,6 +174,57 @@ export function attachEvidenceAndTryComplete(missionId: string, type: 'photo' | 
   const ev = makeEvidence(type, payload, weight)
   store.updateMission(missionId, { evidence: [...m.evidence, ev] })
   tryComplete(missionId)
+}
+
+// ═══════════════════════════════════════════════════════════
+// AI 核验建议（Phase 5）—— AI=Interpretation，不直接改变完成事实
+// ═══════════════════════════════════════════════════════════
+
+/** 新增一条 AI 核验建议（PENDING）。不直接判完成；由用户确认后走 accept/reject。 */
+export function addRecommendation(
+  missionId: string,
+  rec: { aiVerdict: 'pass' | 'fail'; confidence: number; reason?: string }
+): VerificationRecommendation | undefined {
+  const store = useMissionStore.getState()
+  const m = store.getMission(missionId)
+  if (!m) return undefined
+  const full: VerificationRecommendation = {
+    id: `rec-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    missionId,
+    aiVerdict: rec.aiVerdict,
+    confidence: Math.max(0, Math.min(1, rec.confidence)),
+    reason: rec.reason,
+    status: 'PENDING',
+    createdAt: Date.now()
+  }
+  store.updateMission(missionId, { recommendations: [...(m.recommendations || []), full] })
+  logger.info('discipline', `AI 核验建议(${rec.aiVerdict}) PENDING`, { missionId, confidence: full.confidence })
+  return full
+}
+
+/** 用户接受 AI 建议（未来 UI 调用）→ 记 ACCEPTED 并尝试完成 */
+export function acceptRecommendation(missionId: string, recommendationId: string) {
+  const store = useMissionStore.getState()
+  const m = store.getMission(missionId)
+  if (!m) return
+  const recommendations = (m.recommendations || []).map(r =>
+    r.id === recommendationId ? { ...r, status: 'ACCEPTED' as const, resolvedAt: Date.now() } : r
+  )
+  store.updateMission(missionId, { recommendations })
+  logger.info('discipline', 'AI 建议已接受', { missionId, recommendationId })
+  tryComplete(missionId)
+}
+
+/** 用户拒绝 AI 建议（未来 UI 调用）→ 记 REJECTED */
+export function rejectRecommendation(missionId: string, recommendationId: string) {
+  const store = useMissionStore.getState()
+  const m = store.getMission(missionId)
+  if (!m) return
+  const recommendations = (m.recommendations || []).map(r =>
+    r.id === recommendationId ? { ...r, status: 'REJECTED' as const, resolvedAt: Date.now() } : r
+  )
+  store.updateMission(missionId, { recommendations })
+  logger.info('discipline', 'AI 建议已拒绝', { missionId, recommendationId })
 }
 
 /**

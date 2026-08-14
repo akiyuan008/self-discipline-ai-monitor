@@ -62,6 +62,8 @@ export interface Mission {
   requiresEvidence: boolean
   /** 已收集的证据 */
   evidence: Evidence[]
+  /** AI 核验建议列表（Phase 5；PENDING/ACCEPTED/REJECTED，未来 UI 确认） */
+  recommendations?: VerificationRecommendation[]
 
   startedAt?: number
   completedAt?: number
@@ -105,17 +107,51 @@ export interface FocusInterval {
 }
 
 // ═══════════════════════════════════════════════════════════
-// Evidence（完成证据）—— 拍照降级为 Evidence Provider
+// Evidence（完成证据）—— V3 Phase 5 双层/三层模型
+//
+//   Objective Evidence（客观证据，计入客观证据分）
+//     ├── usageStats / photo / screenshot
+//   User Assertion（用户自述）
+//     └── manual
+//   AI（仅产生 VerificationRecommendation，不直接计入客观证据分）
+//     └── ai → VerificationRecommendation(PENDING/ACCEPTED/REJECTED)
+//
+//   硬规则：AI recommendation 本身不得直接改变最终任务完成事实；
+//   新 EvidenceEvaluator 不把 AI recommendation 加入 Objective Evidence Score。
 // ═══════════════════════════════════════════════════════════
 export type EvidenceType = 'usageStats' | 'photo' | 'screenshot' | 'manual' | 'ai'
 
+/** 证据所属层 */
+export type EvidenceTier = 'OBJECTIVE' | 'USER_ASSERTION' | 'AI_RECOMMENDATION'
+
 export interface Evidence {
   type: EvidenceType
-  /** 证据强度 0-1（由 MissionEvaluator 解释） */
+  /** 所属层（由 type 派生；旧数据迁移时补齐） */
+  tier?: EvidenceTier
+  /** 证据强度 0-1（客观层计入客观分；manual/ai 仅作参考） */
   weight: number
   ts: number
   /** 可选载荷：photo 存路径、manual 存备注等 */
   payload?: string
+  /** type==='ai' 时：指向对应 VerificationRecommendation（不直接计入客观分） */
+  recommendationId?: string
+}
+
+/** AI 核验建议的状态：待确认 / 已接受 / 已拒绝 */
+export type RecommendationStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED'
+
+/** AI 核验建议（Interpretation，不是 Truth Source） */
+export interface VerificationRecommendation {
+  id: string
+  missionId: string
+  /** AI 的建议判定 */
+  aiVerdict: 'pass' | 'fail'
+  /** AI 置信度 0–1（仅参考，不进客观证据分） */
+  confidence: number
+  reason?: string
+  status: RecommendationStatus
+  createdAt: number
+  resolvedAt?: number
 }
 
 // ═══════════════════════════════════════════════════════════

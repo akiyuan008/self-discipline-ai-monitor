@@ -1,22 +1,23 @@
 /**
  * src/core/discipline/missionEvaluator.ts
- * 完成判定器 —— Evidence 证据驱动。
+ * 完成判定器 —— Evidence 证据驱动（V3 Phase 5 接入双层证据模型）。
  *
- * 原则：拍照不再是默认完成条件，只是 Evidence Provider 之一。
- * 默认完成判断 = 行为监测（有效学习时长达标）。
- * 对 UsageStats 无法证明的任务（requiresEvidence），要求额外证据。
- *
- * 未来 Evidence 可扩展：usageStats / photo / screenshot / manual / ai。
+ * 原则：
+ *   - TIME_BASED：行为监测（有效学习时长达标）即可判定完成。
+ *   - OUTCOME_BASED（requiresEvidence）：需经 EvidenceEvaluator 验证
+ *     （客观证据达标 / 用户自述 / AI 建议已获用户确认）。
+ *   - ⚠️ AI recommendation 不直接计入客观证据分，也不自动判完成（Phase 5 硬规则）。
  */
-import type { Mission, Evidence, EvidenceType } from './types'
+import type { Mission, Evidence, EvidenceType, EvidenceTier } from './types'
 import { COMPLETION, EVIDENCE_WEIGHT } from './config'
+import { evaluateEvidence } from './evidenceEvaluator'
 
 export interface EvaluationResult {
   /** 是否可判定完成 */
   canComplete: boolean
-  /** 是否还需要额外证据（如拍照） */
+  /** 是否还需要额外证据（如拍照/用户确认） */
   needsEvidence: boolean
-  /** 证据充分度 0-1 */
+  /** 客观证据分 0-1（不含 AI） */
   evidenceScore: number
   reason: string
 }
@@ -27,9 +28,17 @@ const EVIDENCE_BASE_WEIGHT: Record<EvidenceType, number> = { ...EVIDENCE_WEIGHT 
 /** 完成任务所需的有效学习时长占目标的比例（收敛到 config） */
 const COMPLETION_RATIO = COMPLETION.RATIO
 
+/** 由 type 派生 tier */
+function tierOfType(type: EvidenceType): EvidenceTier {
+  if (type === 'usageStats' || type === 'photo' || type === 'screenshot') return 'OBJECTIVE'
+  if (type === 'manual') return 'USER_ASSERTION'
+  return 'AI_RECOMMENDATION'
+}
+
 export function makeEvidence(type: EvidenceType, payload?: string, weight?: number): Evidence {
   return {
     type,
+    tier: tierOfType(type),
     weight: weight ?? EVIDENCE_BASE_WEIGHT[type] ?? 0.5,
     ts: Date.now(),
     payload
@@ -49,19 +58,19 @@ export function evaluateMission(mission: Mission): EvaluationResult {
 
   const ratio = mission.actualStudyMs / targetMs
 
-  // 任务需要"结果证据"（UsageStats 无法证明），且行为时长不足 → 需要证据
+  // OUTCOME_BASED：需 EvidenceEvaluator 验证（客观证据/用户自述/已确认的 AI 建议）
   if (mission.requiresEvidence) {
-    const evidenceScore = mission.evidence.reduce((sum, e) => sum + e.weight, 0)
-    if (ratio >= COMPLETION_RATIO && evidenceScore >= COMPLETION.EVIDENCE_SCORE_MIN) {
-      return { canComplete: true, needsEvidence: false, evidenceScore, reason: '行为时长达标且有充分证据' }
+    const ev = evaluateEvidence(mission.evidence, mission.recommendations)
+    if (ratio >= COMPLETION_RATIO && ev.verified) {
+      return { canComplete: true, needsEvidence: false, evidenceScore: ev.objectiveScore, reason: ev.reason }
     }
     if (ratio >= COMPLETION_RATIO) {
-      return { canComplete: false, needsEvidence: true, evidenceScore, reason: '行为时长达标，但需要补充证据（如拍照）' }
+      return { canComplete: false, needsEvidence: true, evidenceScore: ev.objectiveScore, reason: ev.reason }
     }
-    return { canComplete: false, needsEvidence: true, evidenceScore, reason: '行为时长与证据均不足' }
+    return { canComplete: false, needsEvidence: true, evidenceScore: ev.objectiveScore, reason: '行为时长与证据均不足' }
   }
 
-  // 普通任务：行为监测达标即完成（不需要拍照）
+  // TIME_BASED：行为监测达标即完成（不需要拍照）
   if (ratio >= COMPLETION_RATIO) {
     return { canComplete: true, needsEvidence: false, evidenceScore: ratio, reason: '有效学习时长达标' }
   }

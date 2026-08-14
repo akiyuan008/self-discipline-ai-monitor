@@ -32,6 +32,24 @@ export const COMPLETION = {
 } as const
 
 // ═══════════════════════════════════════════════════════════
+// Evidence 双层模型（Phase 5）
+//   Objective Evidence（usageStats/photo/screenshot）计入客观证据分；
+//   Manual = User Assertion；AI = VerificationRecommendation（不计入客观分）。
+//   下列权重为"旧系统兼容/迁移期参考值"，AI=0.3 仅作参考、非最终架构。
+// ═══════════════════════════════════════════════════════════
+export const EVIDENCE = {
+  // ── 客观证据权重（计入 Objective Evidence Score）──
+  WEIGHT_USAGE_STATS: 1.0,
+  WEIGHT_PHOTO: 0.8,
+  WEIGHT_SCREENSHOT: 0.7,
+  // ── User Assertion / AI（仅参考，不计入客观分）──
+  WEIGHT_MANUAL: 0.5,
+  WEIGHT_AI_LEGACY: 0.3,
+  /** 客观证据验证门槛：objectiveScore ≥ 该值 → 客观验证通过 */
+  OBJECTIVE_VERIFY_THRESHOLD: 0.6,
+} as const
+
+// ═══════════════════════════════════════════════════════════
 // Evidence 基准权重（MissionEvaluator）
 // ⚠️ V3 Phase5：ai 将从 0.9 降为 ~0.3（AI=Interpretation，不是 Truth Source），
 //    并改为 Verification Recommendation + User Confirmation。Phase 0 暂维持现状。
@@ -41,7 +59,7 @@ export const EVIDENCE_WEIGHT = {
   photo: 0.8,
   screenshot: 0.7,
   manual: 0.5,
-  ai: 0.9, // V3 目标 ≈0.3（Phase 5）
+  ai: 0.3, // V3 Phase5：AI=Interpretation，0.3 仅迁移参考，不直接计入客观证据分
 } as const
 
 // ═══════════════════════════════════════════════════════════

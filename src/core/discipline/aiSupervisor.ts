@@ -15,7 +15,7 @@
 import { useStore } from '@/stores/useStore'
 import { buildChatUrl } from '@/lib/ai'
 import { useMissionStore } from './missionStore'
-import { attachEvidenceAndTryComplete } from './disciplineEngine'
+import { addRecommendation } from './disciplineEngine'
 import { logger } from '@/lib/logger'
 import type { Mission } from './types'
 
@@ -79,7 +79,7 @@ export async function aiSupervise(
  * AI 证据判定：对 requiresEvidence 任务，AI 依据用户描述判完成，产 'ai' 证据。
  * 判定通过后 attachEvidence 触发 MissionEvaluator；奖励由 RewardEngine 统一发放。
  */
-export async function aiJudgeEvidence(missionId: string, note: string): Promise<{ ok: boolean; msg: string }> {
+export async function aiJudgeEvidence(missionId: string, note: string): Promise<{ ok: boolean; msg: string; pending?: boolean }> {
   const store = useMissionStore.getState()
   const m = store.getMission(missionId)
   if (!m) return { ok: false, msg: '任务不存在' }
@@ -97,9 +97,11 @@ export async function aiJudgeEvidence(missionId: string, note: string): Promise<
     const r = JSON.parse(jsonMatch[0])
     const pass = !!r.pass
     const confidence = Math.max(0, Math.min(1, Number(r.confidence) || 0.5))
+    // Phase 5：AI 只产 VerificationRecommendation（PENDING），不自动判完成。
+    // 由用户确认（未来 UI 调 accept/rejectRecommendation）或客观证据决定完成。
+    addRecommendation(missionId, { aiVerdict: pass ? 'pass' : 'fail', confidence, reason: r.reason || note })
     if (pass) {
-      attachEvidenceAndTryComplete(missionId, 'ai', note, confidence)
-      return { ok: true, msg: `AI 核验通过${r.reason ? '：' + r.reason : ''}` }
+      return { ok: true, pending: true, msg: `AI 建议通过（待用户确认）${r.reason ? '：' + r.reason : ''}` }
     }
     return { ok: false, msg: `AI 判定未完成${r.reason ? '：' + r.reason : ''}` }
   } catch {

@@ -31,6 +31,7 @@ const files = [
   'src/core/discipline/focusMath.ts',
   'src/core/discipline/deviationAnalyzer.ts',
   'src/core/discipline/missionEvaluator.ts',
+  'src/core/discipline/evidenceEvaluator.ts',
   'src/core/discipline/resultEvaluator.ts',
   'src/core/discipline/resultResolver.ts',
   'src/core/discipline/recoveryReward.ts'
@@ -51,7 +52,9 @@ const R = require(path.join(out, 'resultResolver.js'))
 const F = require(path.join(out, 'focusMath.js'))
 const REC = require(path.join(out, 'recoveryReward.js'))
 const EV = require(path.join(out, 'resultEvaluator.js'))
-const { DEVIATION, RESULT, RECOVERY, QUALITY, COMPLETION } = require(path.join(out, 'config.js'))
+const HE = require(path.join(out, 'evidenceEvaluator.js'))
+const ME = require(path.join(out, 'missionEvaluator.js'))
+const { DEVIATION, RESULT, RECOVERY, QUALITY, COMPLETION, EVIDENCE } = require(path.join(out, 'config.js'))
 
 // ── 2. 断言工具 ──
 const min = 60000
@@ -200,6 +203,56 @@ console.log('── G. Execution Quality 综合评分 ──')
   const abB = EV.evaluateExecution(M(62, 0, 0, 0, 100))
   check('G7.AB_B', 'score=0.848 → B', abB.quality, 'B')
   check('G7.AB_score', 'score 恰在 0.85 边界', r3(abA.qualityScore) === 0.85 && r3(abB.qualityScore) === 0.848, true)
+}
+
+// ═══ H. Evidence 双层模型（Phase 5）═══
+console.log('── H. Evidence 双层模型 + AI Recommendation ──')
+{
+  const objEv = (type, weight) => ({ type, tier: 'OBJECTIVE', weight, ts: 1 })
+  const rec = (status, verdict, conf) => ({ id: 'r', missionId: 'm', aiVerdict: verdict, confidence: conf, status, createdAt: 1 })
+
+  // H1 客观证据分只计 OBJECTIVE 层（photo），排除 manual 与 ai
+  const ev1 = [objEv('photo', 0.8), { type: 'manual', tier: 'USER_ASSERTION', weight: 0.5, ts: 1 }, { type: 'ai', tier: 'AI_RECOMMENDATION', weight: 0.9, ts: 1 }]
+  check('H1.objScore', '客观分只计 photo0.8（排除manual/ai）', HE.objectiveEvidenceScore(ev1), 0.8)
+
+  // H2 旧 'ai' 证据（无 tier）被识别为 AI 层，不计客观分（读取兼容）
+  const legacyAi = [{ type: 'ai', weight: 0.9, ts: 1 }]
+  check('H2.legacy_tier', 'tierOf(旧ai)=AI_RECOMMENDATION', HE.tierOf(legacyAi[0]), 'AI_RECOMMENDATION')
+  check('H2.legacy_excluded', '旧ai证据不计客观分', HE.objectiveEvidenceScore(legacyAi), 0)
+
+  // H3 客观证据达标 → OBJECTIVE 验证
+  const r3o = HE.evaluateEvidence([objEv('photo', 0.8)], [])
+  check('H3.verified', 'photo0.8≥0.6 → verified', r3o.verified, true)
+  check('H3.source', 'source=OBJECTIVE', r3o.verificationSource, 'OBJECTIVE')
+
+  // H4 用户自述 → USER_ASSERTION 验证
+  const r4 = HE.evaluateEvidence([{ type: 'manual', tier: 'USER_ASSERTION', weight: 0.5, ts: 1 }], [])
+  check('H4.assertion', '用户自述 → verified', r4.verified, true)
+  check('H4.source', 'source=USER_ASSERTION', r4.verificationSource, 'USER_ASSERTION')
+
+  // H5 AI ACCEPTED → 验证（用户确认，非 AI 本身）
+  const r5 = HE.evaluateEvidence([], [rec('ACCEPTED', 'pass', 0.7)])
+  check('H5.accepted', 'AI ACCEPTED → verified', r5.verified, true)
+  check('H5.source', 'source=AI_ACCEPTED', r5.verificationSource, 'AI_ACCEPTED')
+
+  // H6 AI PENDING（哪怕 conf 0.9）→ 不验证
+  const r6 = HE.evaluateEvidence([], [rec('PENDING', 'pass', 0.9)])
+  check('H6.pending', 'AI PENDING(conf0.9) → 不验证', r6.verified, false)
+
+  // H7 AI REJECTED → 不验证
+  const r7 = HE.evaluateEvidence([], [rec('REJECTED', 'pass', 0.9)])
+  check('H7.rejected', 'AI REJECTED → 不验证', r7.verified, false)
+
+  // H8 AI 不进客观分：screenshot0.3+ai0.9 → 客观仅0.3<0.6 → 不验证
+  const r8 = HE.evaluateEvidence([objEv('screenshot', 0.3), { type: 'ai', tier: 'AI_RECOMMENDATION', weight: 0.9, ts: 1 }], [])
+  check('H8.ai_notObjective', '客观分仅0.3，ai不算 → 不验证', r8.objectiveScore === 0.3 && r8.verified === false, true)
+
+  // H9 OUTCOME 任务完成判定（集成 missionEvaluator）
+  const Mout = (actualMin, evidence, recs) => ({ targetMinutes: 60, actualStudyMs: actualMin * min, requiresEvidence: true, evidence, recommendations: recs })
+  check('H9.pending_block', 'OUTCOME+AI PENDING(时长足) → 不可完成', ME.evaluateMission(Mout(60, [], [rec('PENDING', 'pass', 0.9)])).canComplete, false)
+  check('H9.accepted_complete', 'OUTCOME+AI ACCEPTED(时长足) → 可完成', ME.evaluateMission(Mout(60, [], [rec('ACCEPTED', 'pass', 0.7)])).canComplete, true)
+  check('H9.photo_complete', 'OUTCOME+photo0.8(时长足) → 可完成', ME.evaluateMission(Mout(60, [objEv('photo', 0.8)], [])).canComplete, true)
+  check('H9.time_short', 'OUTCOME+photo0.8 但时长不足 → 不可完成', ME.evaluateMission(Mout(30, [objEv('photo', 0.8)], [])).canComplete, false)
 }
 
 // ── 3. 汇总 ──
