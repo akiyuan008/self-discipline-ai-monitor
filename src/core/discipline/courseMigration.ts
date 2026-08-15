@@ -13,7 +13,9 @@
  */
 import { useClassTaskStore } from '@/stores/classTaskStore'
 import { useMissionStore } from './missionStore'
+import { useRewardStore } from './rewardStore'
 import { findMissionForPeriod } from './legacyBridge'
+import { completionEventId, gatherCourseRewardParts, computeCourseRewardFromParts } from './rewardCore'
 import { buildCoursePhotoEvidence, hasPhotoEvidenceForRef } from './courseEvidenceCore'
 import { logger } from '@/lib/logger'
 
@@ -65,4 +67,62 @@ export function migrateCourseVerifications(): { migrated: number; skipped: numbe
 
   logger.info('courseMigration', `课程核验迁移完成`, { migrated, skipped })
   return { migrated, skipped }
+}
+
+/**
+ * Legacy 课程奖励 reconciliation / migration marker（V3 Phase 10A）。
+ *
+ * 对"已完成"的课程记一条 LEGACY_ACCEPTED marker：
+ *   - 与课程完成共用 eventId（mission-complete:${missionId}）→ 阻止 RewardEngine 再发（防三次发放）。
+ *   - recordReward 只落记录、不调 addPoints/addXp → 不改现有 PTS/XP（接受既成事实）。
+ *   - rewardAmount 为规则重构（RECONSTRUCTED），非历史原始账务值；缺失记 null、不猜测。
+ *   - aiScore 只从既有 ACCEPTED Recommendation 读取（不重新调 AI）。
+ * 幂等：eventId 已存在则跳过。
+ */
+export function migrateLegacyCourseRewards(): { marked: number; skipped: number } {
+  const ctStore = useClassTaskStore.getState()
+  const rStore = useRewardStore.getState()
+  let marked = 0
+  let skipped = 0
+
+  for (const task of ctStore.classTasks) {
+    if (task.status !== 'completed') continue
+    const mission = findMissionForPeriod(task.period)
+    if (!mission) { skipped++; continue }
+
+    const eventId = completionEventId(mission.id)
+    if (rStore.hasRewardByEvent(eventId)) { skipped++; continue } // 幂等
+
+    // 规则重构（缺失记 null，不猜测；aiScore 读既有 Recommendation，不调 AI）
+    const parts = gatherCourseRewardParts(mission)
+    const res = computeCourseRewardFromParts(parts)
+
+    rStore.recordReward({
+      id: `migration:${task.id}`,
+      eventId,
+      missionId: mission.id,
+      kind: 'COURSE_COMPLETE',
+      points: res.points,
+      xp: res.xp,
+      reason: 'LEGACY_ACCEPTED',
+      ts: Date.now(),
+      sourceType: 'LEGACY_COURSE',
+      sourceId: task.id,
+      legacyGranted: true,
+      rewardAmount: res.points,
+      rewardAmountSource: 'RECONSTRUCTED',
+      reconstructionVersion: 1,
+      migrationStatus: 'LEGACY_ACCEPTED',
+      baseReward: parts.baseReward,
+      completedAt: parts.completedAt,
+      classEndTime: parts.classEndTime,
+      onTime: res.onTime,
+      onTimeSource: res.onTimeSource,
+      aiScore: parts.aiScore
+    })
+    marked++
+  }
+
+  logger.info('courseMigration', `Legacy 课程奖励 reconciliation 完成`, { marked, skipped })
+  return { marked, skipped }
 }

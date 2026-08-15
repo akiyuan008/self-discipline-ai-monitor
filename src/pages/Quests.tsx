@@ -178,11 +178,12 @@ export default function Quests({ onNavigate }: Props) {
         await reportToWarden(`${task.subject} 打卡核验未通过（${verifyResult.score}分）。${verifyResult.review}`)
         return
       }
+      // Phase 10A：课程完成奖励由 RewardEngine 统一发放
+      //（completeClassTask 内部经 Evidence→tryComplete→grantMissionReward，幂等）。
+      // Quests 不再直接 addPoints/addPointRecord。
       const reward = completeClassTask(taskId, photoPath || undefined, verifyResult.review, verifyResult.score)
       if (reward > 0) {
-        addPoints(reward)
-        addPointRecord('earn', reward, `${task.subject}课完成`)
-        logger.info('schedule', `${task.subject} 核验通过`, { reward, score: verifyResult.score })
+        logger.info('schedule', `${task.subject} 核验通过（奖励由 RewardEngine 结算）`, { reward, score: verifyResult.score })
         showToast(`核验通过 +${reward} PTS`)
         if (verifyResult.score >= 90) {
           await reportToWarden(`${task.subject} 表现优秀（${verifyResult.score}分），继续保持。`)

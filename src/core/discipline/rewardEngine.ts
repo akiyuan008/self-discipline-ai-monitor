@@ -1,18 +1,28 @@
 /**
  * src/core/discipline/rewardEngine.ts
- * 奖励引擎 —— Mission 完成后统一发放 XP / PTS / Achievement。
+ * 奖励引擎 —— Mission 完成后统一发放 XP / PTS（V3 Phase 10A：唯一新增奖励来源）。
  *
- * 原则：页面 / Android / AI 不直接发奖。所有奖励统一由这里发放。
- * Mission 完成 → RewardEngine → XP / PTS / Achievement。
+ * 原则：
+ *   - 页面 / Android / AI / classTaskStore 不直接发奖；所有新增奖励经此发放。
+ *   - 幂等基于稳定 eventId（completionEventId / missedEventId），非 PTS/XP 余额。
+ *   - 每次发放经 useRewardStore.recordReward 落流水（recordReward 本身不改余额）。
+ *   - 课程 Mission 用课程规则（金额与 legacy 一致）；其余用通用规则。
  */
 import type { Mission } from './types'
 import { REWARD } from './config'
 import { useSessionStore } from './sessionStore'
+import { useRewardStore } from './rewardStore'
+import {
+  completionEventId, missedEventId, isCourseMission,
+  gatherCourseRewardParts, computeCourseRewardFromParts, computeGenericReward
+} from './rewardCore'
 
 export interface RewardResult {
   points: number
   xp: number
   reasons: string[]
+  /** 幂等命中（已发放过）→ 本次不再发 */
+  alreadyIssued?: boolean
 }
 
 export interface RewardCallbacks {
@@ -20,64 +30,86 @@ export interface RewardCallbacks {
   addXp: (n: number) => void
   addPointRecord: (type: 'earn' | 'spend', amount: number, reason: string) => void
   addExp?: (amount: number, reason: string) => void
-}
-
-/** 基础 PTS（按目标时长，每分钟 1 分，下限取 config） */
-function basePoints(m: Mission): number {
-  return Math.max(REWARD.BASE_POINTS_MIN, Math.round(m.targetMinutes))
-}
-
-/** 基础 XP（按有效学习分钟） */
-function baseXp(m: Mission): number {
-  return Math.max(10, Math.round(m.actualStudyMs / 60_000))
+  /** 奖励结算后驱动"积分变动"提示（Phase 10A：由 RewardEngine 统一产出，替代 legacy lastPointsChange） */
+  onSettled?: (amount: number, reason: string) => void
 }
 
 /**
- * Mission 完成后发放奖励。
- * @returns 本次发放的奖励明细
+ * Mission 完成后发放奖励（幂等）。
  */
 export function grantMissionReward(m: Mission, cb: RewardCallbacks): RewardResult {
-  const reasons: string[] = []
-  let points = 0
-  let xp = 0
-
-  // 基础奖励：完成即得
-  points += basePoints(m)
-  xp += baseXp(m)
-  reasons.push(`完成任务：${m.title}`)
-
-  // 高专注加成：分心时间占比低于阈值
-  const totalMs = m.actualStudyMs + m.distractionMs
-  if (totalMs > 0 && m.distractionMs / totalMs < REWARD.FOCUS_BONUS_DISTRACTION_RATIO) {
-    points += REWARD.FOCUS_BONUS
-    xp += REWARD.FOCUS_BONUS
-    reasons.push('高度专注加成')
+  const eventId = completionEventId(m.id)
+  if (useRewardStore.getState().hasRewardByEvent(eventId)) {
+    return { points: 0, xp: 0, reasons: [], alreadyIssued: true }
   }
 
-  // 深渊挑战奖励：专注证据含 DUNGEON(abyss) 区间 → +ABYSS_BONUS PTS
-  // （V3：证据在 Session.segments，需合并 Mission 遗留 focusIntervals 一起检测）
-  const sessionSegs = useSessionStore.getState().getSessionsByMission(m.id).flatMap(s => s.segments)
-  const allFocusIntervals = [...(m.focusIntervals || []), ...sessionSegs]
-  const hasAbyssDungeon = allFocusIntervals.some(iv => iv.source === 'DUNGEON' && iv.tag === 'abyss')
-  if (hasAbyssDungeon) {
-    points += REWARD.ABYSS_BONUS
-    reasons.push('深渊重载挑战奖励')
+  let points: number
+  let xp: number
+  let reasons: string[]
+  const course = isCourseMission(m)
+
+  if (course) {
+    const parts = gatherCourseRewardParts(m)
+    const res = computeCourseRewardFromParts(parts)
+    points = res.points
+    xp = res.xp
+    reasons = [`完成课程：${m.title}`]
+  } else {
+    const sessionSegs = useSessionStore.getState().getSessionsByMission(m.id).flatMap(s => s.segments)
+    const allFocusIntervals = [...(m.focusIntervals || []), ...sessionSegs]
+    const res = computeGenericReward(m, allFocusIntervals)
+    points = res.points
+    xp = res.xp
+    reasons = res.reasons
   }
 
+  // 应用余额
   cb.addPoints(points)
   if (cb.addExp) cb.addExp(xp, `完成任务：${m.title}`)
   else cb.addXp(xp)
   cb.addPointRecord('earn', points, `完成任务：${m.title}`)
+  cb.onSettled?.(points, `完成任务：${m.title}`)
+
+  // 落流水（幂等记录）
+  useRewardStore.getState().recordReward({
+    id: eventId,
+    eventId,
+    missionId: m.id,
+    kind: course ? 'COURSE_COMPLETE' : 'MISSION_COMPLETE',
+    points,
+    xp,
+    reason: reasons.join('；'),
+    ts: Date.now(),
+    sourceType: 'REWARD_ENGINE',
+    migrationStatus: 'NONE'
+  })
 
   return { points, xp, reasons }
 }
 
-/** 任务错过的惩罚（可选，轻度，体现"恢复优先"） */
+/** 任务错过的惩罚（幂等；轻度，体现"恢复优先"） */
 export function grantMissedPenalty(m: Mission, cb: RewardCallbacks): RewardResult {
+  const eventId = missedEventId(m.id)
+  if (useRewardStore.getState().hasRewardByEvent(eventId)) {
+    return { points: 0, xp: 0, reasons: [], alreadyIssued: true }
+  }
   const penalty = Math.min(REWARD.MISSED_PENALTY_MAX, Math.round(m.targetMinutes / 2))
   if (penalty > 0) {
     cb.addPoints(-penalty)
     cb.addPointRecord('spend', penalty, `错过任务：${m.title}`)
+    cb.onSettled?.(-penalty, `错过任务：${m.title}`)
   }
+  useRewardStore.getState().recordReward({
+    id: eventId,
+    eventId,
+    missionId: m.id,
+    kind: 'MISSED_PENALTY',
+    points: -penalty,
+    xp: 0,
+    reason: `错过任务：${m.title}`,
+    ts: Date.now(),
+    sourceType: 'REWARD_ENGINE',
+    migrationStatus: 'NONE'
+  })
   return { points: -penalty, xp: 0, reasons: [`错过任务：${m.title}`] }
 }

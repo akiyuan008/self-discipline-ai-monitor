@@ -14,7 +14,7 @@
  * 任一用例失败 → exit code 1。
  */
 import { execSync } from 'node:child_process'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createRequire } from 'node:module'
@@ -23,6 +23,19 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const root = path.resolve(__dirname, '..')
 const require = createRequire(import.meta.url)
+
+// localStorage polyfill（node 下让 zustand persist 可加载，用于 store 编排幂等测试）
+if (typeof globalThis.localStorage === 'undefined') {
+  const _mem = {}
+  globalThis.localStorage = {
+    getItem: (k) => (k in _mem ? _mem[k] : null),
+    setItem: (k, v) => { _mem[k] = String(v) },
+    removeItem: (k) => { delete _mem[k] },
+    clear: () => { for (const k in _mem) delete _mem[k] },
+    key: (i) => Object.keys(_mem)[i] ?? null,
+    get length() { return Object.keys(_mem).length }
+  }
+}
 
 // ── 1. 编译纯逻辑模块到临时目录 ──
 const files = [
@@ -49,15 +62,15 @@ try {
   process.exit(1)
 }
 
-const A = require(path.join(out, 'deviationAnalyzer.js'))
-const R = require(path.join(out, 'resultResolver.js'))
-const F = require(path.join(out, 'focusMath.js'))
-const REC = require(path.join(out, 'recoveryReward.js'))
-const EV = require(path.join(out, 'resultEvaluator.js'))
-const HE = require(path.join(out, 'evidenceEvaluator.js'))
-const ME = require(path.join(out, 'missionEvaluator.js'))
-const DR = require(path.join(out, 'dailyReview.js'))
-const CEC = require(path.join(out, 'courseEvidenceCore.js'))
+const A = require(path.join(out, 'core/discipline/deviationAnalyzer.js'))
+const R = require(path.join(out, 'core/discipline/resultResolver.js'))
+const F = require(path.join(out, 'core/discipline/focusMath.js'))
+const REC = require(path.join(out, 'core/discipline/recoveryReward.js'))
+const EV = require(path.join(out, 'core/discipline/resultEvaluator.js'))
+const HE = require(path.join(out, 'core/discipline/evidenceEvaluator.js'))
+const ME = require(path.join(out, 'core/discipline/missionEvaluator.js'))
+const DR = require(path.join(out, 'core/discipline/dailyReview.js'))
+const CEC = require(path.join(out, 'core/discipline/courseEvidenceCore.js'))
 
 // ── 第二段编译：unifiedMissionView（依赖 data/schedule，公共根为 src/，单独 outDir）──
 const umvFiles = [
@@ -77,7 +90,51 @@ try {
   process.exit(1)
 }
 const UMV = require(path.join(outUmv, 'core/discipline/unifiedMissionView.js'))
-const { DEVIATION, RESULT, RECOVERY, QUALITY, COMPLETION, EVIDENCE } = require(path.join(out, 'config.js'))
+
+// ── 第三段编译：rewardCore（依赖 data/schedule，公共根 src/，单独 outDir）──
+const rcFiles = [
+  'src/core/discipline/config.ts',
+  'src/core/discipline/types.ts',
+  'src/core/discipline/rewardCore.ts',
+  'src/data/schedule.ts'
+]
+const outRc = mkdtempSync(path.join(tmpdir(), 'sd-rc-'))
+try {
+  execSync(
+    `node node_modules/typescript/bin/tsc ${rcFiles.join(' ')} --module commonjs --target ES2020 --outDir ${outRc} --skipLibCheck --esModuleInterop`,
+    { cwd: root, stdio: 'pipe' }
+  )
+} catch (e) {
+  console.error('❌ rewardCore 编译失败：\n' + (e.stdout?.toString() || e.message))
+  process.exit(1)
+}
+const RC = require(path.join(outRc, 'core/discipline/rewardCore.js'))
+
+// ── 第四段编译：rewardEngine 编排（含 rewardStore/sessionStore，node+localStorage polyfill）──
+const rewFiles = [
+  'src/core/discipline/config.ts',
+  'src/core/discipline/types.ts',
+  'src/core/discipline/rewardCore.ts',
+  'src/core/discipline/rewardStore.ts',
+  'src/core/discipline/sessionStore.ts',
+  'src/core/discipline/rewardEngine.ts',
+  'src/data/schedule.ts'
+]
+const outRew = mkdtempSync(path.join(root, '.tmp-sd-rew-'))
+try {
+  execSync(
+    `node node_modules/typescript/bin/tsc ${rewFiles.join(' ')} --module commonjs --target ES2020 --outDir ${outRew} --skipLibCheck --esModuleInterop`,
+    { cwd: root, stdio: 'pipe' }
+  )
+} catch (e) {
+  console.error('❌ rewardEngine 编译失败：\n' + (e.stdout?.toString() || e.message))
+  process.exit(1)
+}
+// 根 package.json 为 "type":"module"，此处标记为 commonjs 以便 require 加载
+writeFileSync(path.join(outRew, 'package.json'), '{"type":"commonjs"}')
+const REW = require(path.join(outRew, 'core/discipline/rewardEngine.js'))
+const RWS = require(path.join(outRew, 'core/discipline/rewardStore.js'))
+const { DEVIATION, RESULT, RECOVERY, QUALITY, COMPLETION, EVIDENCE } = require(path.join(out, 'core/discipline/config.js'))
 
 // ── 2. 断言工具 ──
 const min = 60000
@@ -417,6 +474,117 @@ console.log('── K. Course Evidence ──')
   check('K6.ai_not_objective', '迁移后 photo 权重仅 0.8/0，无 0.9', passed.evidence.weight !== 0.9 && failed.evidence.weight !== 0.9, true)
 }
 
+// ═══ P. RewardCore（Phase 10A：eventId/课程奖励/幂等）═══
+console.log('── P. RewardCore ──')
+{
+  const minMs = 60000
+  // P1/P2 eventId
+  check('P1.stable', 'completionEventId 稳定', RC.completionEventId('m1') === RC.completionEventId('m1'), true)
+  check('P2.distinct', '不同 mission eventId 不同', RC.completionEventId('m1') !== RC.completionEventId('m2'), true)
+  check('P2.recovery', 'recoveryEventId 随次数不同', RC.recoveryEventId('s1', 1) !== RC.recoveryEventId('s1', 2), true)
+
+  // P3 isCourseMission
+  check('P3.course', 'SCHEDULE+requiresEvidence → course', RC.isCourseMission({ source: 'SCHEDULE', requiresEvidence: true }), true)
+  check('P3.notCourse', 'USER → 非课程', RC.isCourseMission({ source: 'USER', requiresEvidence: false }), false)
+
+  // P4 课程奖励：准点 + AI≥80
+  const r4 = RC.computeCourseRewardFromParts({ baseReward: 80, completedAt: 1000, classEndTime: 2000, aiScore: 92 })
+  check('P4.pts', 'base80+准点15+AI25=120', r4.points, 120)
+  check('P4.xp', 'XP=50+30=80', r4.xp, 80)
+  check('P4.onTime', 'completedAt<=classEndTime → onTime=true', r4.onTime, true)
+
+  // P5 迟交 + AI<80 → 无加成
+  const r5 = RC.computeCourseRewardFromParts({ baseReward: 60, completedAt: 3000, classEndTime: 2000, aiScore: 70 })
+  check('P5.pts', 'base60 迟交无AI=60', r5.points, 60)
+  check('P5.xp', 'XP=50', r5.xp, 50)
+  check('P5.onTime', '迟交 → onTime=false', r5.onTime, false)
+
+  // P8 aiScore 缺失 → 不加 AI bonus（不猜测）
+  const r8 = RC.computeCourseRewardFromParts({ baseReward: 80, completedAt: 1000, classEndTime: 2000, aiScore: null })
+  check('P8.pts', 'aiScore=null → 80+15=95（无AI加成）', r8.points, 95)
+  check('P8.xp', 'XP=50（无AI）', r8.xp, 50)
+
+  // P9 completedAt 缺失 → onTime=null，不加准点 bonus
+  const r9 = RC.computeCourseRewardFromParts({ baseReward: 80, completedAt: null, classEndTime: 2000, aiScore: 92 })
+  check('P9.onTime_null', 'completedAt=null → onTime=null', r9.onTime, null)
+  check('P9.pts', '无准点bonus → 80+25=105', r9.points, 105)
+  // P9b 边界：completedAt===classEndTime → onTime=true
+  const r9b = RC.computeCourseRewardFromParts({ baseReward: 80, completedAt: 2000, classEndTime: 2000, aiScore: 70 })
+  check('P9b.boundary', 'completedAt==classEndTime → onTime=true', r9b.onTime, true)
+
+  // P6 通用奖励（非课程）：basePoints=target + 专注加成 + 深渊
+  const m6 = { targetMinutes: 30, actualStudyMs: 30 * minMs, distractionMs: 0, focusIntervals: [] }
+  const abyssIv = [{ source: 'DUNGEON', startedAt: 0, endedAt: 1, tag: 'abyss' }]
+  const r6 = RC.computeGenericReward(m6, abyssIv)
+  check('P6.pts', '30+专注20+深渊400=450', r6.points, 450)
+  check('P6.xp', 'XP=30+20=50', r6.xp, 50)
+
+  // P7 isAlreadyIssued（幂等判断，基于 eventId 非余额）
+  check('P7.empty', '空流水 → false', RC.isAlreadyIssued([], 'e'), false)
+  check('P7.same', '同 eventId → true', RC.isAlreadyIssued([{ eventId: 'e' }], 'e'), true)
+  check('P7.diff', '不同 eventId → false', RC.isAlreadyIssued([{ eventId: 'other' }], 'e'), false)
+  check('P7.marker', 'LEGACY marker 占键 → 完成 eventId 已发', RC.isAlreadyIssued([{ eventId: 'mission-complete:m1' }], RC.completionEventId('m1')), true)
+}
+
+// ═══ I. Reward 幂等编排（Phase 10A：store 层，node+polyfill）═══
+console.log('── I. Reward 幂等编排 ──')
+{
+  const mkMission = (id) => ({
+    id, title: 'x', source: 'USER', requiresEvidence: false,
+    targetMinutes: 30, actualStudyMs: 30 * 60000, distractionMs: 0,
+    focusIntervals: [], evidence: [], recommendations: []
+  })
+
+  // I1 grantMissionReward 幂等：第二次 alreadyIssued，callback 仅一次
+  {
+    let calls = 0
+    const cb = { addPoints: () => { calls++ }, addXp: () => {}, addPointRecord: () => {} }
+    const m1 = mkMission('im1')
+    const r1 = REW.grantMissionReward(m1, cb)
+    const r2 = REW.grantMissionReward(m1, cb)
+    check('I1.first', '首次发放有积分', r1.points > 0 && !r1.alreadyIssued, true)
+    check('I1.second', '第二次 alreadyIssued=true', r2.alreadyIssued === true, true)
+    check('I1.callback_once', 'addPoints 仅调用一次（不双发）', calls === 1, true)
+  }
+
+  // I2 LEGACY marker 占 eventId → RewardEngine 不再发（防重发）
+  {
+    let calls = 0
+    const cb = { addPoints: () => { calls++ }, addXp: () => {}, addPointRecord: () => {} }
+    const m2 = mkMission('im2')
+    RWS.useRewardStore.getState().recordReward({
+      id: 'migration:im2', eventId: RC.completionEventId('im2'), missionId: 'im2',
+      kind: 'COURSE_COMPLETE', points: 120, xp: 80, reason: 'LEGACY_ACCEPTED', ts: Date.now(),
+      sourceType: 'LEGACY_COURSE', legacyGranted: true, migrationStatus: 'LEGACY_ACCEPTED'
+    })
+    const r = REW.grantMissionReward(m2, cb)
+    check('I2.blocked', 'marker 占键 → grant 跳过', r.alreadyIssued === true, true)
+    check('I2.no_callback', 'marker 后无余额回调', calls === 0, true)
+  }
+
+  // I4 recordReward 只记录、不改余额（不调 callback）
+  {
+    let calls = 0
+    const cb = { addPoints: () => { calls++ }, addXp: () => {}, addPointRecord: () => {} }
+    const before = RWS.useRewardStore.getState().transactions.length
+    RWS.useRewardStore.getState().recordReward({
+      id: 'migration:im4', eventId: 'mission-complete:im4', missionId: 'im4',
+      kind: 'COURSE_COMPLETE', points: 120, xp: 80, reason: 'LEGACY_ACCEPTED', ts: Date.now(),
+      legacyGranted: true, migrationStatus: 'LEGACY_ACCEPTED'
+    })
+    const after = RWS.useRewardStore.getState().transactions.length
+    check('I4.record_only', 'recordReward 落一条流水', after === before + 1, true)
+    check('I4.no_callback', 'recordReward 不调余额回调', calls === 0, true)
+  }
+
+  // I3 migrateLegacyCourseRewards 幂等性（经 isAlreadyIssued 同键判断）
+  {
+    const eventId = RC.completionEventId('im-mig')
+    RWS.useRewardStore.getState().recordReward({ id: 'migration:a', eventId, missionId: 'im-mig', kind: 'COURSE_COMPLETE', points: 1, xp: 1, reason: 'LEGACY_ACCEPTED', ts: Date.now(), migrationStatus: 'LEGACY_ACCEPTED' })
+    check('I3.idem', '已有同 eventId marker → 再次迁移应跳过', RWS.useRewardStore.getState().hasRewardByEvent(eventId), true)
+  }
+}
+
 // ── 3. 汇总 ──
 console.log('')
 const pad = (s, n) => String(s).padEnd(n)
@@ -430,4 +598,5 @@ console.log('')
 console.log(failed === 0 ? `✅ 全部 ${results.length} 项通过` : `❌ ${failed}/${results.length} 项失败`)
 
 rmSync(out, { recursive: true, force: true })
+rmSync(outRew, { recursive: true, force: true })
 process.exit(failed === 0 ? 0 : 1)

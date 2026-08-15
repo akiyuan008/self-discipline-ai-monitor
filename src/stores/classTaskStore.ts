@@ -193,10 +193,6 @@ export const useClassTaskStore = create<ClassTaskState>()(
         }
         if (aiScore && aiScore >= 80) bonus += 25
 
-        // XP 奖励：打卡 +50，AI 评分 >=90 额外 +30
-        let xpGain = 50
-        if (aiScore && aiScore >= 90) xpGain += 30
-
         const totalReward = task.baseReward + bonus
         const completedTask: ClassTask = {
           ...task,
@@ -227,15 +223,13 @@ export const useClassTaskStore = create<ClassTaskState>()(
 
         const otherHistory = state.taskHistory.filter(h => h.date !== today)
 
+        // Phase 10A：课程奖励由 RewardEngine 统一发放（Evidence→tryComplete→grantMissionReward，幂等）。
+        // classTaskStore 不再 addXp、不再写 lastPointsChange 金额（此处仅更新展示态/历史）。
         set({
           classTasks: newTasks,
           currentTask: null,
-          lastPointsChange: { amount: totalReward, reason: `完成${task.subject}课`, time: now },
           taskHistory: [...otherHistory, newHistory].slice(-60)
         })
-
-        // XP 跨 store 更新
-        useStore.getState().addXp(xpGain)
 
         return totalReward
       },

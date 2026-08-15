@@ -68,7 +68,10 @@ function rewardCallbacks() {
     addPoints: s.addPoints,
     addXp: (n: number) => s.addXp(n),
     addPointRecord: s.addPointRecord,
-    addExp: s.addExp
+    addExp: s.addExp,
+    // Phase 10A：RewardEngine 结算后统一驱动"积分变动"提示
+    onSettled: (amount: number, reason: string) =>
+      useStore.setState({ lastPointsChange: { amount, reason, time: Date.now() } })
   }
 }
 

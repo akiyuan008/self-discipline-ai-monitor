@@ -12,7 +12,7 @@ import {
 } from './disciplineEngine'
 import { aiSupervise } from './aiSupervisor'
 import { ensureDayPlan, finalizeDailyReview } from './reviewService'
-import { migrateCourseVerifications } from './courseMigration'
+import { migrateCourseVerifications, migrateLegacyCourseRewards } from './courseMigration'
 import { useReviewStore } from './reviewStore'
 import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
 import { fetchUsageStats } from '@/lib/usageStats'
@@ -194,6 +194,10 @@ export function initDiscipline() {
 
   // 1.6 Phase 9：幂等迁移旧课程核验记录 → 统一 Evidence（不改完成态）
   migrateCourseVerifications()
+
+  // 1.7 Phase 10A：Legacy 课程奖励 reconciliation（LEGACY_ACCEPTED marker，防三次发放，不改余额）
+  //     须在证据迁移之后（aiScore 读既有 Recommendation）
+  migrateLegacyCourseRewards()
 
   // 2. 接线干预
   wireInterventionHandlers()

@@ -443,3 +443,42 @@ export interface CommitmentBreak {
   /** 关联的 Deviation（若有） */
   relatedDeviationId?: string
 }
+
+// ═══════════════════════════════════════════════════════════
+// V3 Phase 10A —— RewardTransaction（统一奖励流水 + 幂等 + 迁移 marker）
+//   幂等基于稳定 eventId（非 PTS/XP 余额）。
+//   Legacy marker 仅用于 reconciliation/dedup/migration barrier，不再触发发奖。
+// ═══════════════════════════════════════════════════════════
+export type RewardKind = 'MISSION_COMPLETE' | 'RECOVERY' | 'MISSED_PENALTY' | 'COURSE_COMPLETE'
+export type RewardSourceType = 'REWARD_ENGINE' | 'LEGACY_COURSE'
+export type MigrationStatus = 'LEGACY_ACCEPTED' | 'MIGRATED' | 'NONE'
+export type RewardAmountSource = 'RECONSTRUCTED' | 'ORIGINAL'
+
+export interface RewardTransaction {
+  /** 稳定幂等键（由 eventId 派生） */
+  id: string
+  /** 幂等依据的稳定事件 id（不是余额） */
+  eventId: string
+  missionId?: string
+  sessionId?: string
+  kind: RewardKind
+  points: number
+  xp: number
+  reason: string
+  ts: number
+  // ── reconciliation / migration ──
+  sourceType?: RewardSourceType
+  sourceId?: string
+  legacyGranted?: boolean
+  rewardAmount?: number
+  rewardAmountSource?: RewardAmountSource
+  reconstructionVersion?: number
+  migrationStatus?: MigrationStatus
+  // ── 课程 legacy marker 重构明细（缺失记 null，不猜测）──
+  baseReward?: number | null
+  completedAt?: number | null
+  classEndTime?: number | null
+  onTime?: boolean | null
+  onTimeSource?: string | null
+  aiScore?: number | null
+}
