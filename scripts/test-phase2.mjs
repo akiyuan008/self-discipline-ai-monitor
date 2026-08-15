@@ -585,6 +585,47 @@ console.log('── I. Reward 幂等编排 ──')
   }
 }
 
+// ═══ Q. Rejected Evidence（Phase 10B）═══
+console.log('── Q. Rejected Evidence ──')
+{
+  const mkRec = (status, verdict, createdAt) => ({
+    id: `r-${createdAt}`, missionId: 'mq', aiVerdict: verdict, confidence: 0.4,
+    reason: '', status, createdAt, resolvedAt: createdAt
+  })
+  const mkPhotoEv = (weight, refId) => ({ type: 'photo', tier: 'OBJECTIVE', weight, ts: 1, refId })
+
+  // Q1 仅 REJECTED（多条）→ 不验证、不完成（REJECTED ≠ ABANDONED，仅"未完成"）
+  const rRej = HE.evaluateEvidence([mkPhotoEv(0, 'ct')], [mkRec('REJECTED', 'fail', 1), mkRec('REJECTED', 'fail', 2)])
+  check('Q1.rejected_notVerified', 'REJECTED×2 → verified=false', rRej.verified, false)
+
+  // Q2 完整历史 REJECTED REJECTED VERIFIED：多张照片证据(0,0,0.8)+多建议 → 客观分0.8 → 可完成
+  const histEv = [mkPhotoEv(0, 'ct'), mkPhotoEv(0, 'ct'), mkPhotoEv(0.8, 'ct')]
+  const hist = [mkRec('REJECTED', 'fail', 1), mkRec('REJECTED', 'fail', 2), mkRec('ACCEPTED', 'pass', 3)]
+  const rHist = HE.evaluateEvidence(histEv, hist)
+  check('Q2.history_verified', 'REJECTED REJECTED VERIFIED → 完整历史可完成', rHist.verified, true)
+  check('Q2.obj_score', '客观分=0+0+0.8=0.8', HE.objectiveEvidenceScore(histEv), 0.8)
+  // Q2b 低客观分时走"最新 ACCEPTED"建议路径（latestRecommendation）
+  const rLatest = HE.evaluateEvidence([mkPhotoEv(0, 'ct')], hist)
+  check('Q2b.latest_accepted', '客观分0 + 最新建议ACCEPTED → verified(AI_ACCEPTED)', rLatest.verified, true)
+
+  // Q3 REJECTED 不触发完成（evaluateMission：requiresEvidence 任务，REJECTED 证据）
+  const mRej = {
+    targetMinutes: 60, actualStudyMs: 60 * 60000, requiresEvidence: true,
+    evidence: [mkPhotoEv(0, 'ct')], recommendations: [mkRec('REJECTED', 'fail', 1)]
+  }
+  const evRej = ME.evaluateMission(mRej)
+  check('Q3.notCompleted', 'REJECTED → canComplete=false（不完成、非 ABANDONED）', evRej.canComplete, false)
+  check('Q3.needsEvidence', '仍需证据', evRej.needsEvidence, true)
+
+  // Q4 幂等：REJECTED(weight0) 不阻挡后续 VERIFIED（hasVerified 语义：仅 weight>0 视为已核验）
+  const hasVerified = (evidence, refId) => evidence.some(e => e.type === 'photo' && e.refId === refId && (e.weight ?? 0) > 0)
+  check('Q4.rejected_not_block', '仅 REJECTED(weight0) → hasVerified=false（允许后续 VERIFIED）', hasVerified([mkPhotoEv(0, 'ct')], 'ct'), false)
+  check('Q4.verified_block', '已有 VERIFIED(weight0.8) → hasVerified=true（防重复核验）', hasVerified([mkPhotoEv(0.8, 'ct')], 'ct'), true)
+
+  // Q5 REJECTED 证据不计客观分（weight=0）
+  check('Q5.rejected_no_score', 'REJECTED photo 客观分=0', HE.objectiveEvidenceScore([mkPhotoEv(0, 'ct')]), 0)
+}
+
 // ── 3. 汇总 ──
 console.log('')
 const pad = (s, n) => String(s).padEnd(n)

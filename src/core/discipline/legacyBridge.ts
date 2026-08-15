@@ -14,7 +14,7 @@ import { useMissionStore } from './missionStore'
 import { useSessionStore } from './sessionStore'
 import { useReviewStore } from './reviewStore'
 import { startMission } from './disciplineEngine'
-import { submitCoursePhotoEvidence } from './courseEvidence'
+import { submitCoursePhotoEvidence, submitRejectedCoursePhotoEvidence } from './courseEvidence'
 import { getPeriodTime } from '@/data/schedule'
 import { localDateStr } from '@/lib/dateUtils'
 import { logger } from '@/lib/logger'
@@ -84,4 +84,21 @@ export function submitCoursePhotoEvidenceForTask(
     return { completed: false }
   }
   return submitCoursePhotoEvidence(mission.id, opts)
+}
+
+/**
+ * 课程拍照核验【未通过】→ REJECTED Evidence（Phase 10B）。
+ * 由 Quests 核验失败分支调用：按节次定位当日 Mission，持久化 REJECTED 证据。
+ * REJECTED ≠ ABANDONED，不 tryComplete、不发奖。
+ */
+export function submitRejectedCoursePhotoEvidenceForTask(
+  task: { period: number },
+  opts: { classTaskId: string; photoPath?: string; aiScore?: number; aiReview?: string }
+): void {
+  const mission = findMissionForPeriod(task.period)
+  if (!mission) {
+    logger.debug('legacyBridge', `REJECTED 证据未找到第${task.period}节 Mission，跳过`)
+    return
+  }
+  submitRejectedCoursePhotoEvidence(mission.id, opts)
 }

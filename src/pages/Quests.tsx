@@ -9,7 +9,7 @@ import { showToast } from '@/components/Toast'
 import { logger } from '@/lib/logger'
 import Icon from '@/components/Icons'
 import { localDateStr } from '@/lib/dateUtils'
-import { useMissionStore, startMission, useSessionStore, useDayPlanStore, buildUnifiedMissionView } from '@/core/discipline'
+import { useMissionStore, startMission, useSessionStore, useDayPlanStore, buildUnifiedMissionView, submitRejectedCoursePhotoEvidenceForTask } from '@/core/discipline'
 import type { MissionView, MissionViewStatus } from '@/core/discipline'
 
 interface Props {
@@ -173,7 +173,13 @@ export default function Quests({ onNavigate }: Props) {
         passed: verifyResult.passed
       })
       if (!verifyResult.passed) {
-        logger.warn('schedule', `${task.subject} 核验未通过`, { score: verifyResult.score })
+        // Phase 10B：核验失败 → 持久化独立 REJECTED Evidence（≠ABANDONED、不发奖、不 tryComplete）。
+        // 多次失败各留一条 REJECTED，保留完整历史（REJECTED … VERIFIED）。
+        submitRejectedCoursePhotoEvidenceForTask(
+          { period: task.period },
+          { classTaskId: task.id, photoPath: photoPath || undefined, aiScore: verifyResult.score, aiReview: verifyResult.review }
+        )
+        logger.warn('schedule', `${task.subject} 核验未通过（已记 REJECTED 证据）`, { score: verifyResult.score })
         showToast(`核验未通过：${verifyResult.review}`)
         await reportToWarden(`${task.subject} 打卡核验未通过（${verifyResult.score}分）。${verifyResult.review}`)
         return
