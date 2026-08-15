@@ -1,4 +1,5 @@
 import type { PageId } from '@/stores/useStore'
+import { useWandering } from '@/hooks/useWandering'
 
 interface DockProps {
   current: PageId
@@ -20,11 +21,66 @@ const ORDER: PageId[] = ['quests', 'chat', 'home', 'shop', 'profile']
 const CENTER: PageId = 'home'
 
 export default function Dock({ current, onChange, keyboardHeight = 0 }: DockProps) {
+  const isMC = useWandering()
+
   // 键盘弹起时把 Dock 抬高到键盘上方，避免遮挡输入框
   const dockBottom = keyboardHeight > 0
     ? `calc(${keyboardHeight}px + 8px)`
     : 'max(20px, env(safe-area-inset-bottom))'
 
+  if (isMC) {
+    // Mission Control Dock: 线条式、克制、方形
+    return (
+      <div
+        style={{
+          position: 'fixed', bottom: dockBottom, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 100, transition: 'bottom 0.2s ease-out'
+        }}
+      >
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          padding: '6px 8px',
+          background: 'var(--surface-overlay)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-md)',
+          backdropFilter: 'blur(12px)'
+        }}>
+          {ORDER.map((it) => {
+            const isCenter = it === CENTER
+            const active = current === it
+            if (isCenter) {
+              return (
+                <button key={it} onClick={() => onChange(it)} style={{
+                  width: 44, height: 44, borderRadius: 'var(--radius-sm)',
+                  background: active ? 'var(--status-focus)' : 'var(--surface-3)',
+                  color: active ? '#0a0d12' : 'var(--text-secondary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: `1px solid ${active ? 'var(--status-focus)' : 'var(--border)'}`,
+                  cursor: 'pointer', margin: '-8px 4px 0', transition: 'all 0.2s'
+                }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS[it]} /></svg>
+                </button>
+              )
+            }
+            return (
+              <button key={it} onClick={() => onChange(it)} style={{
+                width: 40, height: 40, borderRadius: 'var(--radius-sm)',
+                background: active ? 'var(--surface-3)' : 'transparent',
+                color: active ? 'var(--status-focus)' : 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: `1px solid ${active ? 'var(--border-strong)' : 'transparent'}`,
+                cursor: 'pointer', transition: 'all 0.2s'
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS[it]} /></svg>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // Normal Mode Dock: 原有设计完全保留
   return (
     <div
       style={{
@@ -78,6 +134,7 @@ export default function Dock({ current, onChange, keyboardHeight = 0 }: DockProp
               </button>
             )
           }
+
           return (
             <button
               key={it}
