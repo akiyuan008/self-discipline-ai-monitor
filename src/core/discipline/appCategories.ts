@@ -16,6 +16,12 @@ interface CategoriesConfig {
 
 const config = raw as unknown as CategoriesConfig
 
+/**
+ * App 分类 Schema 版本（V3 Phase 11：App Category Unification）。
+ * 统一分类规则自此版本生效；不重算历史 XP/历史奖励。
+ */
+export const CATEGORY_SCHEMA_VERSION: number = config.version
+
 // 包名 → 分类（精确匹配）
 const PKG_CATEGORY = new Map<string, AppCategory>()
 for (const [cat, def] of Object.entries(config.categories)) {

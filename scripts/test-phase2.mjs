@@ -110,6 +110,21 @@ try {
 }
 const RC = require(path.join(outRc, 'core/discipline/rewardCore.js'))
 
+// ── 第五段编译：appCategories（V3 Phase 11 分类回归，依赖 config/appCategories.json）──
+const catFiles = ['src/core/discipline/appCategories.ts', 'config/appCategories.json']
+const outCat = mkdtempSync(path.join(tmpdir(), 'sd-cat-'))
+try {
+  execSync(
+    `node node_modules/typescript/bin/tsc ${catFiles.join(' ')} --module commonjs --target ES2020 --outDir ${outCat} --skipLibCheck --esModuleInterop --resolveJsonModule`,
+    { cwd: root, stdio: 'pipe' }
+  )
+  writeFileSync(path.join(outCat, 'package.json'), '{"type":"commonjs"}')
+} catch (e) {
+  console.error('❌ appCategories 编译失败：\n' + (e.stdout?.toString() || e.message))
+  process.exit(1)
+}
+const CAT = require(path.join(outCat, 'src/core/discipline/appCategories.js'))
+
 // ── 第四段编译：rewardEngine 编排（含 rewardStore/sessionStore，node+localStorage polyfill）──
 const rewFiles = [
   'src/core/discipline/config.ts',
@@ -641,6 +656,34 @@ console.log('── R. CourseTask Retirement ──')
   check('R6.hasVerified_none', '空/weight0 → false', CEC.hasVerifiedPhotoEvidenceAny([]) === false && CEC.hasVerifiedPhotoEvidenceAny([{ type: 'photo', weight: 0 }]) === false, true)
 }
 
+// ═══ S. App Category Unification（Phase 11：分类回归矩阵）═══
+console.log('── S. App Category Unification ──')
+{
+  // Study（列表内）
+  check('S1.study_pkg', 'com.duolingo → study', CAT.classifyApp('com.duolingo'), 'study')
+  check('S1.study_pkg2', 'com.youdao.dict → study', CAT.classifyApp('com.youdao.dict'), 'study')
+  // Study（关键词）
+  check('S2.study_kw', '含 learn 关键词 → study', CAT.classifyApp('com.foo.learning-app'), 'study')
+  // Entertainment
+  check('S3.ent_pkg', 'tv.danmaku.bili → entertainment', CAT.classifyApp('tv.danmaku.bili'), 'entertainment')
+  check('S3.ent_pkg2', 'com.miHoYo.GenshinImpact → entertainment', CAT.classifyApp('com.miHoYo.GenshinImpact'), 'entertainment')
+  // Social
+  check('S4.social_pkg', 'com.tencent.mm → social', CAT.classifyApp('com.tencent.mm'), 'social')
+  // Neutral（系统）
+  check('S5.neutral_system', 'com.android.settings → neutral', CAT.classifyApp('com.android.settings'), 'neutral')
+  // Browser（未列入 → 默认 neutral，不误判为 entertainment）
+  check('S6.browser', 'com.android.chrome → neutral（浏览器非分心）', CAT.classifyApp('com.android.chrome'), 'neutral')
+  check('S6.browser_label', 'Chrome 浏览器 标签 → neutral', CAT.classifyApp('some.browser.pkg', 'Chrome 浏览器'), 'neutral')
+  // Unknown（未知应用 → 默认 neutral）
+  check('S7.unknown', 'com.unknown.app → neutral', CAT.classifyApp('com.unknown.app'), 'neutral')
+  // 一致性：isStudyApp / isDistractionApp 与 classifyApp 对齐
+  check('S8.study_consistent', 'study → isStudyApp=true', CAT.isStudyApp('com.duolingo'), true)
+  check('S8.distraction_consistent', 'bili → isDistractionApp=true', CAT.isDistractionApp('tv.danmaku.bili'), true)
+  check('S8.browser_not_distraction', '浏览器 → isDistractionApp=false', CAT.isDistractionApp('com.android.chrome'), false)
+  // Schema 版本
+  check('S9.schema_version', 'CATEGORY_SCHEMA_VERSION=1', CAT.CATEGORY_SCHEMA_VERSION, 1)
+}
+
 // ── 3. 汇总 ──
 console.log('')
 const pad = (s, n) => String(s).padEnd(n)
@@ -655,4 +698,5 @@ console.log(failed === 0 ? `✅ 全部 ${results.length} 项通过` : `❌ ${fai
 
 rmSync(out, { recursive: true, force: true })
 rmSync(outRew, { recursive: true, force: true })
+rmSync(outCat, { recursive: true, force: true })
 process.exit(failed === 0 ? 0 : 1)

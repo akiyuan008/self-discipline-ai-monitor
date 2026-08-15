@@ -1,6 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import type { UsageStat } from '@/stores/useStore'
-import { STUDY_PACKAGES, ENTERTAINMENT_PACKAGES, SYSTEM_PACKAGES, APP_LABELS, isStudyApp, isEntertainmentApp } from '@/data/appClassification'
+import { classifyApp, getAppLabel, CATEGORY_SCHEMA_VERSION } from '@/core/discipline/appCategories'
 import { logger } from '@/lib/logger'
 
 let _plugin: any = null
@@ -29,21 +29,23 @@ export async function fetchUsageStats(startTs: number, endTs: number): Promise<{
 
     for (const s of stats) {
       const pkg = s.packageName ?? ''
-      if (!pkg || SYSTEM_PACKAGES.has(pkg)) continue
+      if (!pkg) continue
 
-      const rawLabel = s.label || APP_LABELS[pkg] || pkg.split('.').pop() || '未知应用'
-      const isStudy = isStudyApp(pkg, rawLabel)
-      // 所有非学习类的三方应用归入娱乐/日常使用统计
+      const rawLabel = s.label || getAppLabel(pkg)
+      // V3 Phase 11：统一分类（appCategories.json 唯一 SoT，schema v=CATEGORY_SCHEMA_VERSION）。
+      // neutral（含系统/浏览器/未知应用）既不计入学习、也不计入分心。
+      const cat = classifyApp(pkg, rawLabel)
+      if (cat === 'neutral') continue
 
       const item: UsageStat = {
         packageName: pkg,
-        label: APP_LABELS[pkg] ?? rawLabel,
-        isStudy,
+        label: rawLabel,
+        isStudy: cat === 'study',
         totalMs: s.totalMs ?? s.foregroundMs ?? 0
       }
 
-      if (isStudy) study.push(item)
-      else ent.push(item)
+      if (cat === 'study') study.push(item)
+      else ent.push(item) // entertainment + social = 分心类
     }
 
     return { study, ent }
