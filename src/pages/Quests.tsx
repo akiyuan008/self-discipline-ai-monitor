@@ -11,6 +11,8 @@ import Icon from '@/components/Icons'
 import { localDateStr } from '@/lib/dateUtils'
 import { useMissionStore, startMission, useSessionStore, useDayPlanStore, buildUnifiedMissionView, submitRejectedCoursePhotoEvidenceForTask } from '@/core/discipline'
 import type { MissionView, MissionViewStatus } from '@/core/discipline'
+import { useWandering } from '@/hooks/useWandering'
+import MCQuests from '@/components/mission-control/MCQuests'
 
 interface Props {
   onNavigate?: (p: PageId) => void
@@ -35,6 +37,12 @@ function fmtClock(ts: number): string {
 }
 
 export default function Quests({ onNavigate }: Props) {
+  const isMC = useWandering()
+  if (isMC) return <MCQuests onNavigate={onNavigate} />
+  return <NormalQuests onNavigate={onNavigate} />
+}
+
+function NormalQuests({ onNavigate }: Props) {
   const points = useStore(s => s.points)
   const setDungeonDuration = useStore(s => s.setDungeonDuration)
   const addPoints = useStore(s => s.addPoints)

@@ -9,6 +9,8 @@ import Icon from '@/components/Icons'
 import type { PageId } from '@/stores/useStore'
 import { useMissionStore, startMission } from '@/core/discipline'
 import type { Mission } from '@/core/discipline'
+import { useWandering } from '@/hooks/useWandering'
+import MCHome from '@/components/mission-control/MCHome'
 
 interface Props {
   onNavigate?: (p: PageId) => void
@@ -75,6 +77,12 @@ const MISSION_STATUS_META: Record<string, { label: string; color: string }> = {
 }
 
 export default function Home({ onNavigate }: Props) {
+  const isMC = useWandering()
+  if (isMC) return <MCHome onNavigate={onNavigate} />
+  return <NormalHome onNavigate={onNavigate} />
+}
+
+function NormalHome({ onNavigate }: Props) {
   const points = useStore(s => s.points)
   const streak = useStore(s => s.streak)
   const dailyGoalMin = useStore(s => s.dailyGoalMin)
