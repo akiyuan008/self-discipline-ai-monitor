@@ -20,6 +20,11 @@ export function hasPhotoEvidenceForRef(evidence: Evidence[] | undefined, refId: 
   return (evidence || []).some(e => e.type === 'photo' && e.refId === refId)
 }
 
+/** 是否已有 VERIFIED（weight>0）照片证据（不限 refId；10C 完成态判定用） */
+export function hasVerifiedPhotoEvidenceAny(evidence: Evidence[] | undefined): boolean {
+  return (evidence || []).some(e => e.type === 'photo' && (e.weight ?? 0) > 0)
+}
+
 /**
  * 构造课程拍照证据 + AI 核验建议（纯函数）。
  *   - AI 通过 → photo weight=0.8（计客观分）+ recommendation ACCEPTED

@@ -16,7 +16,7 @@ import { useMissionStore } from './missionStore'
 import { useRewardStore } from './rewardStore'
 import { findMissionForPeriod } from './legacyBridge'
 import { completionEventId, gatherCourseRewardParts, computeCourseRewardFromParts } from './rewardCore'
-import { buildCoursePhotoEvidence, hasPhotoEvidenceForRef } from './courseEvidenceCore'
+import { buildCoursePhotoEvidence, hasPhotoEvidenceForRef, hasVerifiedPhotoEvidenceAny } from './courseEvidenceCore'
 import { logger } from '@/lib/logger'
 
 /**
@@ -125,4 +125,24 @@ export function migrateLegacyCourseRewards(): { marked: number; skipped: number 
 
   logger.info('courseMigration', `Legacy 课程奖励 reconciliation 完成`, { marked, skipped })
   return { marked, skipped }
+}
+
+/**
+ * 课程完成态迁移（V3 Phase 10C）：把"已有 VERIFIED 证据"的课程完成态写到 Mission.status。
+ *   - 完成态 Source of Truth 迁到 Mission.status（ResultEvaluator/视图读取它，不再读 classTask.status）。
+ *   - 幂等：仅处理 status 非 COMPLETED 且有 VERIFIED(weight>0) 照片证据的 Mission。
+ *   - 不发奖：仅置 status=COMPLETED（10A 的 LEGACY_ACCEPTED marker 已阻发奖；此处不走 tryComplete）。
+ */
+export function migrateCourseCompletionStatus(): { completed: number; skipped: number } {
+  const mStore = useMissionStore.getState()
+  let completed = 0
+  let skipped = 0
+  for (const m of mStore.missions) {
+    if (m.status === 'COMPLETED') { skipped++; continue }
+    if (!hasVerifiedPhotoEvidenceAny(m.evidence)) { skipped++; continue }
+    mStore.updateMission(m.id, { status: 'COMPLETED' })
+    completed++
+  }
+  logger.info('courseMigration', `课程完成态迁移完成`, { completed, skipped })
+  return { completed, skipped }
 }

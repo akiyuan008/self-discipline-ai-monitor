@@ -12,7 +12,7 @@ import {
 } from './disciplineEngine'
 import { aiSupervise } from './aiSupervisor'
 import { ensureDayPlan, finalizeDailyReview } from './reviewService'
-import { migrateCourseVerifications, migrateLegacyCourseRewards } from './courseMigration'
+import { migrateCourseVerifications, migrateLegacyCourseRewards, migrateCourseCompletionStatus } from './courseMigration'
 import { useReviewStore } from './reviewStore'
 import { localDateStr, yesterdayDateStr } from '@/lib/dateUtils'
 import { fetchUsageStats } from '@/lib/usageStats'
@@ -198,6 +198,9 @@ export function initDiscipline() {
   // 1.7 Phase 10A：Legacy 课程奖励 reconciliation（LEGACY_ACCEPTED marker，防三次发放，不改余额）
   //     须在证据迁移之后（aiScore 读既有 Recommendation）
   migrateLegacyCourseRewards()
+
+  // 1.8 Phase 10C：课程完成态 Source of Truth 迁到 Mission.status（不再读 classTask.status）
+  migrateCourseCompletionStatus()
 
   // 2. 接线干预
   wireInterventionHandlers()

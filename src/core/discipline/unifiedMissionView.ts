@@ -14,6 +14,7 @@
 import type { Mission, Session, DayPlan, CommitmentAction, TaskType } from './types'
 import { getPeriodTime } from '../../data/schedule'
 import { RESULT } from './config'
+import { hasVerifiedPhotoEvidenceAny } from './courseEvidenceCore'
 
 /** 统一视图状态 */
 export type MissionViewStatus =
@@ -92,21 +93,19 @@ function commitmentFor(dayPlan: DayPlan | undefined, missionId: string): Commitm
 export function deriveViewStatus(
   m: Mission,
   sessionsOfM: Session[],
-  commitment: CommitmentAction | 'PLANNED',
-  classTask?: LegacyCourseTaskRef
+  commitment: CommitmentAction | 'PLANNED'
 ): MissionViewStatus {
-  // 遗留课程状态优先反映（Phase 8 拍照核验未迁移，不能丢现有完成态）
-  if (classTask) {
-    if (classTask.status === 'completed') return 'COMPLETED'
-    if (classTask.status === 'overdue' || classTask.status === 'absent') return 'ABANDONED'
-  }
+  // V3 Phase 10C：完成态读 Mission.status（ResultEvaluator）+ Evidence（兼容），
+  // classTask.status 不再参与判定（CourseTask 退役为 Metadata/Adapter）。
   if (m.status === 'COMPLETED') return 'COMPLETED'
+  // 兼容：已有 VERIFIED（weight>0）照片证据 → 视为完成（历史迁移可能未写 Mission.status）
+  if (hasVerifiedPhotoEvidenceAny(m.evidence)) return 'COMPLETED'
   if (m.status === 'MISSED') return 'ABANDONED'
 
   const runningSession = sessionsOfM.some(s =>
     ['ACTIVE', 'PAUSED', 'DEVIATED', 'RECOVERING'].includes(s.status))
   const missionActive = ['FOCUSING', 'DISTRACTED', 'INTERVENTION', 'RECOVERING'].includes(m.status)
-  if (runningSession || missionActive || (classTask && classTask.status === 'started')) return 'EXECUTING'
+  if (runningSession || missionActive) return 'EXECUTING'
 
   // 已开始但当前未运行、未完成
   const focus = sessionsOfM.reduce((s, x) => s + x.focusDurationMs, 0)
@@ -137,7 +136,7 @@ function toMissionView(
     plannedStart: m.plannedStart,
     plannedEnd: m.plannedEnd,
     targetMinutes: m.targetMinutes,
-    viewStatus: deriveViewStatus(m, sessionsOfM, commitment, classTask),
+    viewStatus: deriveViewStatus(m, sessionsOfM, commitment),
     focusDurationMs,
     executionRate: targetMs > 0 ? Math.min(1, focusDurationMs / targetMs) : 0,
     deviationCount: sessionsOfM.reduce((s, x) => s + x.deviationCount, 0),

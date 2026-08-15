@@ -430,7 +430,9 @@ console.log('── J. Unified Mission View ──')
   // 状态映射覆盖：deriveViewStatus 直接测
   check('J9.planned', '无承诺未开始 → PLANNED', UMV.deriveViewStatus(mkM({ status: 'READY' }), [], 'PLANNED'), 'PLANNED')
   check('J9.missed', 'MISSED → ABANDONED', UMV.deriveViewStatus(mkM({ status: 'MISSED' }), [], 'PLANNED'), 'ABANDONED')
-  check('J9.course_completed', '课程已完成(legacy) → COMPLETED', UMV.deriveViewStatus(mkM({ status: 'READY' }), [], 'PLANNED', { status: 'completed' }), 'COMPLETED')
+  check('J9.mission_completed', 'Mission.status=COMPLETED → COMPLETED', UMV.deriveViewStatus(mkM({ status: 'COMPLETED' }), [], 'PLANNED'), 'COMPLETED')
+  check('J9.evidence_completed', 'VERIFIED 证据(weight>0) → COMPLETED（10C 读 Evidence）', UMV.deriveViewStatus(mkM({ status: 'READY', evidence: [{ type: 'photo', weight: 0.8 }] }), [], 'PLANNED'), 'COMPLETED')
+  check('J9.classTask_retired', 'classTask.status 不再参与（READY 无证据 → PLANNED）', UMV.deriveViewStatus(mkM({ status: 'READY' }), [], 'PLANNED'), 'PLANNED')
 }
 
 // ═══ K. Course Evidence（Phase 9：证据构造 + 幂等 + 新旧回归）═══
@@ -624,6 +626,19 @@ console.log('── Q. Rejected Evidence ──')
 
   // Q5 REJECTED 证据不计客观分（weight=0）
   check('Q5.rejected_no_score', 'REJECTED photo 客观分=0', HE.objectiveEvidenceScore([mkPhotoEv(0, 'ct')]), 0)
+}
+
+// ═══ R. CourseTask Retirement（Phase 10C：完成态 SoT 迁到 Mission.status）═══
+console.log('── R. CourseTask Retirement ──')
+{
+  // 完成态迁移谓词：status!=COMPLETED 且有 VERIFIED 证据 → 迁移
+  const shouldMigrateCompletion = (m) => m.status !== 'COMPLETED' && CEC.hasVerifiedPhotoEvidenceAny(m.evidence)
+  check('R1.migrate_verified', 'READY+VERIFIED证据 → 应迁移', shouldMigrateCompletion({ status: 'READY', evidence: [{ type: 'photo', weight: 0.8 }] }), true)
+  check('R2.skip_completed', '已 COMPLETED → 跳过(幂等)', shouldMigrateCompletion({ status: 'COMPLETED', evidence: [{ type: 'photo', weight: 0.8 }] }), false)
+  check('R3.skip_noevidence', 'READY+无证据 → 跳过', shouldMigrateCompletion({ status: 'READY', evidence: [] }), false)
+  check('R4.skip_rejected', 'READY+仅REJECTED(weight0) → 跳过', shouldMigrateCompletion({ status: 'READY', evidence: [{ type: 'photo', weight: 0 }] }), false)
+  check('R5.hasVerified_any', 'weight>0 → true', CEC.hasVerifiedPhotoEvidenceAny([{ type: 'photo', weight: 0.8 }]), true)
+  check('R6.hasVerified_none', '空/weight0 → false', CEC.hasVerifiedPhotoEvidenceAny([]) === false && CEC.hasVerifiedPhotoEvidenceAny([{ type: 'photo', weight: 0 }]) === false, true)
 }
 
 // ── 3. 汇总 ──
