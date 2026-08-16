@@ -11,8 +11,7 @@ import Icon from '@/components/Icons'
 import { localDateStr } from '@/lib/dateUtils'
 import { useMissionStore, startMission, useSessionStore, useDayPlanStore, buildUnifiedMissionView, submitRejectedCoursePhotoEvidenceForTask } from '@/core/discipline'
 import type { MissionView, MissionViewStatus } from '@/core/discipline'
-import { useWandering } from '@/hooks/useWandering'
-import MCQuests from '@/components/mission-control/MCQuests'
+import { useGrowth } from '@/hooks/useGrowth'
 
 interface Props {
   onNavigate?: (p: PageId) => void
@@ -37,8 +36,8 @@ function fmtClock(ts: number): string {
 }
 
 export default function Quests({ onNavigate }: Props) {
-  const isMC = useWandering()
-  if (isMC) return <MCQuests onNavigate={onNavigate} />
+  const isGrowth = useGrowth()
+  if (isGrowth) return <NormalQuests onNavigate={onNavigate} /> // Growth Quests Phase 2 later
   return <NormalQuests onNavigate={onNavigate} />
 }
 

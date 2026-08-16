@@ -95,7 +95,7 @@ interface StoreState {
   exp: number
   totalExp: number
   level: number
-  theme: 'default' | 'wandering'
+  theme: 'default' | 'growth'
 
   addPoints: (n: number) => void
   addXp: (n: number) => void
@@ -132,7 +132,7 @@ interface StoreState {
   clearStreakBroken: () => void
   addPointRecord: (type: 'earn' | 'spend', amount: number, reason: string) => void
   addExp: (amount: number, reason: string) => void
-  setTheme: (theme: 'default' | 'wandering') => void
+  setTheme: (theme: 'default' | 'growth') => void
   addCustomShopItem: (item: Omit<ShopItem, 'id'>) => void
   removeCustomShopItem: (id: string) => void
 }
@@ -490,7 +490,7 @@ export const useStore = create<StoreState>()(
           }
         })
       },
-      setTheme: (theme) => set({ theme }),
+      setTheme: (theme: 'growth' | 'default') => set({ theme }),
     }),
     {
       name: 'cyber-survival-store',

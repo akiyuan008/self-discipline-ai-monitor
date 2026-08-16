@@ -1,5 +1,5 @@
 import type { PageId } from '@/stores/useStore'
-import { useWandering } from '@/hooks/useWandering'
+import { useGrowth } from '@/hooks/useGrowth'
 
 interface DockProps {
   current: PageId
@@ -21,27 +21,27 @@ const ORDER: PageId[] = ['quests', 'chat', 'home', 'shop', 'profile']
 const CENTER: PageId = 'home'
 
 export default function Dock({ current, onChange, keyboardHeight = 0 }: DockProps) {
-  const isMC = useWandering()
+  const isGrowth = useGrowth()
 
   // 键盘弹起时把 Dock 抬高到键盘上方，避免遮挡输入框
   const dockBottom = keyboardHeight > 0
     ? `calc(${keyboardHeight}px + 8px)`
     : 'max(20px, env(safe-area-inset-bottom))'
 
-  if (isMC) {
-    // Industrial Mission Control Dock: 极简线条式
+  if (isGrowth) {
+    // Growth Mode Dock: 温暖圆角
     return (
       <div style={{
         position: 'fixed', bottom: dockBottom, left: '50%', transform: 'translateX(-50%)',
         zIndex: 100, transition: 'bottom 0.2s ease-out'
       }}>
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 2,
-          padding: '4px 6px',
-          background: 'var(--surface-overlay)',
-          border: '1px solid var(--border-line)',
-          borderRadius: 0,
-          backdropFilter: 'blur(10px)'
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '8px 10px',
+          background: 'var(--growth-surface)',
+          border: '1px solid var(--growth-border)',
+          borderRadius: 20,
+          boxShadow: '0 4px 20px rgba(45, 42, 38, 0.06)'
         }}>
           {ORDER.map((it) => {
             const isCenter = it === CENTER
@@ -49,27 +49,25 @@ export default function Dock({ current, onChange, keyboardHeight = 0 }: DockProp
             if (isCenter) {
               return (
                 <button key={it} onClick={() => onChange(it)} style={{
-                  width: 40, height: 40, borderRadius: 0,
-                  background: active ? 'var(--status-normal)' : 'transparent',
-                  color: active ? 'var(--surface-0)' : 'var(--text-secondary)',
+                  width: 48, height: 48, borderRadius: '50%',
+                  background: active ? 'var(--growth-primary)' : 'var(--growth-surface-alt)',
+                  color: active ? '#fff' : 'var(--growth-text-secondary)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: `1px solid ${active ? 'var(--status-normal)' : 'var(--border-line)'}`,
-                  cursor: 'pointer', margin: '-4px 2px 0', transition: 'all 0.15s'
+                  border: 'none', cursor: 'pointer', margin: '-8px 2px 0', transition: 'all 0.2s'
                 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS[it]} /></svg>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS[it]} /></svg>
                 </button>
               )
             }
             return (
               <button key={it} onClick={() => onChange(it)} style={{
-                width: 36, height: 36, borderRadius: 0,
+                width: 40, height: 40, borderRadius: '50%',
                 background: 'transparent',
-                color: active ? 'var(--status-normal)' : 'var(--text-secondary)',
+                color: active ? 'var(--growth-primary)' : 'var(--growth-text-secondary)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: `1px solid ${active ? 'var(--border-line)' : 'transparent'}`,
-                cursor: 'pointer', transition: 'all 0.15s'
+                border: 'none', cursor: 'pointer', transition: 'all 0.2s'
               }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS[it]} /></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS[it]} /></svg>
               </button>
             )
           })}
