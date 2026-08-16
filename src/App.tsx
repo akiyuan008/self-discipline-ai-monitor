@@ -10,6 +10,9 @@ import GrShop from '@/components/growth/GrShop'
 import GrProfile from '@/components/growth/GrProfile'
 import GrStats from '@/components/growth/GrStats'
 import GrAchievements from '@/components/growth/GrAchievements'
+import GrPointsDetail from '@/components/growth/GrPointsDetail'
+import GrClassHistory from '@/components/growth/GrClassHistory'
+import GrChat from '@/components/growth/GrChat'
 import { useGrowth } from '@/hooks/useGrowth'
 import Quests from '@/pages/Quests'
 import Shop from '@/pages/Shop'
@@ -148,11 +151,11 @@ export default function App() {
       {currentPage === 'quests' && <Quests onNavigate={navigate} />}
       {currentPage === 'shop' && (isGrowth ? <GrShop onNavigate={navigate} /> : <Shop onNavigate={navigate} />)}
       {currentPage === 'profile' && (isGrowth ? <GrProfile onNavigate={navigate} onNavigateStats={() => navigate('stats')} /> : <Profile onNavigate={navigate} onNavigateStats={() => navigate('stats')} />)}
-      {currentPage === 'chat' && <Chat onNavigateSettings={() => navigate('settings')} />}
+      {currentPage === 'chat' && (isGrowth ? <GrChat onNavigateSettings={() => navigate('settings')} /> : <Chat onNavigateSettings={() => navigate('settings')} />)}
       {currentPage === 'achievements' && (isGrowth ? <GrAchievements onBack={goBack} /> : <Achievements onBack={goBack} />)}
       {currentPage === 'settings' && <Settings onBack={goBack} onNavigateDiagLogs={() => navigate('diagLogs')} />}
-      {currentPage === 'pointsDetail' && <PointsDetail onBack={goBack} />}
-      {currentPage === 'classHistory' && <ClassHistory onBack={goBack} />}
+      {currentPage === 'pointsDetail' && (isGrowth ? <GrPointsDetail onBack={goBack} /> : <PointsDetail onBack={goBack} />)}
+      {currentPage === 'classHistory' && (isGrowth ? <GrClassHistory onBack={goBack} /> : <ClassHistory onBack={goBack} />)}
       {currentPage === 'diagLogs' && <DiagLogs onBack={goBack} />}
         {currentPage === 'stats' && (isGrowth ? <GrStats onBack={goBack} /> : <Stats onBack={goBack} />)}
       {onboarded && currentPage !== 'onboarding' && currentPage !== 'dungeon' && currentPage !== 'classHistory' && (
