@@ -5,6 +5,8 @@ import type { PageId } from '@/stores/useStore'
 import Onboarding from '@/pages/Onboarding'
 import Home from '@/pages/Home'
 import Dungeon from '@/pages/Dungeon'
+import GrFocus from '@/components/growth/GrFocus'
+import { useGrowth } from '@/hooks/useGrowth'
 import Quests from '@/pages/Quests'
 import Shop from '@/pages/Shop'
 import Profile from '@/pages/Profile'
@@ -58,6 +60,7 @@ function PointsToast() {
 export default function App() {
   const page = useStore(s => s.onboarded ? 'home' : 'onboarding')
   const [currentPage, setCurrentPage] = useState<PageId>(page)
+  const isGrowth = useGrowth()
   const onboarded = useStore(s => s.onboarded)
 
   useEffect(() => {
@@ -137,7 +140,7 @@ export default function App() {
       <EchoTrigger />
       {currentPage === 'onboarding' && <Onboarding />}
       {currentPage === 'home' && <Home onNavigate={navigate} />}
-      {currentPage === 'dungeon' && <Dungeon onExit={goHome} />}
+      {currentPage === 'dungeon' && (isGrowth ? <GrFocus onExit={goHome} /> : <Dungeon onExit={goHome} />)}
       {currentPage === 'quests' && <Quests onNavigate={navigate} />}
       {currentPage === 'shop' && <Shop onNavigate={navigate} />}
       {currentPage === 'profile' && <Profile onNavigate={navigate} onNavigateStats={() => navigate('stats')} />}
