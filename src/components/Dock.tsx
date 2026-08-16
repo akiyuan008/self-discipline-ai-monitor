@@ -29,21 +29,19 @@ export default function Dock({ current, onChange, keyboardHeight = 0 }: DockProp
     : 'max(20px, env(safe-area-inset-bottom))'
 
   if (isMC) {
-    // Mission Control Dock: 线条式、克制、方形
+    // Industrial Mission Control Dock: 极简线条式
     return (
-      <div
-        style={{
-          position: 'fixed', bottom: dockBottom, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 100, transition: 'bottom 0.2s ease-out'
-        }}
-      >
+      <div style={{
+        position: 'fixed', bottom: dockBottom, left: '50%', transform: 'translateX(-50%)',
+        zIndex: 100, transition: 'bottom 0.2s ease-out'
+      }}>
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 4,
-          padding: '6px 8px',
+          display: 'flex', alignItems: 'center', gap: 2,
+          padding: '4px 6px',
           background: 'var(--surface-overlay)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-md)',
-          backdropFilter: 'blur(12px)'
+          border: '1px solid var(--border-line)',
+          borderRadius: 0,
+          backdropFilter: 'blur(10px)'
         }}>
           {ORDER.map((it) => {
             const isCenter = it === CENTER
@@ -51,27 +49,27 @@ export default function Dock({ current, onChange, keyboardHeight = 0 }: DockProp
             if (isCenter) {
               return (
                 <button key={it} onClick={() => onChange(it)} style={{
-                  width: 44, height: 44, borderRadius: 'var(--radius-sm)',
-                  background: active ? 'var(--status-focus)' : 'var(--surface-3)',
-                  color: active ? '#0a0d12' : 'var(--text-secondary)',
+                  width: 40, height: 40, borderRadius: 0,
+                  background: active ? 'var(--status-normal)' : 'transparent',
+                  color: active ? 'var(--surface-0)' : 'var(--text-secondary)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: `1px solid ${active ? 'var(--status-focus)' : 'var(--border)'}`,
-                  cursor: 'pointer', margin: '-8px 4px 0', transition: 'all 0.2s'
+                  border: `1px solid ${active ? 'var(--status-normal)' : 'var(--border-line)'}`,
+                  cursor: 'pointer', margin: '-4px 2px 0', transition: 'all 0.15s'
                 }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS[it]} /></svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS[it]} /></svg>
                 </button>
               )
             }
             return (
               <button key={it} onClick={() => onChange(it)} style={{
-                width: 40, height: 40, borderRadius: 'var(--radius-sm)',
-                background: active ? 'var(--surface-3)' : 'transparent',
-                color: active ? 'var(--status-focus)' : 'var(--text-secondary)',
+                width: 36, height: 36, borderRadius: 0,
+                background: 'transparent',
+                color: active ? 'var(--status-normal)' : 'var(--text-secondary)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                border: `1px solid ${active ? 'var(--border-strong)' : 'transparent'}`,
-                cursor: 'pointer', transition: 'all 0.2s'
+                border: `1px solid ${active ? 'var(--border-line)' : 'transparent'}`,
+                cursor: 'pointer', transition: 'all 0.15s'
               }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS[it]} /></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONS[it]} /></svg>
               </button>
             )
           })}

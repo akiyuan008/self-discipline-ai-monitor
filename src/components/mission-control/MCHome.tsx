@@ -1,8 +1,9 @@
 /**
  * src/components/mission-control/MCHome.tsx
- * Mission Control 模式的 Home 页（Phase 2）。
- * 信息层级：TODAY Execution → CURRENT MISSION → TODAY'S MISSIONS → SYSTEM STATUS。
- * 所有状态直接读取现有 Store/Core，不在 UI 层重新计算。
+ * Future Industrial Mission Control — Home。
+ * 不是深色 Dashboard，是真实存在的未来工业任务控制终端。
+ *
+ * 信息层级：SYSTEM STATUS → PRIMARY MISSION → DAILY OPERATIONS
  */
 import { useEffect, useState, useRef } from 'react'
 import { useStore } from '@/stores/useStore'
@@ -10,37 +11,26 @@ import { showToast } from '@/components/Toast'
 import { App } from '@capacitor/app'
 import { fetchUsageStats, hasUsageAccess, fmtMs, isLateNight, openUsageAccessSettings } from '@/lib/usageStats'
 import { logger } from '@/lib/logger'
-import GaokaoProgress from '@/components/GaokaoProgress'
 import Icon from '@/components/Icons'
 import type { PageId } from '@/stores/useStore'
 import { useMissionStore, startMission, buildUnifiedMissionView, useDayPlanStore, useSessionStore } from '@/core/discipline'
-import type { Mission } from '@/core/discipline'
 import { useClassTaskStore } from '@/stores/classTaskStore'
 import { localDateStr } from '@/lib/dateUtils'
 import {
-  MCPage, MCCard, MCSectionHeader, MCStatusBadge, MCProgressBar,
-  MCDataBlock, MCButton, MCMissionItem
+  MCPage, MCModule, MCInner, MCSection, MCStatus, MCProgress,
+  MCDataRow, MCButton, MCMissionRow
 } from '@/components/mission-control'
 
-interface Props {
-  onNavigate?: (p: PageId) => void
-}
+interface Props { onNavigate?: (p: PageId) => void }
 
 function fmtClock(ts: number): string {
   const d = new Date(ts)
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-function missionPct(m: Mission): number {
-  if (m.targetMinutes <= 0) return 0
-  return Math.min(100, Math.round((m.actualStudyMs / (m.targetMinutes * 60000)) * 100))
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  READY: '待开始', FOCUSING: '专注中', DISTRACTED: '已分心',
-  INTERVENTION: '干预中', RECOVERING: '恢复中', COMPLETED: '已完成',
-  MISSED: '已错过', IDLE: '空闲', PLANNED: '已计划', COMMITTED: '已承诺',
-  EXECUTING: '执行中', PARTIAL: '部分完成', ABANDONED: '已放弃'
+function fmtTime(): string {
+  const d = new Date()
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
 }
 
 export default function MCHome({ onNavigate }: Props) {
@@ -64,13 +54,13 @@ export default function MCHome({ onNavigate }: Props) {
     id: t.id, period: t.period, date: t.date, subject: t.subject, status: t.status
   }))
   const todayViews = buildUnifiedMissionView({
-    date: today, missions,
-    courseTasks: todayClassTasks, sessions, dayPlan
+    date: today, missions, courseTasks: todayClassTasks, sessions, dayPlan
   })
 
   const [hasAccess, setHasAccess] = useState(false)
   const [lateAlert, setLateAlert] = useState(false)
   const [dismissPermission, setDismissPermission] = useState(false)
+  const [clock, setClock] = useState(fmtTime())
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const refresh = async () => {
@@ -81,7 +71,6 @@ export default function MCHome({ onNavigate }: Props) {
       useStore.getState().syncUsage(stats.study, stats.ent)
     } catch (e) { logger.warn('home', 'refresh usage stats failed', { error: String(e) }) }
   }
-
   const checkAndRefresh = async () => {
     try { setHasAccess(await hasUsageAccess()) } catch { setHasAccess(false) }
     refresh()
@@ -93,11 +82,11 @@ export default function MCHome({ onNavigate }: Props) {
     const sub = App.addListener('resume', () => { checkAndRefresh() })
     return () => { sub.then(s => s.remove()) }
   }, [])
-
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current)
     pollRef.current = setInterval(refresh, 30000)
-    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+    const clockTimer = setInterval(() => setClock(fmtTime()), 1000)
+    return () => { if (pollRef.current) clearInterval(pollRef.current); clearInterval(clockTimer) }
   }, [])
 
   const studyPct = dailyGoalMin > 0 ? Math.min(100, Math.round((todayStudyMs / (dailyGoalMin * 60000)) * 100)) : 0
@@ -112,160 +101,133 @@ export default function MCHome({ onNavigate }: Props) {
 
   return (
     <MCPage>
-      {/* 顶部标题 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+      {/* ═══ 系统终端标题 ═══ */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
         <div>
-          <div style={{ fontSize: 10, color: 'var(--text-secondary)', letterSpacing: 2, textTransform: 'uppercase' }}>
-            MISSION CONTROL
+          <div style={{ fontSize: 9, color: 'var(--text-secondary)', letterSpacing: 3, textTransform: 'uppercase' }}>
+            MISSION CONTROL SYSTEM
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: 'var(--text-primary)', letterSpacing: 1 }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>
             {playerTag}
-          </h1>
+          </div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 10, color: 'var(--text-secondary)', letterSpacing: 1 }}>TODAY FOCUS</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--status-focus)', fontFamily: 'var(--font-mc-mono)' }}>
-            {studyPct}%
+          <div className="mc-mono" style={{ fontSize: 13, color: 'var(--status-normal)', fontWeight: 600, letterSpacing: 1 }}>
+            {clock}
+          </div>
+          <div style={{ fontSize: 9, color: 'var(--text-secondary)', marginTop: 2 }}>
+            <span className="mc-status-dot" style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: 'var(--status-success)', marginRight: 4, verticalAlign: 'middle' }} />
+            SYSTEM ONLINE
           </div>
         </div>
       </div>
 
-      {/* 权限提示 */}
+      {/* 权限告警（非卡片，内嵌） */}
       {!hasAccess && !dismissPermission && (
-        <MCCard style={{ marginBottom: 16, borderColor: 'var(--status-deviation)', cursor: 'pointer' }} onClick={handleOpenPermissionSettings}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--status-deviation)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Icon.Warning size={15} color="var(--status-deviation)" /> 未授予使用情况访问权限
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>点击开启权限以获取真实时长</div>
-            </div>
-            <button onClick={(e) => { e.stopPropagation(); setDismissPermission(true) }} aria-label="关闭"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 4, display: 'flex' }}>
-              <Icon.Close size={14} color="var(--text-secondary)" />
+        <div className="mc-module" style={{ marginBottom: 14, borderColor: 'var(--status-deviation)', cursor: 'pointer' }} onClick={handleOpenPermissionSettings}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 11, color: 'var(--status-deviation)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon.Warning size={13} color="var(--status-deviation)" /> USAGE ACCESS OFFLINE
+            </span>
+            <button onClick={(e) => { e.stopPropagation(); setDismissPermission(true) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 0 }}>
+              <Icon.Close size={12} color="var(--text-secondary)" />
             </button>
           </div>
-        </MCCard>
+        </div>
       )}
 
-      {/* ═══ TODAY EXECUTION ═══ */}
-      <MCSectionHeader title="TODAY EXECUTION" />
-      <MCCard style={{ marginBottom: 20 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-          <MCDataBlock label="FOCUS TIME" value={fmtMs(todayStudyMs)} color="var(--status-focus)" />
-          <MCDataBlock label="ENTERTAINMENT" value={fmtMs(todayEntMs)} color={todayEntMs < 300000 ? 'var(--text-primary)' : 'var(--status-warning)'} />
-        </div>
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-            <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>DAILY GOAL</span>
-            <span style={{ fontSize: 10, color: 'var(--status-focus)', fontFamily: 'var(--font-mc-mono)' }}>
-              {fmtMs(todayStudyMs)} / {dailyGoalMin}min
-            </span>
-          </div>
-          <MCProgressBar pct={studyPct} />
-        </div>
-      </MCCard>
-
-      {/* ═══ CURRENT MISSION ═══ */}
-      <MCSectionHeader title="CURRENT MISSION" right={currentMission ? <MCStatusBadge status={currentMission.status} label={STATUS_LABEL[currentMission.status]} /> : undefined} />
-      <MCCard style={{ marginBottom: 20 }}>
+      {/* ═══ PRIMARY MISSION ═══ */}
+      <MCSection title="PRIMARY MISSION" right={currentMission ? undefined : 'STANDBY'} />
+      <MCModule style={{ marginBottom: 16 }}>
         {currentMission ? (
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
-              {currentMission.title}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'var(--font-mc-mono)', marginBottom: 12 }}>
-              {fmtClock(currentMission.plannedStart)} – {fmtClock(currentMission.plannedEnd)} · 目标 {currentMission.targetMinutes} min
-              {currentMission.requiresEvidence ? ' · 需凭证' : ''}
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>PROGRESS</span>
-                <span style={{ fontSize: 10, color: 'var(--status-focus)', fontFamily: 'var(--font-mc-mono)' }}>
-                  {Math.floor(currentMission.actualStudyMs / 60000)}/{currentMission.targetMinutes} min
-                </span>
+            {/* 任务标题行 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>{currentMission.title}</div>
+                <div className="mc-mono" style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>
+                  {fmtClock(currentMission.plannedStart)}–{fmtClock(currentMission.plannedEnd)} · TARGET {currentMission.targetMinutes}MIN{currentMission.requiresEvidence ? ' · EVIDENCE REQUIRED' : ''}
+                </div>
               </div>
-              <MCProgressBar pct={missionPct(currentMission)} />
+              <MCStatus status={currentMission.status} />
             </div>
 
+            {/* 进度 */}
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 9, color: 'var(--text-secondary)', letterSpacing: 1 }}>EXECUTION</span>
+                <span className="mc-mono" style={{ fontSize: 10, color: 'var(--status-normal)' }}>
+                  {Math.floor(currentMission.actualStudyMs / 60000)}/{currentMission.targetMinutes}MIN
+                </span>
+              </div>
+              <MCProgress pct={Math.min(100, (currentMission.actualStudyMs / (currentMission.targetMinutes * 60000)) * 100)} />
+            </div>
+
+            {/* 操作 */}
             {currentMission.status === 'READY' && (
               <MCButton variant="primary" onClick={() => startMission(currentMission.id)}>
-                <Icon.Play size={16} color="#0a0d12" /> 开始专注
+                <Icon.Play size={14} color="var(--surface-0)" /> INITIATE FOCUS
               </MCButton>
             )}
             {currentMission.status === 'FOCUSING' && (
-              <MCButton onClick={() => onNavigate?.('dungeon')}>进入专注监控</MCButton>
+              <MCButton onClick={() => onNavigate?.('dungeon')}>ENTER FOCUS WORKSPACE</MCButton>
             )}
             {(currentMission.status === 'DISTRACTED' || currentMission.status === 'INTERVENTION') && (
               <MCButton onClick={() => onNavigate?.('dungeon')} style={{ borderColor: 'var(--status-deviation)', color: 'var(--status-deviation)' }}>
-                检测到分心 · 回到任务
+                DEVIATION DETECTED · RETURN
               </MCButton>
             )}
             {currentMission.status === 'RECOVERING' && (
-              <div style={{ fontSize: 12, color: 'var(--status-warning)', textAlign: 'center', padding: '8px 0' }}>正在恢复专注…</div>
+              <div style={{ fontSize: 11, color: 'var(--status-warning)', textAlign: 'center', padding: '6px 0', letterSpacing: 1 }}>RECOVERY IN PROGRESS</div>
             )}
           </div>
         ) : (
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '8px 0' }}>
-            暂无进行中的任务。课表任务将按时段自动生成，也可在「任务」中动态创建。
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', padding: '6px 0' }}>
+            NO ACTIVE MISSION · STANDBY MODE
           </div>
         )}
-      </MCCard>
+      </MCModule>
 
-      {/* ═══ TODAY'S MISSIONS ═══ */}
-      <MCSectionHeader title="TODAY'S MISSIONS" right={
-        <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontFamily: 'var(--font-mc-mono)' }}>
-          {doneCount} 完成 · {activeCount} 进行 · {upcomingCount} 待执行
-        </span>
-      } />
-      <div style={{ marginBottom: 20 }}>
+      {/* ═══ SYSTEM TELEMETRY ═══ */}
+      <MCSection title="SYSTEM TELEMETRY" right={`${studyPct}% GOAL`} />
+      <MCModule style={{ marginBottom: 16 }}>
+        <MCDataRow label="FOCUS" value={fmtMs(todayStudyMs)} color="var(--status-normal)" />
+        <MCDataRow label="ENTERTAIN" value={fmtMs(todayEntMs)} color={todayEntMs < 300000 ? 'var(--text-primary)' : 'var(--status-warning)'} />
+        <MCDataRow label="GOAL" value={fmtMs(todayStudyMs)} unit={`/ ${dailyGoalMin}MIN`} />
+        <MCDataRow label="LEVEL" value={level} />
+        <MCDataRow label="CREDITS" value={points} color="var(--status-warning)" />
+        <MCDataRow label="STREAK" value={streak} unit="D" color="var(--status-success)" />
+        <div style={{ marginTop: 8 }}>
+          <MCProgress pct={studyPct} color="var(--status-normal)" />
+        </div>
+        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--text-secondary)' }}>
+            <span>USAGE ACCESS</span><span className="mc-mono" style={{ color: hasAccess ? 'var(--status-success)' : 'var(--status-deviation)' }}>[{hasAccess ? 'ONLINE' : 'OFFLINE'}]</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--text-secondary)' }}>
+            <span>LATE NIGHT</span><span className="mc-mono" style={{ color: lateAlert ? 'var(--status-warning)' : 'var(--status-success)' }}>[{lateAlert ? 'ALERT' : 'NOMINAL'}]</span>
+          </div>
+        </div>
+      </MCModule>
+
+      {/* ═══ DAILY OPERATIONS ═══ */}
+      <MCSection title="DAILY OPERATIONS" right={`${doneCount}/${todayViews.length} DONE`} />
+      <div style={{ marginBottom: 16 }}>
         {todayViews.length === 0 ? (
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center', padding: '20px 0' }}>今日暂无任务</div>
+          <div style={{ fontSize: 11, color: 'var(--text-secondary)', padding: '12px 0', textAlign: 'center' }}>NO OPERATIONS SCHEDULED</div>
         ) : (
           todayViews.map(v => (
-            <MCMissionItem
+            <MCMissionRow
               key={v.id}
               title={v.title}
-              subtitle={`${fmtClock(v.plannedStart)}–${fmtClock(v.plannedEnd)} · ${v.targetMinutes}min`}
+              subtitle={`${fmtClock(v.plannedStart)}–${fmtClock(v.plannedEnd)} · ${v.targetMinutes}MIN`}
               status={v.viewStatus}
-              statusLabel={STATUS_LABEL[v.viewStatus] || v.viewStatus}
               progress={v.executionRate > 0 ? v.executionRate * 100 : undefined}
               onClick={() => onNavigate?.('quests')}
             />
           ))
         )}
       </div>
-
-      {/* ═══ SYSTEM STATUS ═══ */}
-      <MCSectionHeader title="SYSTEM STATUS" />
-      <MCCard style={{ marginBottom: 20 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-          <MCDataBlock label="LEVEL" value={level} />
-          <MCDataBlock label="POINTS" value={points} color="var(--status-warning)" />
-          <MCDataBlock label="STREAK" value={streak} unit="天" color="var(--status-success)" />
-          <MCDataBlock label="ACCESS" value={hasAccess ? 'ON' : 'OFF'} color={hasAccess ? 'var(--status-success)' : 'var(--status-deviation)'} />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <StatusRow label="USAGE ACCESS" ok={hasAccess} status={hasAccess ? 'ONLINE' : 'OFFLINE'} onClick={!hasAccess ? handleOpenPermissionSettings : undefined} />
-          <StatusRow label="STUDY MODULE" ok={todayStudyMs > 0} status={todayStudyMs > 0 ? 'ACTIVE' : 'STANDBY'} />
-          <StatusRow label="ENT MONITOR" ok={todayEntMs < 300000} status={todayEntMs < 300000 ? 'NOMINAL' : 'WARNING'} />
-          <StatusRow label="LATE NIGHT" ok={!lateAlert} status={lateAlert ? 'ALERT' : 'NORMAL'} />
-        </div>
-      </MCCard>
-
-      {/* 高考倒计时 */}
-      <GaokaoProgress />
     </MCPage>
-  )
-}
-
-function StatusRow({ label, status, ok, onClick }: { label: string; status: string; ok: boolean; onClick?: () => void }) {
-  return (
-    <div onClick={onClick} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid var(--border-subtle)', cursor: onClick ? 'pointer' : 'default' }}>
-      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{label}</span>
-      <span style={{ fontSize: 11, color: ok ? 'var(--status-success)' : 'var(--status-deviation)', fontFamily: 'var(--font-mc-mono)', fontWeight: ok ? 400 : 700 }}>
-        [{status}]
-      </span>
-    </div>
   )
 }
