@@ -52,55 +52,105 @@
 
   /* Growth Mode：温暖、现代、沉浸的成长空间 */
   [data-theme="growth"] {
-    --bg: #faf8f5;
-    --bg-alt: #f0ede7;
-    --fg: #2d2a26;
-    --muted: #8a857d;
-    --card-bg: #ffffff;
-    --card-gradient: linear-gradient(135deg, #ffffff 0%, #fcfaf7 100%);
-    --border: rgba(45, 42, 38, 0.06);
-    --danger: #d65a4a;
-    --success: #5ba070;
-    --warning: #d4a040;
-    --info: #6b8fd4;
-    --accent: #7c6cab;
-    --accent-dim: rgba(124, 108, 171, 0.08);
-    --growth-primary: #7c6cab;
-    --growth-warm: #e8a06a;
-    --growth-bg: #faf8f5;
-    --growth-surface: #ffffff;
-    --growth-surface-alt: #f5f2ed;
-    --growth-text: #2d2a26;
-    --growth-text-secondary: #8a857d;
-    --growth-border: rgba(45, 42, 38, 0.06);
-    --growth-radius: 14px;
-    --growth-radius-sm: 10px;
+    /* ═══ Growth Journey Design System ═══
+       不是换皮 Dashboard，是成长旅程。
+       视觉关键词：晨光 / 生长绿 / 年轮 / 长期陪伴 / 高级学习 App
+       不做：科幻控制台、黑色 Dashboard、大量卡片、课程表 */
+
+    /* ── 基础语义（供未改造的 Normal 组件降级使用）── */
+    --bg: #faf7f1;
+    --bg-alt: #f1ebdf;
+    --fg: #2b251d;
+    --muted: #8f8577;
+    --card-bg: #fffdf8;
+    --card-gradient: linear-gradient(160deg, #fffdf8 0%, #faf5ea 100%);
+    --border: rgba(64, 52, 38, 0.07);
+    --danger: #c96a5a;
+    --success: #4a8864;
+    --warning: #d9974e;
+    --info: #6b8fa8;
+    --accent: #41705c;
+    --accent-dim: rgba(65, 112, 92, 0.08);
+
+    /* ── Growth Journey 核心色板 ── */
+    /* 生长绿：成长、生命、沉稳 */
+    --growth-primary: #41705c;
+    --growth-primary-deep: #2f5546;
+    --growth-primary-soft: #e6efe8;
+    /* 日出琥珀：成就、温度、光 */
+    --growth-warm: #d9974e;
+    --growth-warm-deep: #b87a38;
+    --growth-warm-soft: #f7ead7;
+    /* 晨光底色 */
+    --growth-bg: #faf7f1;
+    --growth-bg-grad: linear-gradient(165deg, #fbf8f2 0%, #f7f1e6 55%, #f3ecdd 100%);
+    --growth-surface: #fffdf8;
+    --growth-surface-alt: #f4eee1;
+    --growth-surface-warm: #f8f1e4;
+    /* 文字 */
+    --growth-text: #2b251d;
+    --growth-text-secondary: #8f8577;
+    --growth-text-faint: #b9ae9e;
+    --growth-border: rgba(64, 52, 38, 0.07);
+    --growth-border-strong: rgba(64, 52, 38, 0.14);
+
+    /* ── 成长语义色（和谐统一）── */
+    --growth-success: #4a8864;
+    --growth-danger: #c96a5a;
+    --growth-warning: #d9974e;
+
+    /* ── 形态：圆润、柔和、呼吸感 ── */
+    --growth-radius: 18px;
+    --growth-radius-sm: 12px;
+    --growth-radius-lg: 26px;
+    --growth-shadow: 0 6px 24px rgba(90, 74, 52, 0.06);
+    --growth-shadow-lg: 0 12px 40px rgba(90, 74, 52, 0.1);
+
+    /* ── 字体：温暖现代 ── */
+    --growth-font: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   }
 
   html.dark [data-theme="growth"] {
-    --bg: #1a1815;
-    --bg-alt: #242120;
-    --fg: #e8e4df;
-    --muted: #8a857d;
-    --card-bg: #242120;
-    --card-gradient: linear-gradient(135deg, #242120 0%, #1a1815 100%);
-    --border: rgba(232, 228, 223, 0.08);
-    --danger: #e07060;
-    --success: #6ab080;
-    --warning: #e0b050;
-    --info: #8ba0e0;
-    --accent: #9a8ac0;
-    --accent-dim: rgba(154, 138, 192, 0.1);
-    --growth-primary: #9a8ac0;
-    --growth-warm: #e8a06a;
-    --growth-bg: #1a1815;
-    --growth-surface: #242120;
-    --growth-surface-alt: #2a2825;
-    --growth-text: #e8e4df;
-    --growth-text-secondary: #8a857d;
-    --growth-border: rgba(232, 228, 223, 0.08);
-    --growth-radius: 14px;
-    --growth-radius-sm: 10px;
+    /* Growth Journey 暖夜模式：不是冷黑，是温暖夜色 */
+    --bg: #1d1915;
+    --bg-alt: #26211b;
+    --fg: #ece4d6;
+    --muted: #a2988a;
+    --card-bg: #262119;
+    --card-gradient: linear-gradient(160deg, #262119 0%, #1d1915 100%);
+    --border: rgba(236, 228, 214, 0.08);
+    --danger: #d88070;
+    --success: #62a47e;
+    --warning: #e0a860;
+    --info: #86a8c0;
+    --accent: #62a184;
+    --accent-dim: rgba(98, 161, 132, 0.1);
+
+    --growth-primary: #62a184;
+    --growth-primary-deep: #4a8468;
+    --growth-primary-soft: rgba(98, 161, 132, 0.14);
+    --growth-warm: #e0a860;
+    --growth-warm-deep: #c89048;
+    --growth-warm-soft: rgba(224, 168, 96, 0.14);
+    --growth-bg: #1d1915;
+    --growth-bg-grad: linear-gradient(165deg, #201c17 0%, #1d1915 55%, #1a1611 100%);
+    --growth-surface: #262119;
+    --growth-surface-alt: #2c261e;
+    --growth-surface-warm: #2c2519;
+    --growth-text: #ece4d6;
+    --growth-text-secondary: #a2988a;
+    --growth-text-faint: #6f6659;
+    --growth-border: rgba(236, 228, 214, 0.08);
+    --growth-border-strong: rgba(236, 228, 214, 0.16);
+    --growth-success: #62a47e;
+    --growth-danger: #d88070;
+    --growth-warning: #e0a860;
+    --growth-radius: 18px;
+    --growth-radius-sm: 12px;
+    --growth-radius-lg: 26px;
+    --growth-shadow: 0 6px 24px rgba(0, 0, 0, 0.24);
+    --growth-shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.32);
+    --growth-font: 'Inter', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   }
 
   html, body, #root {
@@ -508,44 +558,194 @@ button:not(:disabled):active {
   border: 1px solid var(--border) !important;
 }
 
-/* Growth Mode: 温暖圆角，隐藏科幻装饰 */
+/* Growth Journey: 温暖圆角，隐藏科幻装饰 */
 [data-theme="growth"] .corner-deco { display: none !important; }
 [data-theme="growth"] * { clip-path: none !important; }
 [data-theme="growth"] [style*="clip-path"] { border-radius: var(--growth-radius) !important; }
 [data-theme="growth"] .card {
   border-radius: var(--growth-radius) !important;
-  box-shadow: 0 2px 16px rgba(45, 42, 38, 0.04) !important;
+  box-shadow: var(--growth-shadow) !important;
   background: var(--growth-surface) !important;
   border: 1px solid var(--growth-border) !important;
 }
 
-/* Growth 组件层 */
+/* ═══ Growth Journey 组件层 ═══
+   设计语言：晨光底色 + 生长绿 + 年轮 + 呼吸感。
+   不是卡片堆叠，是有主角、有留白、有旅程感的成长空间。 */
+
+/* ── 页面：晨光渐变底，充足留白 ── */
+[data-theme="growth"] .gj-page {
+  min-height: 100vh;
+  background: var(--growth-bg-grad);
+  padding: 26px 20px 150px;
+  font-family: var(--growth-font);
+  position: relative;
+}
+/* 顶部一抹晨光（极淡，营造氛围不抢戏） */
+[data-theme="growth"] .gj-page::before {
+  content: '';
+  position: absolute;
+  top: -80px; left: 50%; transform: translateX(-50%);
+  width: 420px; height: 300px;
+  background: radial-gradient(ellipse at center, var(--growth-warm-soft) 0%, transparent 68%);
+  opacity: 0.55; pointer-events: none; z-index: 0;
+}
+[data-theme="growth"] .gj-page > * { position: relative; z-index: 1; }
+
+/* ── 兼容旧 .gr-* （供未改造的 Gr 页面使用，同步新色板）── */
 [data-theme="growth"] .gr-page {
-  min-height: 100vh; background: var(--growth-bg); padding: 20px 16px 140px;
+  min-height: 100vh; background: var(--growth-bg-grad); padding: 22px 18px 150px;
+  font-family: var(--growth-font);
 }
 [data-theme="growth"] .gr-card {
   background: var(--growth-surface); border: 1px solid var(--growth-border);
-  border-radius: var(--growth-radius); padding: 16px;
-  box-shadow: 0 2px 12px rgba(45, 42, 38, 0.03);
+  border-radius: var(--growth-radius); padding: 16px; box-shadow: var(--growth-shadow);
 }
 [data-theme="growth"] .gr-card-alt {
   background: var(--growth-surface-alt); border: 1px solid var(--growth-border);
   border-radius: var(--growth-radius-sm); padding: 14px;
 }
 [data-theme="growth"] .gr-progress {
-  height: 6px; background: var(--growth-surface-alt); border-radius: 3px; overflow: hidden;
+  height: 6px; background: var(--growth-surface-alt); border-radius: 99px; overflow: hidden;
 }
-[data-theme="growth"] .gr-progress-fill {
-  height: 100%; border-radius: 3px; transition: width 0.4s ease;
-}
+[data-theme="growth"] .gr-progress-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
 [data-theme="growth"] .gr-btn {
   padding: 12px 16px; border: none; border-radius: var(--growth-radius-sm);
   font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s;
 }
 [data-theme="growth"] .gr-btn:active { transform: scale(0.97); opacity: 0.85; }
-[data-theme="growth"] .gr-btn-primary { background: var(--growth-primary); color: #ffffff; }
+[data-theme="growth"] .gr-btn-primary { background: var(--growth-primary); color: #fff; }
 [data-theme="growth"] .gr-btn-outline {
-  background: transparent; border: 1px solid var(--growth-border); color: var(--growth-text);
+  background: transparent; border: 1px solid var(--growth-border-strong); color: var(--growth-text);
 }
+
+/* ── 旅程卡片：柔和、少边框、靠阴影分层 ── */
+[data-theme="growth"] .gj-card {
+  background: var(--growth-surface);
+  border: 1px solid var(--growth-border);
+  border-radius: var(--growth-radius);
+  padding: 20px;
+  box-shadow: var(--growth-shadow);
+}
+/* 温暖卡片（用于成就/坚持等带温度的内容） */
+[data-theme="growth"] .gj-card-warm {
+  background: linear-gradient(150deg, var(--growth-surface-warm) 0%, var(--growth-surface) 100%);
+  border: 1px solid var(--growth-border);
+  border-radius: var(--growth-radius);
+  padding: 20px;
+  box-shadow: var(--growth-shadow);
+}
+/* 无卡分区：靠留白与标题分层，避免"大量卡片" */
+[data-theme="growth"] .gj-block { padding: 6px 2px; }
+
+/* ── 主角：成长环（年轮）── */
+[data-theme="growth"] .gj-hero {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 12px 0 22px; text-align: center;
+}
+[data-theme="growth"] .gj-ring-wrap {
+  position: relative; width: 190px; height: 190px;
+  display: flex; align-items: center; justify-content: center;
+}
+[data-theme="growth"] .gj-ring-halo {
+  position: absolute; inset: -16px; border-radius: 50%;
+  background: radial-gradient(circle, var(--growth-primary-soft) 0%, transparent 70%);
+  opacity: 0.8; pointer-events: none;
+}
+[data-theme="growth"] .gj-ring-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+}
+[data-theme="growth"] .gj-ring-num {
+  font-size: 54px; font-weight: 700; line-height: 1;
+  color: var(--growth-text); letter-spacing: -2px;
+  font-variant-numeric: tabular-nums;
+}
+[data-theme="growth"] .gj-ring-cap {
+  font-size: 11px; color: var(--growth-text-secondary);
+  letter-spacing: 2px; margin-top: 4px;
+}
+
+/* ── 阶段徽章 ── */
+[data-theme="growth"] .gj-stage {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 16px; border-radius: 99px;
+  background: var(--growth-primary-soft);
+  color: var(--growth-primary-deep);
+  font-size: 13px; font-weight: 600; letter-spacing: 1px;
+}
+[data-theme="growth"] .gj-stage-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--growth-primary);
+  box-shadow: 0 0 0 3px var(--growth-primary-soft);
+}
+
+/* ── 章节标题：左对齐、细字距、不喧闹 ── */
+[data-theme="growth"] .gj-label {
+  font-size: 12px; font-weight: 600; letter-spacing: 2px;
+  color: var(--growth-text-secondary);
+  display: flex; align-items: center; gap: 8px;
+}
+[data-theme="growth"] .gj-label::before {
+  content: ''; width: 4px; height: 14px; border-radius: 2px;
+  background: linear-gradient(180deg, var(--growth-primary) 0%, var(--growth-warm) 100%);
+}
+
+/* ── 数据展示：大数字 + 小说明 ── */
+[data-theme="growth"] .gj-stat-num {
+  font-size: 30px; font-weight: 700; line-height: 1.1;
+  color: var(--growth-text); letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+}
+[data-theme="growth"] .gj-stat-unit {
+  font-size: 13px; font-weight: 600; color: var(--growth-text-secondary); margin-left: 3px;
+}
+[data-theme="growth"] .gj-stat-cap {
+  font-size: 12px; color: var(--growth-text-secondary); margin-top: 2px;
+}
+
+/* ── 按钮：圆润、有温度 ── */
+[data-theme="growth"] .gj-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 14px 22px; border: none; border-radius: 99px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: all 0.16s ease; font-family: var(--growth-font);
+}
+[data-theme="growth"] .gj-btn:active { transform: scale(0.97); opacity: 0.88; }
+[data-theme="growth"] .gj-btn-primary {
+  background: linear-gradient(135deg, var(--growth-primary) 0%, var(--growth-primary-deep) 100%);
+  color: #fff; box-shadow: 0 6px 18px rgba(65, 112, 92, 0.28);
+}
+[data-theme="growth"] .gj-btn-warm {
+  background: linear-gradient(135deg, var(--growth-warm) 0%, var(--growth-warm-deep) 100%);
+  color: #fff; box-shadow: 0 6px 18px rgba(217, 151, 78, 0.3);
+}
+[data-theme="growth"] .gj-btn-ghost {
+  background: var(--growth-surface); border: 1px solid var(--growth-border-strong);
+  color: var(--growth-text);
+}
+
+/* ── 胶囊标签 ── */
+[data-theme="growth"] .gj-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 12px; border-radius: 99px;
+  font-size: 12px; font-weight: 600;
+  background: var(--growth-surface-alt); color: var(--growth-text-secondary);
+}
+[data-theme="growth"] .gj-pill-green { background: var(--growth-primary-soft); color: var(--growth-primary-deep); }
+[data-theme="growth"] .gj-pill-warm { background: var(--growth-warm-soft); color: var(--growth-warm-deep); }
+
+/* ── 柔和分隔 ── */
+[data-theme="growth"] .gj-divider {
+  height: 1px; background: var(--growth-border); margin: 20px 0; border: none;
+}
+
+/* ── 微光点缀（坚持天数等的高光点）── */
+[data-theme="growth"] .gj-spark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--growth-warm-soft);
+}
+
 
 /* ═══ 全局按钮点按反馈 ═══ */
