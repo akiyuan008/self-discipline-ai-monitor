@@ -12,6 +12,7 @@ import { localDateStr } from '@/lib/dateUtils'
 import { useMissionStore, startMission, useSessionStore, useDayPlanStore, buildUnifiedMissionView, submitRejectedCoursePhotoEvidenceForTask } from '@/core/discipline'
 import type { MissionView, MissionViewStatus } from '@/core/discipline'
 import { useGrowth } from '@/hooks/useGrowth'
+import GrQuests from '@/components/growth/GrQuests'
 
 interface Props {
   onNavigate?: (p: PageId) => void
@@ -37,7 +38,7 @@ function fmtClock(ts: number): string {
 
 export default function Quests({ onNavigate }: Props) {
   const isGrowth = useGrowth()
-  if (isGrowth) return <NormalQuests onNavigate={onNavigate} /> // Growth Quests Phase 2 later
+  if (isGrowth) return <GrQuests onNavigate={onNavigate} />
   return <NormalQuests onNavigate={onNavigate} />
 }
 
