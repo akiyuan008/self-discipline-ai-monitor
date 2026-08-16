@@ -95,7 +95,8 @@ interface StoreState {
   exp: number
   totalExp: number
   level: number
-  theme: 'default' | 'growth'
+  /** App Mode：Normal（任务执行系统）/ Growth（个人成长系统）。是两套产品逻辑，不是主题。 */
+  appMode: 'normal' | 'growth'
 
   addPoints: (n: number) => void
   addXp: (n: number) => void
@@ -132,7 +133,7 @@ interface StoreState {
   clearStreakBroken: () => void
   addPointRecord: (type: 'earn' | 'spend', amount: number, reason: string) => void
   addExp: (amount: number, reason: string) => void
-  setTheme: (theme: 'default' | 'growth') => void
+  setAppMode: (mode: 'normal' | 'growth') => void
   addCustomShopItem: (item: Omit<ShopItem, 'id'>) => void
   removeCustomShopItem: (id: string) => void
 }
@@ -201,7 +202,7 @@ export const useStore = create<StoreState>()(
       exp: 0,
       totalExp: 0,
       level: 1,
-      theme: 'default',
+      appMode: 'normal',
 
       addPoints: (n) => set(s => ({ points: s.points + n })),
       addXp: (n) => get().addExp(n, '任务及学习经验'),
@@ -429,7 +430,7 @@ export const useStore = create<StoreState>()(
           exp: 0,
           totalExp: 0,
           level: 1,
-          theme: 'default'
+          appMode: 'normal'
         }),
       setDungeon: (sec, active) => set({ dungeonRemainingSec: sec, dungeonActive: active }),
       setDungeonDuration: (min) => set({ dungeonDurationMin: min }),
@@ -490,11 +491,11 @@ export const useStore = create<StoreState>()(
           }
         })
       },
-      setTheme: (theme: 'growth' | 'default') => set({ theme }),
+      setAppMode: (mode: 'normal' | 'growth') => set({ appMode: mode }),
     }),
     {
       name: 'cyber-survival-store',
-      version: 5,
+      version: 6,
       storage: createJSONStorage(() => localStorage),
       migrate: (persisted: any, version: number) => {
         if (version < 3 && persisted) {
@@ -504,6 +505,12 @@ export const useStore = create<StoreState>()(
           persisted.streak = 0
           persisted.totalFocusMs = 0
           persisted.pointHistory = []
+        }
+        // v6: Theme → App Mode。Normal/Growth 是两套产品逻辑，不是主题。
+        if (version < 6 && persisted) {
+          const legacyTheme = persisted.theme
+          persisted.appMode = legacyTheme === 'growth' ? 'growth' : 'normal'
+          delete persisted.theme
         }
         return persisted
       },

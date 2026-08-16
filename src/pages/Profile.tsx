@@ -12,7 +12,7 @@ function ExpPanel() {
   const exp = useStore(s => s.exp)
   const totalExp = useStore(s => s.totalExp)
   const level = useStore(s => s.level)
-  const theme = useStore(s => s.theme)
+  const appMode = useStore(s => s.appMode)
 
   const expInLevel = totalExp % 1000
   const expPercent = Math.min(100, (expInLevel / 1000) * 100)

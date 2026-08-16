@@ -3,12 +3,12 @@ import { useStore } from '@/stores/useStore'
 import Icon from '@/components/Icons'
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const theme = useStore(s => s.theme)
+  const appMode = useStore(s => s.appMode)
   const darkModeMode = useStore(s => s.darkModeMode || 'system')
 
   useEffect(() => {
     const applyTheme = () => {
-      const isGrowth = theme === 'growth'
+      const isGrowth = appMode === 'growth'
       let isDark = false
       if (darkModeMode === 'system') {
         isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -18,6 +18,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         isDark = false
       }
 
+      // data-theme 仅作样式命中机制；产品概念是 App Mode（Normal/Growth 两套逻辑）
       if (isGrowth) {
         document.documentElement.setAttribute('data-theme', 'growth')
       } else if (isDark) {
@@ -46,18 +47,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       mediaQuery.addEventListener('change', listener)
       return () => mediaQuery.removeEventListener('change', listener)
     }
-  }, [theme, darkModeMode])
+  }, [appMode, darkModeMode])
 
   return <>{children}</>
 }
 
 export function ThemeToggle() {
-  const theme = useStore(s => s.theme)
+  const appMode = useStore(s => s.appMode)
   const darkModeMode = useStore(s => s.darkModeMode || 'system')
   const setDarkModeMode = useStore(s => s.setDarkModeMode)
-  const setTheme = useStore(s => s.setTheme)
+  const setAppMode = useStore(s => s.setAppMode)
 
-  const isGrowth = theme === 'growth'
+  const isGrowth = appMode === 'growth'
 
   return (
     <div style={{
@@ -103,10 +104,10 @@ export function ThemeToggle() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <div>
           <div style={{ fontSize: 16, fontWeight: 700 }}>
-            主题皮肤选择
+            App 模式
           </div>
           <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-            切换应用整体视觉风格
+            两套不同的产品逻辑，不是换肤
           </div>
         </div>
         <div style={{
@@ -116,57 +117,57 @@ export function ThemeToggle() {
           border: '1px solid var(--border)',
           fontSize: 10, fontWeight: 700
         }}>
-          {isGrowth ? 'GROWTH' : 'DEFAULT'}
+          {isGrowth ? 'GROWTH' : 'NORMAL'}
         </div>
       </div>
 
-      {/* 默认主题 */}
-      <button onClick={() => { setTheme('default'); showToast('已切换至默认主题') }} style={{
+      {/* Normal 模式 */}
+      <button onClick={() => { setAppMode('normal'); showToast('已切换到 Normal 模式') }} style={{
         width: '100%', padding: '12px 14px', marginBottom: 10,
-        background: theme === 'default' ? 'var(--accent-dim)' : 'var(--bg-alt)',
-        border: theme === 'default' ? '1px solid var(--accent)' : '1px solid var(--border)',
-        color: theme === 'default' ? 'var(--accent)' : 'var(--fg)',
+        background: appMode === 'normal' ? 'var(--accent-dim)' : 'var(--bg-alt)',
+        border: appMode === 'normal' ? '1px solid var(--accent)' : '1px solid var(--border)',
+        color: appMode === 'normal' ? 'var(--accent)' : 'var(--fg)',
         cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12,
         borderRadius: 10,
         textAlign: 'left'
       }}>
         <div style={{ width: 36, height: 36, borderRadius: 8, background: 'linear-gradient(135deg, #F4F3F0, #E0DED9)', border: '1px solid rgba(0,0,0,0.1)', flexShrink: 0 }} />
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 600 }}>默认主题</div>
-          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>经典简洁双色主题</div>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>Normal · 任务执行系统</div>
+          <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>完成今天的事</div>
         </div>
-        {theme === 'default' && <span style={{ color: 'var(--accent)', fontSize: 16, fontWeight: 'bold' }}>✓</span>}
+        {appMode === 'normal' && <span style={{ color: 'var(--accent)', fontSize: 16, fontWeight: 'bold' }}>✓</span>}
       </button>
 
-      {/* 成长模式 */}
-      <button onClick={() => { setTheme('growth'); showToast('成长模式已启用！') }} style={{
+      {/* Growth 模式 */}
+      <button onClick={() => { setAppMode('growth'); showToast('已切换到 Growth 模式') }} style={{
         width: '100%', padding: '12px 14px',
-        background: theme === 'growth' ? 'var(--accent-dim)' : 'var(--bg-alt)',
-        border: theme === 'growth' ? '1px solid var(--accent)' : '1px solid var(--border)',
-        color: theme === 'growth' ? 'var(--accent)' : 'var(--fg)',
+        background: appMode === 'growth' ? 'var(--accent-dim)' : 'var(--bg-alt)',
+        border: appMode === 'growth' ? '1px solid var(--accent)' : '1px solid var(--border)',
+        color: appMode === 'growth' ? 'var(--accent)' : 'var(--fg)',
         cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12,
         borderRadius: 10,
         textAlign: 'left'
       }}>
         <div style={{
           width: 38, height: 38, borderRadius: 8,
-          background: 'linear-gradient(135deg, #7c6cab, #e8a06a)',
+          background: 'linear-gradient(135deg, #41705c, #d9974e)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0
         }}>
-          <Icon.Rocket size={20} color="#fff" />
+          <Icon.Sprout size={20} color="#fff" />
         </div>
 
         <div style={{ flex: 1 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: theme === 'growth' ? 'var(--accent)' : 'var(--fg)' }}>
-            成长模式
+          <span style={{ fontSize: 14, fontWeight: 700, color: appMode === 'growth' ? 'var(--accent)' : 'var(--fg)' }}>
+            Growth · 个人成长系统
           </span>
           <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
-            温暖、现代、沉浸的个人成长空间
+            培养能力，看见自己的长期变化
           </div>
         </div>
 
-        {theme === 'growth' ? (
+        {appMode === 'growth' ? (
           <span style={{ color: 'var(--accent)', fontSize: 16, fontWeight: 'bold' }}>✓</span>
         ) : (
           <span style={{
